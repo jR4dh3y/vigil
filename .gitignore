@@ -1,58 +1,68 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # Dependencies
-node_modules
+node_modules/
 .pnp
 .pnp.js
+.bun/
 
-# Local env files
+# Env (track *.example only)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!**/*.example.env
 
-# Testing
-coverage
+# Turbo / caches
+.turbo/
+.cache/
+*.tsbuildinfo
 
-# Turbo
-.turbo
-
-# Vercel
-.vercel
-
-# Build Outputs
-.next/
+# Build outputs
+dist/
+build/
 out/
-build
-dist
+.next/
+.svelte-kit/
+.astro/
+.expo/
+.vercel/
+web-build/
 
+# Test / coverage
+coverage/
+*.lcov
 
-# Debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bun-debug.log*
+*.log
 
-# Misc
+# OS / editors
 .DS_Store
-*.pem
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
 
-# go
+# Go
 server/bin/
 server/tmp/
 *.exe
+*.test
 coverage.out
+vendor/
 
-# runtime data
+# Runtime data / media (never commit)
 data/
 recordings/
 *.db
 *.db-wal
 *.db-shm
+*.db-journal
 
-# app builds
-.svelte-kit/
-.astro/
-.expo/
-build/
-dist/
+# Secrets
+*.pem
+*.key
