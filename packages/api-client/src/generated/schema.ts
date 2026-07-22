@@ -636,10 +636,17 @@ export interface components {
         Settings: {
             retentionDays: number;
             siteName: string;
+            /** @description Absolute or relative path on the NVR server where recordings are stored. */
+            recordingsDir: string;
+            /** @description When false, MediaMTX continuous recording is disabled for all cameras. */
+            recordingEnabled: boolean;
         };
         PatchSettingsRequest: {
             retentionDays?: number;
             siteName?: string;
+            /** @description Absolute or relative path on the NVR server for new recordings. */
+            recordingsDir?: string;
+            recordingEnabled?: boolean;
         };
         CreateUserRequest: {
             username: string;

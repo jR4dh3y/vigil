@@ -183,12 +183,21 @@ func (s *Scheduler) pruneRecordings(ctx context.Context) {
 }
 
 func (s *Scheduler) checkDisk(ctx context.Context) {
-	if s.cfg.Events == nil || s.cfg.RecordingsDir == "" {
+	if s.cfg.Events == nil {
 		return
 	}
-	usage, err := disk.UsageWithContext(ctx, s.cfg.RecordingsDir)
+	path := s.cfg.RecordingsDir
+	if s.cfg.Recording != nil {
+		if dir := s.cfg.Recording.RecordingsDir(); dir != "" {
+			path = dir
+		}
+	}
+	if path == "" {
+		return
+	}
+	usage, err := disk.UsageWithContext(ctx, path)
 	if err != nil {
-		slog.Warn("disk check failed", "path", s.cfg.RecordingsDir, "err", err)
+		slog.Warn("disk check failed", "path", path, "err", err)
 		return
 	}
 	if usage.UsedPercent < s.cfg.DiskThreshold {
@@ -210,7 +219,7 @@ func (s *Scheduler) checkDisk(ctx context.Context) {
 		Message:   fmt.Sprintf("Recordings volume is above %.0f%% used", s.cfg.DiskThreshold),
 		StartedAt: time.Now().UTC(),
 		Metadata: map[string]any{
-			"path":        s.cfg.RecordingsDir,
+			"path":        path,
 			"usedPercent": usage.UsedPercent,
 			"totalBytes":  usage.Total,
 			"freeBytes":   usage.Free,

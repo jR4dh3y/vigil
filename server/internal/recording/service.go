@@ -55,6 +55,11 @@ type Service struct {
 	retentionDays int
 }
 
+// SetRecordingsDir updates the root used to relativize segment paths.
+func (s *Service) SetRecordingsDir(dir string) {
+	s.recordingsDir = strings.TrimSpace(dir)
+}
+
 // NewService constructs a recording Service.
 func NewService(q *store.Queries, cfg Config) *Service {
 	days := cfg.RetentionDays

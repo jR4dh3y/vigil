@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nvr/nvr/server/internal/camera"
@@ -40,11 +42,12 @@ type PlaybackStream struct {
 
 // Config holds browser-facing MediaMTX bases, control API URL, and recording root.
 type Config struct {
-	APIURL        string // Control API, e.g. http://127.0.0.1:9997
-	WebRTCURL     string // WHEP base, e.g. http://127.0.0.1:8889
-	HLSURL        string // HLS base, e.g. http://127.0.0.1:8888
-	PlaybackURL   string // Optional MediaMTX playback server base, e.g. http://127.0.0.1:9996
-	RecordingsDir string // Root directory for recorded segments
+	APIURL           string // Control API, e.g. http://127.0.0.1:9997
+	WebRTCURL        string // WHEP base, e.g. http://127.0.0.1:8889
+	HLSURL           string // HLS base, e.g. http://127.0.0.1:8888
+	PlaybackURL      string // Optional MediaMTX playback server base, e.g. http://127.0.0.1:9996
+	RecordingsDir    string // Root directory for recorded segments
+	RecordingEnabled bool   // Continuous recording when true and RecordingsDir is set
 }
 
 // CameraReader is the subset of camera.Service used by media.
@@ -55,25 +58,31 @@ type CameraReader interface {
 
 // Service orchestrates MediaMTX paths, stream tokens, and FFmpeg snapshots.
 type Service struct {
-	cfg    Config
-	cams   CameraReader
-	mtx    *MediaMTXClient
-	tokens *TokenStore
+	mu               sync.RWMutex
+	cfg              Config
+	recordingEnabled bool
+	cams             CameraReader
+	mtx              *MediaMTXClient
+	tokens           *TokenStore
 }
 
 // NewService constructs a media Service.
+// Callers should set RecordingEnabled explicitly (main defaults it to true when a dir is configured).
 func NewService(cfg Config, cams CameraReader) *Service {
+	dir := strings.TrimSpace(cfg.RecordingsDir)
+	enabled := cfg.RecordingEnabled && dir != ""
 	return &Service{
 		cfg: Config{
 			APIURL:        strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/"),
 			WebRTCURL:     strings.TrimRight(strings.TrimSpace(cfg.WebRTCURL), "/"),
 			HLSURL:        strings.TrimRight(strings.TrimSpace(cfg.HLSURL), "/"),
 			PlaybackURL:   strings.TrimRight(strings.TrimSpace(cfg.PlaybackURL), "/"),
-			RecordingsDir: strings.TrimSpace(cfg.RecordingsDir),
+			RecordingsDir: dir,
 		},
-		cams:   cams,
-		mtx:    NewMediaMTXClient(cfg.APIURL),
-		tokens: NewTokenStore(),
+		recordingEnabled: enabled,
+		cams:             cams,
+		mtx:              NewMediaMTXClient(cfg.APIURL),
+		tokens:           NewTokenStore(),
 	}
 }
 
@@ -82,20 +91,80 @@ func (s *Service) TokenStore() *TokenStore {
 	return s.tokens
 }
 
+// RecordingsDir returns the current recordings root.
+func (s *Service) RecordingsDir() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg.RecordingsDir
+}
+
+// RecordingEnabled reports whether continuous recording is on.
+func (s *Service) RecordingEnabled() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.recordingEnabled && s.cfg.RecordingsDir != ""
+}
+
+// SetRecordingConfig updates the recordings directory and enable flag.
+// When enabled is true, dir must be non-empty; the directory is created if needed.
+func (s *Service) SetRecordingConfig(dir string, enabled bool) error {
+	dir = strings.TrimSpace(dir)
+	if enabled && dir == "" {
+		return fmt.Errorf("recordings directory is required when recording is enabled")
+	}
+	if dir != "" {
+		clean := filepath.Clean(dir)
+		if clean == "." || clean == "" {
+			return fmt.Errorf("invalid recordings directory")
+		}
+		if err := os.MkdirAll(clean, 0o755); err != nil {
+			return fmt.Errorf("create recordings directory: %w", err)
+		}
+		dir = clean
+	}
+
+	s.mu.Lock()
+	s.cfg.RecordingsDir = dir
+	s.recordingEnabled = enabled && dir != ""
+	s.mu.Unlock()
+	return nil
+}
+
 // recordOptionsForCamera builds MediaMTX recording settings under RecordingsDir.
 // MediaMTX requires the literal "%path" in recordPath (expands to the path name, e.g. cam_<uuid>).
 // Layout: {RecordingsDir}/%path/%Y-%m-%d/%H-%M-%S-%f (MediaMTX adds the extension).
 func (s *Service) recordOptionsForCamera(cameraID string) PathRecordOptions {
-	if s.cfg.RecordingsDir == "" {
+	s.mu.RLock()
+	dir := s.cfg.RecordingsDir
+	enabled := s.recordingEnabled
+	s.mu.RUnlock()
+
+	if !enabled || dir == "" {
 		return PathRecordOptions{Enabled: false}
 	}
 	_ = cameraID // path name already encodes camera id (cam_<uuid>); kept for call-site clarity
-	root := filepath.ToSlash(s.cfg.RecordingsDir)
+	root := filepath.ToSlash(dir)
 	return PathRecordOptions{
 		Enabled:         true,
 		RecordPath:      root + "/%path/%Y-%m-%d/%H-%M-%S-%f",
 		SegmentDuration: "1m",
 		Format:          "fmp4",
+	}
+}
+
+// ReapplyCameraPaths re-upserts MediaMTX paths so recording settings take effect.
+func (s *Service) ReapplyCameraPaths(ctx context.Context, cameras []camera.Camera) {
+	for _, cam := range cameras {
+		if ctx.Err() != nil {
+			return
+		}
+		if !cam.Enabled {
+			continue
+		}
+		if err := s.EnsurePathForCamera(ctx, cam); err != nil {
+			slog.Warn("reapply mediamtx path failed",
+				"camera_id", cam.ID, "err", err)
+		}
 	}
 }
 

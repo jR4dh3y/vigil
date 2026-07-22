@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -60,12 +61,29 @@ func main() {
 	queries := store.New(db)
 	authSvc := auth.NewService(queries)
 	cameraSvc := camera.NewService(db, cfg.SecretsKey)
+
+	recordingsDir := cfg.RecordingsDir
+	if dir, ok := loadSettingFromDB(queries, "recordingsDir"); ok && strings.TrimSpace(dir) != "" {
+		recordingsDir = strings.TrimSpace(dir)
+	}
+	recordingEnabled := true
+	if en, ok := loadSettingFromDB(queries, "recordingEnabled"); ok {
+		recordingEnabled = parseEnvBool(en, true)
+	}
+	if strings.TrimSpace(recordingsDir) == "" {
+		recordingEnabled = false
+	} else if err := os.MkdirAll(recordingsDir, 0o755); err != nil {
+		slog.Error("ensure recordings dir", "path", recordingsDir, "err", err)
+		os.Exit(1)
+	}
+
 	mediaSvc := media.NewService(media.Config{
-		APIURL:        cfg.MediaMTXAPIURL,
-		WebRTCURL:     cfg.MediaMTXWEBRTCURL,
-		HLSURL:        cfg.MediaMTXHLSURL,
-		PlaybackURL:   cfg.MediaMTXPlaybackURL,
-		RecordingsDir: cfg.RecordingsDir,
+		APIURL:           cfg.MediaMTXAPIURL,
+		WebRTCURL:        cfg.MediaMTXWEBRTCURL,
+		HLSURL:           cfg.MediaMTXHLSURL,
+		PlaybackURL:      cfg.MediaMTXPlaybackURL,
+		RecordingsDir:    recordingsDir,
+		RecordingEnabled: recordingEnabled,
 	}, cameraSvc)
 
 	retentionDays := cfg.RetentionDays
@@ -73,7 +91,7 @@ func main() {
 		retentionDays = days
 	}
 	recordingSvc := recording.NewService(queries, recording.Config{
-		RecordingsDir: cfg.RecordingsDir,
+		RecordingsDir: recordingsDir,
 		RetentionDays: retentionDays,
 	})
 
@@ -84,7 +102,7 @@ func main() {
 		Cameras:       cameraSvc,
 		Events:        eventSvc,
 		Recording:     recordingSvc,
-		RecordingsDir: cfg.RecordingsDir,
+		RecordingsDir: recordingsDir,
 	})
 	if err := scheduler.Start(); err != nil {
 		slog.Error("start jobs scheduler", "err", err)
@@ -100,7 +118,7 @@ func main() {
 		eventSvc,
 		cfg.Version,
 		cfg.Commit,
-		cfg.RecordingsDir,
+		recordingsDir,
 		cfg.RetentionDays,
 	)
 
@@ -136,7 +154,8 @@ func main() {
 			"http", cfg.HTTPAddr,
 			"version", cfg.Version,
 			"commit", cfg.Commit,
-			"recordings", cfg.RecordingsDir,
+			"recordings", recordingsDir,
+			"recording_enabled", mediaSvc.RecordingEnabled(),
 			"retention_days", recordingSvc.RetentionDays(),
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -159,16 +178,35 @@ func main() {
 }
 
 func loadRetentionFromDB(q *store.Queries) (int, bool) {
-	row, err := q.GetSetting(context.Background(), "retentionDays")
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			slog.Warn("load retention setting", "err", err)
-		}
+	val, ok := loadSettingFromDB(q, "retentionDays")
+	if !ok {
 		return 0, false
 	}
-	n, err := strconv.Atoi(row.Value)
+	n, err := strconv.Atoi(strings.TrimSpace(val))
 	if err != nil || n < 1 {
 		return 0, false
 	}
 	return n, true
+}
+
+func loadSettingFromDB(q *store.Queries, key string) (string, bool) {
+	row, err := q.GetSetting(context.Background(), key)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Warn("load setting", "key", key, "err", err)
+		}
+		return "", false
+	}
+	return row.Value, true
+}
+
+func parseEnvBool(val string, fallback bool) bool {
+	switch strings.ToLower(strings.TrimSpace(val)) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
 }

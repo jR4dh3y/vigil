@@ -28,9 +28,13 @@
 	const seed = untrack(() => ({
 		siteName: initial.siteName,
 		retentionDays: String(initial.retentionDays),
+		recordingsDir: initial.recordingsDir,
+		recordingEnabled: initial.recordingEnabled,
 	}));
 	let siteName = $state(seed.siteName);
 	let retentionDays = $state(seed.retentionDays);
+	let recordingsDir = $state(seed.recordingsDir);
+	let recordingEnabled = $state(seed.recordingEnabled);
 	let fieldErrors = $state<Record<string, string>>({});
 
 	async function handleSubmit(event: Event) {
@@ -43,6 +47,8 @@
 		const parsed = settingsFormSchema.safeParse({
 			siteName,
 			retentionDays,
+			recordingsDir,
+			recordingEnabled,
 		});
 		if (!parsed.success) {
 			fieldErrors = fieldErrorsFromZod(parsed.error);
@@ -68,6 +74,61 @@
 		{#if fieldErrors.siteName}
 			<p class="text-xs text-red-400">{fieldErrors.siteName}</p>
 		{/if}
+	</div>
+
+	<div class="flex flex-col gap-3 rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
+		<div class="flex flex-col gap-1">
+			<p class="text-sm font-medium text-zinc-200">Recording</p>
+			<p class="text-xs text-zinc-500">
+				Choose a folder on this NVR host and turn continuous recording on or off.
+			</p>
+		</div>
+
+		<label
+			class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2.5
+				{readonly || submitting ? 'cursor-not-allowed opacity-60' : ''}"
+		>
+			<div class="flex flex-col gap-0.5">
+				<span class="text-sm font-medium text-zinc-200">Recording enabled</span>
+				<span class="text-xs text-zinc-500">
+					When off, live view still works but new segments are not written.
+				</span>
+			</div>
+			<input
+				type="checkbox"
+				class="size-4 rounded border-zinc-600 bg-zinc-950 text-emerald-500 focus:ring-emerald-500/40"
+				bind:checked={recordingEnabled}
+				disabled={readonly || submitting}
+			/>
+		</label>
+
+		<div class="flex flex-col gap-1.5">
+			<label for="settings-recordings-dir" class="text-sm font-medium text-zinc-300">
+				Recording location
+			</label>
+			<input
+				id="settings-recordings-dir"
+				name="recordingsDir"
+				type="text"
+				bind:value={recordingsDir}
+				disabled={readonly || submitting}
+				spellcheck="false"
+				autocomplete="off"
+				class="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 font-mono text-sm text-zinc-100 outline-none ring-emerald-500/40 placeholder:text-zinc-600 focus:border-emerald-500/60 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+				placeholder="/var/lib/nvr/recordings"
+			/>
+			<p class="text-xs text-zinc-500">
+				Path on the NVR server (not your browser). Absolute paths are recommended, e.g.
+				<code class="text-zinc-400">/mnt/storage/nvr</code> or
+				<code class="text-zinc-400">./recordings</code>.
+			</p>
+			{#if fieldErrors.recordingsDir}
+				<p class="text-xs text-red-400">{fieldErrors.recordingsDir}</p>
+			{/if}
+			{#if fieldErrors.recordingEnabled}
+				<p class="text-xs text-red-400">{fieldErrors.recordingEnabled}</p>
+			{/if}
+		</div>
 	</div>
 
 	<div class="flex flex-col gap-1.5">

@@ -42,6 +42,8 @@
 			patchSettings({
 				siteName: values.siteName,
 				retentionDays: values.retentionDays,
+				recordingsDir: values.recordingsDir,
+				recordingEnabled: values.recordingEnabled,
 			}),
 		onSuccess: async (settings) => {
 			serverError = null;
@@ -64,6 +66,8 @@
 			? {
 					siteName: settingsQuery.data.siteName,
 					retentionDays: settingsQuery.data.retentionDays,
+					recordingsDir: settingsQuery.data.recordingsDir,
+					recordingEnabled: settingsQuery.data.recordingEnabled,
 				}
 			: null,
 	);
@@ -132,7 +136,7 @@
 			<h2 class="text-sm font-semibold text-zinc-100">Site settings</h2>
 			<p class="text-xs text-zinc-500">
 				{#if isAdmin}
-					Update the site name and default recording retention.
+					Site name, recording location on this server, and retention.
 				{:else}
 					View-only. Ask an administrator to change these values.
 				{/if}
@@ -159,7 +163,7 @@
 				</button>
 			</div>
 		{:else if formInitial}
-			{#key `${formInitial.siteName}:${formInitial.retentionDays}`}
+			{#key `${formInitial.siteName}:${formInitial.retentionDays}:${formInitial.recordingsDir}:${formInitial.recordingEnabled}`}
 				<SettingsForm
 					initial={formInitial}
 					readonly={!isAdmin}

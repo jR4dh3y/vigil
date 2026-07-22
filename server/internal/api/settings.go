@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -12,9 +13,11 @@ import (
 )
 
 const (
-	settingKeyRetentionDays = "retentionDays"
-	settingKeySiteName      = "siteName"
-	defaultSiteName         = "NVR"
+	settingKeyRetentionDays    = "retentionDays"
+	settingKeySiteName         = "siteName"
+	settingKeyRecordingsDir    = "recordingsDir"
+	settingKeyRecordingEnabled = "recordingEnabled"
+	defaultSiteName            = "NVR"
 )
 
 // GetSettings returns site settings for any authenticated user.
@@ -68,22 +71,110 @@ func (s *Server) PatchSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Resolve next recording config from body + current values.
+	if body.RecordingsDir != nil || body.RecordingEnabled != nil {
+		current := s.loadSettings(r)
+		nextDir := current.RecordingsDir
+		nextEnabled := current.RecordingEnabled
+
+		if body.RecordingsDir != nil {
+			nextDir = strings.TrimSpace(*body.RecordingsDir)
+			if nextDir != "" {
+				nextDir = filepath.Clean(nextDir)
+			}
+		}
+		if body.RecordingEnabled != nil {
+			nextEnabled = *body.RecordingEnabled
+		}
+		if nextEnabled && nextDir == "" {
+			writeError(w, http.StatusBadRequest, "recordingsDir is required when recording is enabled", "validation")
+			return
+		}
+
+		if s.Media != nil {
+			if err := s.Media.SetRecordingConfig(nextDir, nextEnabled); err != nil {
+				slog.Error("set recording config", "err", err)
+				writeError(w, http.StatusBadRequest, err.Error(), "validation")
+				return
+			}
+			// Prefer cleaned path after mkdir.
+			if abs := s.Media.RecordingsDir(); abs != "" {
+				nextDir = abs
+			}
+			nextEnabled = s.Media.RecordingEnabled()
+		}
+
+		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
+			Key:   settingKeyRecordingsDir,
+			Value: nextDir,
+		}); err != nil {
+			slog.Error("upsert recordingsDir", "err", err)
+			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+			return
+		}
+		enabledVal := "false"
+		if nextEnabled {
+			enabledVal = "true"
+		}
+		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
+			Key:   settingKeyRecordingEnabled,
+			Value: enabledVal,
+		}); err != nil {
+			slog.Error("upsert recordingEnabled", "err", err)
+			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+			return
+		}
+
+		s.RecordingsDir = nextDir
+		if s.Recording != nil {
+			s.Recording.SetRecordingsDir(nextDir)
+		}
+
+		// Push MediaMTX path recording settings for enabled cameras.
+		if s.Media != nil && s.Camera != nil {
+			list, err := s.Camera.List(r.Context())
+			if err != nil {
+				slog.Warn("list cameras after recording settings change", "err", err)
+			} else {
+				s.Media.ReapplyCameraPaths(r.Context(), list)
+			}
+		}
+	}
+
 	writeJSON(w, http.StatusOK, s.loadSettings(r))
 }
 
 func (s *Server) loadSettings(r *http.Request) Settings {
 	settings := Settings{
-		RetentionDays: s.DefaultRetentionDays,
-		SiteName:      defaultSiteName,
+		RetentionDays:    s.DefaultRetentionDays,
+		SiteName:         defaultSiteName,
+		RecordingsDir:    s.RecordingsDir,
+		RecordingEnabled: false,
 	}
 	if s.Recording != nil {
 		settings.RetentionDays = s.Recording.RetentionDays()
+		if dir := s.Recording.RecordingsDir(); dir != "" {
+			settings.RecordingsDir = dir
+		}
 	}
+	// DB values for site metadata; recording path/flag prefer live media runtime.
 	if days, ok := s.readRetentionDays(r); ok {
 		settings.RetentionDays = days
 	}
 	if name, ok := s.readSetting(r, settingKeySiteName); ok {
 		settings.SiteName = name
+	}
+	if dir, ok := s.readSetting(r, settingKeyRecordingsDir); ok {
+		settings.RecordingsDir = dir
+	}
+	if en, ok := s.readSetting(r, settingKeyRecordingEnabled); ok {
+		settings.RecordingEnabled = parseBoolSetting(en, settings.RecordingEnabled)
+	}
+	if s.Media != nil {
+		if dir := s.Media.RecordingsDir(); dir != "" {
+			settings.RecordingsDir = dir
+		}
+		settings.RecordingEnabled = s.Media.RecordingEnabled()
 	}
 	return settings
 }
@@ -112,4 +203,15 @@ func (s *Server) readSetting(r *http.Request, key string) (string, bool) {
 		return "", false
 	}
 	return row.Value, true
+}
+
+func parseBoolSetting(val string, fallback bool) bool {
+	switch strings.ToLower(strings.TrimSpace(val)) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
 }

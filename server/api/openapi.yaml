@@ -1207,12 +1207,18 @@ components:
           type: integer
     Settings:
       type: object
-      required: [retentionDays, siteName]
+      required: [retentionDays, siteName, recordingsDir, recordingEnabled]
       properties:
         retentionDays:
           type: integer
         siteName:
           type: string
+        recordingsDir:
+          type: string
+          description: Absolute or relative path on the NVR server where recordings are stored.
+        recordingEnabled:
+          type: boolean
+          description: When false, MediaMTX continuous recording is disabled for all cameras.
     PatchSettingsRequest:
       type: object
       properties:
@@ -1221,6 +1227,12 @@ components:
           minimum: 1
         siteName:
           type: string
+        recordingsDir:
+          type: string
+          description: Absolute or relative path on the NVR server for new recordings.
+        recordingEnabled:
+          type: boolean
+
     CreateUserRequest:
       type: object
       required: [username, password, role]

@@ -83,6 +83,16 @@ func (s *Server) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) diskInfo(r *http.Request) (DiskInfo, error) {
 	path := s.RecordingsDir
+	if s.Recording != nil {
+		if dir := s.Recording.RecordingsDir(); dir != "" {
+			path = dir
+		}
+	}
+	if s.Media != nil {
+		if dir := s.Media.RecordingsDir(); dir != "" {
+			path = dir
+		}
+	}
 	if path == "" {
 		path = "."
 	}
