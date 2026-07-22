@@ -1,0 +1,24 @@
+services:
+  nvr:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    # Prefer host networking on LAN for WebRTC:
+    # network_mode: host
+    ports:
+      - "8080:8080"
+      - "8554:8554"
+      - "8889:8889"
+      - "8189:8189/udp"
+    environment:
+      NVR_HTTP_ADDR: ":8080"
+      NVR_DATA_DIR: /var/lib/nvr/data
+      NVR_RECORDINGS_DIR: /var/lib/nvr/recordings
+    volumes:
+      - nvr-data:/var/lib/nvr/data
+      - nvr-recordings:/var/lib/nvr/recordings
+    restart: unless-stopped
+
+volumes:
+  nvr-data:
+  nvr-recordings:

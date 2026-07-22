@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: NVR API
+  version: 0.1.0
+  description: Contract for Go (oapi-codegen) and packages/api-client (openapi-typescript).
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /system/version:
+    get:
+      operationId: getVersion
+      tags: [system]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+    Version:
+      type: object
+      required: [version, commit]
+      properties:
+        version: { type: string }
+        commit: { type: string }

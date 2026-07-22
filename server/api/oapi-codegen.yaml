@@ -1,0 +1,8 @@
+# Generate chi server stubs + types from openapi.yaml
+#   oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+package: api
+generate:
+  chi-server: true
+  models: true
+  embedded-spec: true
+output: internal/api/generated.go

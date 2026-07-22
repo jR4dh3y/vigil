@@ -1,0 +1,39 @@
+{
+	"name": "@nvr/mobile",
+	"description": "NVR mobile — live view, events, push (not admin)",
+	"license": "0BSD",
+	"version": "57.0.9",
+	"main": "expo-router/entry",
+	"dependencies": {
+		"@nvr/api-client": "workspace:*",
+		"@tanstack/react-query": "^5.101.4",
+		"expo": "~57.0.7",
+		"expo-constants": "^57.0.6",
+		"expo-linking": "^57.0.3",
+		"expo-notifications": "^57.0.6",
+		"expo-router": "^57.0.7",
+		"expo-secure-store": "^57.0.1",
+		"expo-status-bar": "~57.0.1",
+		"expo-video": "^57.0.1",
+		"react": "19.2.3",
+		"react-native": "0.86.0",
+		"react-native-safe-area-context": "^5.8.0",
+		"react-native-screens": "^4.26.2",
+		"react-native-webrtc": "^124.0.8",
+		"zustand": "^5.0.14"
+	},
+	"devDependencies": {
+		"@types/react": "~19.2.2",
+		"typescript": "~6.0.3"
+	},
+	"scripts": {
+		"start": "expo start",
+		"android": "expo start --android",
+		"ios": "expo start --ios",
+		"web": "expo start --web",
+		"dev": "expo start",
+		"check-types": "tsc --noEmit",
+		"lint": "biome check ."
+	},
+	"private": true
+}
