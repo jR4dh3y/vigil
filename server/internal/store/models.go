@@ -4,9 +4,73 @@
 
 package store
 
+import (
+	"database/sql"
+)
+
+type Camera struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Driver      string `json:"driver"`
+	Host        string `json:"host"`
+	Username    string `json:"username"`
+	PasswordEnc string `json:"password_enc"`
+	Enabled     int64  `json:"enabled"`
+	Status      string `json:"status"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type Event struct {
+	ID            string         `json:"id"`
+	CameraID      sql.NullString `json:"camera_id"`
+	Type          string         `json:"type"`
+	Severity      string         `json:"severity"`
+	Title         string         `json:"title"`
+	Message       string         `json:"message"`
+	StartedAt     string         `json:"started_at"`
+	EndedAt       sql.NullString `json:"ended_at"`
+	Metadata      string         `json:"metadata"`
+	ThumbnailPath sql.NullString `json:"thumbnail_path"`
+	Acknowledged  int64          `json:"acknowledged"`
+	CreatedAt     string         `json:"created_at"`
+}
+
+type Recording struct {
+	ID              string         `json:"id"`
+	CameraID        string         `json:"camera_id"`
+	StartedAt       string         `json:"started_at"`
+	DurationSec     float64        `json:"duration_sec"`
+	SizeBytes       int64          `json:"size_bytes"`
+	Path            string         `json:"path"`
+	Codec           sql.NullString `json:"codec"`
+	ThumbnailPath   sql.NullString `json:"thumbnail_path"`
+	ArchivedAt      sql.NullString `json:"archived_at"`
+	ArchiveLocation sql.NullString `json:"archive_location"`
+	CreatedAt       string         `json:"created_at"`
+}
+
+type Session struct {
+	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
+	TokenHash string `json:"token_hash"`
+	ExpiresAt string `json:"expires_at"`
+	CreatedAt string `json:"created_at"`
+}
+
 type Setting struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type StreamProfile struct {
+	ID       string         `json:"id"`
+	CameraID string         `json:"camera_id"`
+	Role     string         `json:"role"`
+	RtspUrl  string         `json:"rtsp_url"`
+	Codec    sql.NullString `json:"codec"`
+	Width    sql.NullInt64  `json:"width"`
+	Height   sql.NullInt64  `json:"height"`
 }
 
 type User struct {

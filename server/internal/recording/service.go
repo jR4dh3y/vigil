@@ -1,0 +1,267 @@
+package recording
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/nvr/nvr/server/internal/store"
+)
+
+// DefaultRetentionDays is used when config does not specify a retention window.
+const DefaultRetentionDays = 7
+
+// Segment is a recorded media segment in the index.
+type Segment struct {
+	ID            string
+	CameraID      string
+	StartedAt     time.Time
+	DurationSec   float64
+	SizeBytes     int64
+	Path          string
+	Codec         *string
+	ThumbnailPath *string
+}
+
+// CoverageBar is a continuous coverage window for the timeline UI.
+type CoverageBar struct {
+	Start time.Time
+	End   time.Time
+}
+
+// ListResult is the timeline query response: segments plus coverage bars.
+type ListResult struct {
+	Segments []Segment
+	Coverage []CoverageBar
+}
+
+// Config holds recording service options.
+type Config struct {
+	// RecordingsDir is the absolute or relative root for recording files.
+	RecordingsDir string
+	// RetentionDays is how long to keep segments (Prune). 0 uses DefaultRetentionDays.
+	RetentionDays int
+}
+
+// Service indexes recording segments and answers timeline queries.
+type Service struct {
+	q             *store.Queries
+	recordingsDir string
+	retentionDays int
+}
+
+// NewService constructs a recording Service.
+func NewService(q *store.Queries, cfg Config) *Service {
+	days := cfg.RetentionDays
+	if days <= 0 {
+		days = DefaultRetentionDays
+	}
+	return &Service{
+		q:             q,
+		recordingsDir: strings.TrimSpace(cfg.RecordingsDir),
+		retentionDays: days,
+	}
+}
+
+// List returns segments and coverage bars for cameraID in [from, to] (inclusive).
+// Coverage is 1:1 with segments for phase 4 (adjacent merge is optional later).
+func (s *Service) List(ctx context.Context, cameraID string, from, to time.Time) (ListResult, error) {
+	if from.After(to) {
+		from, to = to, from
+	}
+	rows, err := s.q.ListRecordingsByCameraRange(ctx, store.ListRecordingsByCameraRangeParams{
+		CameraID: cameraID,
+		FromTs:   formatTime(from),
+		ToTs:     formatTime(to),
+	})
+	if err != nil {
+		return ListResult{}, fmt.Errorf("list recordings: %w", err)
+	}
+
+	segments := make([]Segment, 0, len(rows))
+	coverage := make([]CoverageBar, 0, len(rows))
+	for _, row := range rows {
+		seg, err := toSegment(row)
+		if err != nil {
+			return ListResult{}, err
+		}
+		segments = append(segments, seg)
+		end := seg.StartedAt.Add(time.Duration(seg.DurationSec * float64(time.Second)))
+		coverage = append(coverage, CoverageBar{Start: seg.StartedAt, End: end})
+	}
+	return ListResult{Segments: segments, Coverage: coverage}, nil
+}
+
+// IndexSegment inserts a recording row. path should be relative to RecordingsDir when possible.
+func (s *Service) IndexSegment(ctx context.Context, cameraID, path string, startedAt time.Time, durationSec float64, sizeBytes int64, codec string) (Segment, error) {
+	cameraID = strings.TrimSpace(cameraID)
+	if cameraID == "" {
+		return Segment{}, fmt.Errorf("camera_id is required")
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return Segment{}, fmt.Errorf("path is required")
+	}
+	if startedAt.IsZero() {
+		startedAt = time.Now().UTC()
+	}
+	if durationSec < 0 {
+		durationSec = 0
+	}
+	if sizeBytes < 0 {
+		sizeBytes = 0
+	}
+
+	rel := s.relativizePath(path)
+	var codecNS sql.NullString
+	if c := strings.TrimSpace(codec); c != "" {
+		codecNS = sql.NullString{String: c, Valid: true}
+	}
+
+	row, err := s.q.InsertRecording(ctx, store.InsertRecordingParams{
+		ID:          uuid.NewString(),
+		CameraID:    cameraID,
+		StartedAt:   formatTime(startedAt.UTC()),
+		DurationSec: durationSec,
+		SizeBytes:   sizeBytes,
+		Path:        rel,
+		Codec:       codecNS,
+	})
+	if err != nil {
+		return Segment{}, fmt.Errorf("insert recording: %w", err)
+	}
+	return toSegment(row)
+}
+
+// DeleteOlderThan removes index rows with started_at before the given cutoff.
+// File deletion is optional and not performed here (retention stub).
+func (s *Service) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
+	n, err := s.q.DeleteRecordingsOlderThan(ctx, formatTime(before.UTC()))
+	if err != nil {
+		return 0, fmt.Errorf("delete recordings older than: %w", err)
+	}
+	return n, nil
+}
+
+// Prune deletes index rows older than the configured retention window.
+// File deletion is left for a later jobs phase.
+func (s *Service) Prune(ctx context.Context) (int64, error) {
+	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
+	return s.DeleteOlderThan(ctx, cutoff)
+}
+
+// RetentionDays returns the configured retention window in days.
+func (s *Service) RetentionDays() int {
+	return s.retentionDays
+}
+
+// SetRetentionDays updates the retention window used by Prune.
+// Values <= 0 fall back to DefaultRetentionDays.
+func (s *Service) SetRetentionDays(days int) {
+	if days <= 0 {
+		days = DefaultRetentionDays
+	}
+	s.retentionDays = days
+}
+
+// RecordingsDir returns the configured recordings root.
+func (s *Service) RecordingsDir() string {
+	return s.recordingsDir
+}
+
+// relativizePath stores paths relative to RecordingsDir when possible.
+func (s *Service) relativizePath(path string) string {
+	path = filepath.Clean(path)
+	if s.recordingsDir == "" {
+		return filepath.ToSlash(path)
+	}
+	root := filepath.Clean(s.recordingsDir)
+	// Try absolute comparison.
+	absPath, err1 := filepath.Abs(path)
+	absRoot, err2 := filepath.Abs(root)
+	if err1 == nil && err2 == nil {
+		if rel, err := filepath.Rel(absRoot, absPath); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+	}
+	// Already relative under root prefix.
+	if strings.HasPrefix(path, root+string(os.PathSeparator)) || path == root {
+		if rel, err := filepath.Rel(root, path); err == nil {
+			return filepath.ToSlash(rel)
+		}
+	}
+	return filepath.ToSlash(path)
+}
+
+func toSegment(row store.Recording) (Segment, error) {
+	started, err := parseTime(row.StartedAt)
+	if err != nil {
+		return Segment{}, fmt.Errorf("parse started_at %q: %w", row.StartedAt, err)
+	}
+	seg := Segment{
+		ID:          row.ID,
+		CameraID:    row.CameraID,
+		StartedAt:   started,
+		DurationSec: row.DurationSec,
+		SizeBytes:   row.SizeBytes,
+		Path:        row.Path,
+	}
+	if row.Codec.Valid {
+		c := row.Codec.String
+		seg.Codec = &c
+	}
+	if row.ThumbnailPath.Valid {
+		t := row.ThumbnailPath.String
+		seg.ThumbnailPath = &t
+	}
+	return seg, nil
+}
+
+// formatTime stores timestamps in RFC3339 (UTC) for stable range queries.
+func formatTime(t time.Time) string {
+	return t.UTC().Format(time.RFC3339)
+}
+
+// parseTime parses RFC3339 and common SQLite / MediaMTX time formats.
+func parseTime(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, fmt.Errorf("empty time")
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02_15-04-05",
+	}
+	for _, layout := range layouts {
+		if t, err := time.ParseInLocation(layout, s, time.UTC); err == nil {
+			return t.UTC(), nil
+		}
+	}
+	// Unix seconds / milliseconds as string.
+	if n, err := parseFlexibleUnix(s); err == nil {
+		return n, nil
+	}
+	return time.Time{}, fmt.Errorf("parse time %q", s)
+}
+
+func parseFlexibleUnix(s string) (time.Time, error) {
+	var n int64
+	if _, err := fmt.Sscanf(s, "%d", &n); err != nil {
+		return time.Time{}, err
+	}
+	// Heuristic: ms vs s.
+	if n > 1_000_000_000_000 {
+		return time.UnixMilli(n).UTC(), nil
+	}
+	return time.Unix(n, 0).UTC(), nil
+}

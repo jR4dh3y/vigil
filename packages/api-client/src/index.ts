@@ -1,9 +1,47 @@
 import createClient from "openapi-fetch";
-import type { paths } from "./generated/schema";
+import type { components, paths } from "./generated/schema";
 
-export type { paths };
+export type { components, paths };
 export type ApiClient = ReturnType<typeof createClient<paths>>;
 
-export function createApiClient(baseUrl: string): ApiClient {
-	return createClient<paths>({ baseUrl });
+export type UserPublic = components["schemas"]["UserPublic"];
+export type AuthStatus = components["schemas"]["AuthStatus"];
+export type LoginRequest = components["schemas"]["LoginRequest"];
+export type SetupRequest = components["schemas"]["SetupRequest"];
+export type ApiErrorBody = components["schemas"]["Error"];
+
+export type Camera = components["schemas"]["Camera"];
+export type StreamProfile = components["schemas"]["StreamProfile"];
+export type CreateCameraRequest = components["schemas"]["CreateCameraRequest"];
+export type UpdateCameraRequest = components["schemas"]["UpdateCameraRequest"];
+export type ProbeCameraRequest = components["schemas"]["ProbeCameraRequest"];
+export type ProbeResult = components["schemas"]["ProbeResult"];
+export type LiveStream = components["schemas"]["LiveStream"];
+
+export type CoverageBar = components["schemas"]["CoverageBar"];
+export type RecordingSegment = components["schemas"]["RecordingSegment"];
+export type RecordingList = components["schemas"]["RecordingList"];
+export type PlaybackRequest = components["schemas"]["PlaybackRequest"];
+export type PlaybackSession = components["schemas"]["PlaybackSession"];
+
+export type Event = components["schemas"]["Event"];
+export type EventList = components["schemas"]["EventList"];
+export type EventSeverity = Event["severity"];
+export type DiskInfo = components["schemas"]["DiskInfo"];
+export type SystemStatus = components["schemas"]["SystemStatus"];
+export type Settings = components["schemas"]["Settings"];
+export type PatchSettingsRequest = components["schemas"]["PatchSettingsRequest"];
+export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
+export type UserRole = UserPublic["role"];
+
+export type CreateApiClientOptions = {
+	/** Defaults to `"include"` so cookie sessions work cross-origin when needed. */
+	credentials?: RequestCredentials;
+};
+
+export function createApiClient(baseUrl: string, options?: CreateApiClientOptions): ApiClient {
+	return createClient<paths>({
+		baseUrl,
+		credentials: options?.credentials ?? "include",
+	});
 }

@@ -28,7 +28,805 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Version"
+  /auth/status:
+    get:
+      operationId: getAuthStatus
+      tags: [auth]
+      summary: Authentication status
+      description: Returns whether initial setup is required and the current session user if authenticated.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatus"
+  /auth/setup:
+    post:
+      operationId: postAuthSetup
+      tags: [auth]
+      summary: Initial admin setup
+      description: |
+        Creates the first admin user when no users exist.
+        On success, a session cookie `nvr_session` is set via Set-Cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupRequest"
+      responses:
+        "201":
+          description: User created; session cookie set
+          headers:
+            Set-Cookie:
+              description: Session cookie `nvr_session`
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Users already exist; setup not allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/login:
+    post:
+      operationId: postAuthLogin
+      tags: [auth]
+      summary: Log in
+      description: |
+        Authenticates with username and password.
+        On success, a session cookie `nvr_session` is set via Set-Cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated; session cookie set
+          headers:
+            Set-Cookie:
+              description: Session cookie `nvr_session`
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/logout:
+    post:
+      operationId: postAuthLogout
+      tags: [auth]
+      summary: Log out
+      description: Ends the current session and clears the `nvr_session` cookie.
+      responses:
+        "204":
+          description: Logged out
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Current user
+      description: Returns the authenticated user for the current session.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras:
+    get:
+      operationId: listCameras
+      tags: [cameras]
+      summary: List cameras
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cameras]
+                properties:
+                  cameras:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Camera"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createCamera
+      tags: [cameras]
+      summary: Create camera
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCameraRequest"
+      responses:
+        "201":
+          description: Camera created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/probe:
+    post:
+      operationId: probeCamera
+      tags: [cameras]
+      summary: Probe RTSP stream
+      description: Probes an RTSP URL for reachability and stream metadata without creating a camera.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProbeCameraRequest"
+      responses:
+        "200":
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeResult"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Camera ID
+    get:
+      operationId: getCamera
+      tags: [cameras]
+      summary: Get camera
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateCamera
+      tags: [cameras]
+      summary: Update camera
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCameraRequest"
+      responses:
+        "200":
+          description: Camera updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Camera"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteCamera
+      tags: [cameras]
+      summary: Delete camera
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Camera deleted
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/{id}/live:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Camera ID
+    post:
+      operationId: postCameraLive
+      tags: [cameras]
+      summary: Start or get live stream endpoints
+      description: |
+        Returns WHEP/HLS playback URLs and a short-lived stream token for the camera.
+        Pass the token as query `?token=` (or as documented by the media layer).
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Live stream endpoints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveStream"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Camera disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/{id}/snapshot:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Camera ID
+    get:
+      operationId: getCameraSnapshot
+      tags: [cameras]
+      summary: Camera snapshot
+      description: Returns a JPEG snapshot of the camera if available.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: JPEG snapshot
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera or snapshot not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/{id}/recordings:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Camera ID
+    get:
+      operationId: listCameraRecordings
+      tags: [cameras]
+      summary: List camera recordings
+      description: |
+        Returns recording segments and coverage bars for a camera within the given time range.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Range start (inclusive)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Range end (inclusive)
+      responses:
+        "200":
+          description: Recording list with coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingList"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cameras/{id}/playback:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Camera ID
+    post:
+      operationId: postCameraPlayback
+      tags: [cameras]
+      summary: Start playback session
+      description: |
+        Creates a short-lived playback session for recorded video starting at the given time.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackRequest"
+      responses:
+        "200":
+          description: Playback session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlaybackSession"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Playback not available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List events
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: Maximum number of events to return
+        - name: before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Cursor — return events before this timestamp
+        - name: cameraId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by camera ID
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by event type
+        - name: unacknowledgedOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: When true, only return unacknowledged events
+      responses:
+        "200":
+          description: Event list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventList"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /events/{id}/acknowledge:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Event ID
+    post:
+      operationId: acknowledgeEvent
+      tags: [events]
+      summary: Acknowledge an event
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Event acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/disk:
+    get:
+      operationId: getSystemDisk
+      tags: [system]
+      summary: Disk usage
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiskInfo"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/status:
+    get:
+      operationId: getSystemStatus
+      tags: [system]
+      summary: System status overview
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get settings
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: patchSettings
+      tags: [settings]
+      summary: Update settings
+      description: Admin only. Returns 403 if the caller is not an admin.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchSettingsRequest"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users
+      description: Admin only.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users]
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserPublic"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create user
+      description: Admin only.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Username already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: User ID
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete user
+      description: |
+        Admin only. Returns 409 if deleting the last admin or if self-deletion is not allowed.
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: User deleted
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Cannot delete last admin or self
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: nvr_session
+      description: Session cookie issued on login or setup.
   schemas:
     Health:
       type: object
@@ -43,3 +841,396 @@ components:
       properties:
         version: { type: string }
         commit: { type: string }
+    UserPublic:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [admin, operator, viewer]
+    AuthStatus:
+      type: object
+      required: [setupRequired]
+      properties:
+        setupRequired:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/UserPublic"
+    SetupRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+    Camera:
+      type: object
+      required:
+        - id
+        - name
+        - driver
+        - enabled
+        - host
+        - status
+        - streamProfiles
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        driver:
+          type: string
+          description: Camera driver identifier (e.g. generic-rtsp)
+        enabled:
+          type: boolean
+        host:
+          type: string
+          description: Display host or primary RTSP base
+        status:
+          type: string
+          enum: [online, offline, unknown]
+          default: unknown
+        streamProfiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/StreamProfile"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    StreamProfile:
+      type: object
+      required: [id, role, rtspUrl]
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [live, record]
+        rtspUrl:
+          type: string
+        codec:
+          type: string
+          nullable: true
+        width:
+          type: integer
+        height:
+          type: integer
+    CreateCameraRequest:
+      type: object
+      required: [name, host]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        driver:
+          type: string
+          default: generic-rtsp
+        host:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        liveRtspUrl:
+          type: string
+          description: Live stream RTSP URL; if omitted, may be derived later
+        recordRtspUrl:
+          type: string
+          description: Record stream RTSP URL
+    UpdateCameraRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        driver:
+          type: string
+        host:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        enabled:
+          type: boolean
+        liveRtspUrl:
+          type: string
+        recordRtspUrl:
+          type: string
+    ProbeCameraRequest:
+      type: object
+      required: [rtspUrl]
+      properties:
+        rtspUrl:
+          type: string
+          minLength: 1
+        username:
+          type: string
+        password:
+          type: string
+    ProbeResult:
+      type: object
+      required: [reachable, h265]
+      properties:
+        reachable:
+          type: boolean
+        codec:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+        error:
+          type: string
+        h265:
+          type: boolean
+          description: True if codec looks like hevc/h265
+    LiveStream:
+      type: object
+      required: [cameraId, whepUrl, hlsUrl, token, expiresAt]
+      properties:
+        cameraId:
+          type: string
+          description: Camera ID for this live session
+        whepUrl:
+          type: string
+          description: Full or relative URL for WHEP playback
+        hlsUrl:
+          type: string
+          description: Full or relative URL for HLS playback
+        token:
+          type: string
+          description: Stream token to pass as query `?token=` or header as documented
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the stream token expires
+    RecordingSegment:
+      type: object
+      required: [id, cameraId, startedAt, durationSec, sizeBytes, path]
+      properties:
+        id:
+          type: string
+        cameraId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        durationSec:
+          type: number
+        sizeBytes:
+          type: integer
+          format: int64
+        path:
+          type: string
+          description: Relative storage path
+        codec:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+    CoverageBar:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+      description: Timeline UI aggregation bar (can match segments for phase 4)
+    RecordingList:
+      type: object
+      required: [recordings, coverage]
+      properties:
+        recordings:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecordingSegment"
+        coverage:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoverageBar"
+    PlaybackRequest:
+      type: object
+      required: [start]
+      properties:
+        start:
+          type: string
+          format: date-time
+        durationSec:
+          type: number
+          default: 60
+          description: Playback window length in seconds
+    PlaybackSession:
+      type: object
+      required: [cameraId, playbackUrl, token, expiresAt]
+      properties:
+        cameraId:
+          type: string
+        playbackUrl:
+          type: string
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    Event:
+      type: object
+      required:
+        - id
+        - type
+        - severity
+        - title
+        - message
+        - startedAt
+        - acknowledged
+        - createdAt
+      properties:
+        id:
+          type: string
+        cameraId:
+          type: string
+          nullable: true
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        title:
+          type: string
+        message:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        acknowledged:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+    EventList:
+      type: object
+      required: [events]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+    DiskInfo:
+      type: object
+      required: [path, totalBytes, usedBytes, freeBytes, usedPercent]
+      properties:
+        path:
+          type: string
+        totalBytes:
+          type: integer
+          format: int64
+        usedBytes:
+          type: integer
+          format: int64
+        freeBytes:
+          type: integer
+          format: int64
+        usedPercent:
+          type: number
+    SystemStatus:
+      type: object
+      required: [version, commit, health, disk, cameras, retentionDays]
+      properties:
+        version:
+          type: string
+        commit:
+          type: string
+        health:
+          type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [ok, degraded]
+        disk:
+          $ref: "#/components/schemas/DiskInfo"
+        cameras:
+          type: object
+          required: [total, enabled, online]
+          properties:
+            total:
+              type: integer
+            enabled:
+              type: integer
+            online:
+              type: integer
+        retentionDays:
+          type: integer
+    Settings:
+      type: object
+      required: [retentionDays, siteName]
+      properties:
+        retentionDays:
+          type: integer
+        siteName:
+          type: string
+    PatchSettingsRequest:
+      type: object
+      properties:
+        retentionDays:
+          type: integer
+          minimum: 1
+        siteName:
+          type: string
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [admin, operator, viewer]

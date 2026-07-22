@@ -7,32 +7,252 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for CameraStatus.
+const (
+	Offline CameraStatus = "offline"
+	Online  CameraStatus = "online"
+	Unknown CameraStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the CameraStatus enum.
+func (e CameraStatus) Valid() bool {
+	switch e {
+	case Offline:
+		return true
+	case Online:
+		return true
+	case Unknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUserRequestRole.
+const (
+	CreateUserRequestRoleAdmin    CreateUserRequestRole = "admin"
+	CreateUserRequestRoleOperator CreateUserRequestRole = "operator"
+	CreateUserRequestRoleViewer   CreateUserRequestRole = "viewer"
+)
+
+// Valid indicates whether the value is a known member of the CreateUserRequestRole enum.
+func (e CreateUserRequestRole) Valid() bool {
+	switch e {
+	case CreateUserRequestRoleAdmin:
+		return true
+	case CreateUserRequestRoleOperator:
+		return true
+	case CreateUserRequestRoleViewer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for EventSeverity.
+const (
+	Critical EventSeverity = "critical"
+	Info     EventSeverity = "info"
+	Warning  EventSeverity = "warning"
+)
+
+// Valid indicates whether the value is a known member of the EventSeverity enum.
+func (e EventSeverity) Valid() bool {
+	switch e {
+	case Critical:
+		return true
+	case Info:
+		return true
+	case Warning:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for HealthStatus.
 const (
-	Degraded HealthStatus = "degraded"
-	Ok       HealthStatus = "ok"
+	HealthStatusDegraded HealthStatus = "degraded"
+	HealthStatusOk       HealthStatus = "ok"
 )
 
 // Valid indicates whether the value is a known member of the HealthStatus enum.
 func (e HealthStatus) Valid() bool {
 	switch e {
-	case Degraded:
+	case HealthStatusDegraded:
 		return true
-	case Ok:
+	case HealthStatusOk:
 		return true
 	default:
 		return false
 	}
+}
+
+// Defines values for StreamProfileRole.
+const (
+	Live   StreamProfileRole = "live"
+	Record StreamProfileRole = "record"
+)
+
+// Valid indicates whether the value is a known member of the StreamProfileRole enum.
+func (e StreamProfileRole) Valid() bool {
+	switch e {
+	case Live:
+		return true
+	case Record:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SystemStatusHealthStatus.
+const (
+	SystemStatusHealthStatusDegraded SystemStatusHealthStatus = "degraded"
+	SystemStatusHealthStatusOk       SystemStatusHealthStatus = "ok"
+)
+
+// Valid indicates whether the value is a known member of the SystemStatusHealthStatus enum.
+func (e SystemStatusHealthStatus) Valid() bool {
+	switch e {
+	case SystemStatusHealthStatusDegraded:
+		return true
+	case SystemStatusHealthStatusOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserPublicRole.
+const (
+	UserPublicRoleAdmin    UserPublicRole = "admin"
+	UserPublicRoleOperator UserPublicRole = "operator"
+	UserPublicRoleViewer   UserPublicRole = "viewer"
+)
+
+// Valid indicates whether the value is a known member of the UserPublicRole enum.
+func (e UserPublicRole) Valid() bool {
+	switch e {
+	case UserPublicRoleAdmin:
+		return true
+	case UserPublicRoleOperator:
+		return true
+	case UserPublicRoleViewer:
+		return true
+	default:
+		return false
+	}
+}
+
+// AuthStatus defines model for AuthStatus.
+type AuthStatus struct {
+	SetupRequired bool        `json:"setupRequired"`
+	User          *UserPublic `json:"user,omitempty"`
+}
+
+// Camera defines model for Camera.
+type Camera struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Driver Camera driver identifier (e.g. generic-rtsp)
+	Driver  string `json:"driver"`
+	Enabled bool   `json:"enabled"`
+
+	// Host Display host or primary RTSP base
+	Host           string             `json:"host"`
+	Id             openapi_types.UUID `json:"id"`
+	Name           string             `json:"name"`
+	Status         CameraStatus       `json:"status"`
+	StreamProfiles []StreamProfile    `json:"streamProfiles"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+}
+
+// CameraStatus defines model for Camera.Status.
+type CameraStatus string
+
+// CoverageBar Timeline UI aggregation bar (can match segments for phase 4)
+type CoverageBar struct {
+	End   time.Time `json:"end"`
+	Start time.Time `json:"start"`
+}
+
+// CreateCameraRequest defines model for CreateCameraRequest.
+type CreateCameraRequest struct {
+	Driver  *string `json:"driver,omitempty"`
+	Enabled *bool   `json:"enabled,omitempty"`
+	Host    string  `json:"host"`
+
+	// LiveRtspUrl Live stream RTSP URL; if omitted, may be derived later
+	LiveRtspUrl *string `json:"liveRtspUrl,omitempty"`
+	Name        string  `json:"name"`
+	Password    *string `json:"password,omitempty"`
+
+	// RecordRtspUrl Record stream RTSP URL
+	RecordRtspUrl *string `json:"recordRtspUrl,omitempty"`
+	Username      *string `json:"username,omitempty"`
+}
+
+// CreateUserRequest defines model for CreateUserRequest.
+type CreateUserRequest struct {
+	Password string                `json:"password"`
+	Role     CreateUserRequestRole `json:"role"`
+	Username string                `json:"username"`
+}
+
+// CreateUserRequestRole defines model for CreateUserRequest.Role.
+type CreateUserRequestRole string
+
+// DiskInfo defines model for DiskInfo.
+type DiskInfo struct {
+	FreeBytes   int64   `json:"freeBytes"`
+	Path        string  `json:"path"`
+	TotalBytes  int64   `json:"totalBytes"`
+	UsedBytes   int64   `json:"usedBytes"`
+	UsedPercent float32 `json:"usedPercent"`
+}
+
+// Error defines model for Error.
+type Error struct {
+	Code  *string `json:"code,omitempty"`
+	Error string  `json:"error"`
+}
+
+// Event defines model for Event.
+type Event struct {
+	Acknowledged bool                    `json:"acknowledged"`
+	CameraId     *string                 `json:"cameraId,omitempty"`
+	CreatedAt    time.Time               `json:"createdAt"`
+	EndedAt      *time.Time              `json:"endedAt,omitempty"`
+	Id           string                  `json:"id"`
+	Message      string                  `json:"message"`
+	Metadata     *map[string]interface{} `json:"metadata,omitempty"`
+	Severity     EventSeverity           `json:"severity"`
+	StartedAt    time.Time               `json:"startedAt"`
+	Title        string                  `json:"title"`
+	Type         string                  `json:"type"`
+}
+
+// EventSeverity defines model for Event.Severity.
+type EventSeverity string
+
+// EventList defines model for EventList.
+type EventList struct {
+	Events []Event `json:"events"`
 }
 
 // Health defines model for Health.
@@ -43,33 +263,450 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// LiveStream defines model for LiveStream.
+type LiveStream struct {
+	// CameraId Camera ID for this live session
+	CameraId string `json:"cameraId"`
+
+	// ExpiresAt When the stream token expires
+	ExpiresAt time.Time `json:"expiresAt"`
+
+	// HlsUrl Full or relative URL for HLS playback
+	HlsUrl string `json:"hlsUrl"`
+
+	// Token Stream token to pass as query `?token=` or header as documented
+	Token string `json:"token"`
+
+	// WhepUrl Full or relative URL for WHEP playback
+	WhepUrl string `json:"whepUrl"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// PatchSettingsRequest defines model for PatchSettingsRequest.
+type PatchSettingsRequest struct {
+	RetentionDays *int    `json:"retentionDays,omitempty"`
+	SiteName      *string `json:"siteName,omitempty"`
+}
+
+// PlaybackRequest defines model for PlaybackRequest.
+type PlaybackRequest struct {
+	// DurationSec Playback window length in seconds
+	DurationSec *float32  `json:"durationSec,omitempty"`
+	Start       time.Time `json:"start"`
+}
+
+// PlaybackSession defines model for PlaybackSession.
+type PlaybackSession struct {
+	CameraId    string    `json:"cameraId"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+	PlaybackUrl string    `json:"playbackUrl"`
+	Token       string    `json:"token"`
+}
+
+// ProbeCameraRequest defines model for ProbeCameraRequest.
+type ProbeCameraRequest struct {
+	Password *string `json:"password,omitempty"`
+	RtspUrl  string  `json:"rtspUrl"`
+	Username *string `json:"username,omitempty"`
+}
+
+// ProbeResult defines model for ProbeResult.
+type ProbeResult struct {
+	Codec *string `json:"codec,omitempty"`
+	Error *string `json:"error,omitempty"`
+
+	// H265 True if codec looks like hevc/h265
+	H265      bool `json:"h265"`
+	Height    *int `json:"height,omitempty"`
+	Reachable bool `json:"reachable"`
+	Width     *int `json:"width,omitempty"`
+}
+
+// RecordingList defines model for RecordingList.
+type RecordingList struct {
+	Coverage   []CoverageBar      `json:"coverage"`
+	Recordings []RecordingSegment `json:"recordings"`
+}
+
+// RecordingSegment defines model for RecordingSegment.
+type RecordingSegment struct {
+	CameraId    string  `json:"cameraId"`
+	Codec       *string `json:"codec,omitempty"`
+	DurationSec float32 `json:"durationSec"`
+	Id          string  `json:"id"`
+
+	// Path Relative storage path
+	Path         string    `json:"path"`
+	SizeBytes    int64     `json:"sizeBytes"`
+	StartedAt    time.Time `json:"startedAt"`
+	ThumbnailUrl *string   `json:"thumbnailUrl,omitempty"`
+}
+
+// Settings defines model for Settings.
+type Settings struct {
+	RetentionDays int    `json:"retentionDays"`
+	SiteName      string `json:"siteName"`
+}
+
+// SetupRequest defines model for SetupRequest.
+type SetupRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+// StreamProfile defines model for StreamProfile.
+type StreamProfile struct {
+	Codec   *string           `json:"codec,omitempty"`
+	Height  *int              `json:"height,omitempty"`
+	Id      string            `json:"id"`
+	Role    StreamProfileRole `json:"role"`
+	RtspUrl string            `json:"rtspUrl"`
+	Width   *int              `json:"width,omitempty"`
+}
+
+// StreamProfileRole defines model for StreamProfile.Role.
+type StreamProfileRole string
+
+// SystemStatus defines model for SystemStatus.
+type SystemStatus struct {
+	Cameras struct {
+		Enabled int `json:"enabled"`
+		Online  int `json:"online"`
+		Total   int `json:"total"`
+	} `json:"cameras"`
+	Commit string   `json:"commit"`
+	Disk   DiskInfo `json:"disk"`
+	Health struct {
+		Status SystemStatusHealthStatus `json:"status"`
+	} `json:"health"`
+	RetentionDays int    `json:"retentionDays"`
+	Version       string `json:"version"`
+}
+
+// SystemStatusHealthStatus defines model for SystemStatus.Health.Status.
+type SystemStatusHealthStatus string
+
+// UpdateCameraRequest defines model for UpdateCameraRequest.
+type UpdateCameraRequest struct {
+	Driver        *string `json:"driver,omitempty"`
+	Enabled       *bool   `json:"enabled,omitempty"`
+	Host          *string `json:"host,omitempty"`
+	LiveRtspUrl   *string `json:"liveRtspUrl,omitempty"`
+	Name          *string `json:"name,omitempty"`
+	Password      *string `json:"password,omitempty"`
+	RecordRtspUrl *string `json:"recordRtspUrl,omitempty"`
+	Username      *string `json:"username,omitempty"`
+}
+
+// UserPublic defines model for UserPublic.
+type UserPublic struct {
+	Id       string         `json:"id"`
+	Role     UserPublicRole `json:"role"`
+	Username string         `json:"username"`
+}
+
+// UserPublicRole defines model for UserPublic.Role.
+type UserPublicRole string
+
 // Version defines model for Version.
 type Version struct {
 	Commit  string `json:"commit"`
 	Version string `json:"version"`
 }
 
+// ListCameraRecordingsParams defines parameters for ListCameraRecordings.
+type ListCameraRecordingsParams struct {
+	// From Range start (inclusive)
+	From time.Time `form:"from" json:"from"`
+
+	// To Range end (inclusive)
+	To time.Time `form:"to" json:"to"`
+}
+
+// ListEventsParams defines parameters for ListEvents.
+type ListEventsParams struct {
+	// Limit Maximum number of events to return
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Before Cursor — return events before this timestamp
+	Before *time.Time `form:"before,omitempty" json:"before,omitempty"`
+
+	// CameraId Filter by camera ID
+	CameraId *openapi_types.UUID `form:"cameraId,omitempty" json:"cameraId,omitempty"`
+
+	// Type Filter by event type
+	Type *string `form:"type,omitempty" json:"type,omitempty"`
+
+	// UnacknowledgedOnly When true, only return unacknowledged events
+	UnacknowledgedOnly *bool `form:"unacknowledgedOnly,omitempty" json:"unacknowledgedOnly,omitempty"`
+}
+
+// PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
+type PostAuthLoginJSONRequestBody = LoginRequest
+
+// PostAuthSetupJSONRequestBody defines body for PostAuthSetup for application/json ContentType.
+type PostAuthSetupJSONRequestBody = SetupRequest
+
+// CreateCameraJSONRequestBody defines body for CreateCamera for application/json ContentType.
+type CreateCameraJSONRequestBody = CreateCameraRequest
+
+// ProbeCameraJSONRequestBody defines body for ProbeCamera for application/json ContentType.
+type ProbeCameraJSONRequestBody = ProbeCameraRequest
+
+// UpdateCameraJSONRequestBody defines body for UpdateCamera for application/json ContentType.
+type UpdateCameraJSONRequestBody = UpdateCameraRequest
+
+// PostCameraPlaybackJSONRequestBody defines body for PostCameraPlayback for application/json ContentType.
+type PostCameraPlaybackJSONRequestBody = PlaybackRequest
+
+// PatchSettingsJSONRequestBody defines body for PatchSettings for application/json ContentType.
+type PatchSettingsJSONRequestBody = PatchSettingsRequest
+
+// CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
+type CreateUserJSONRequestBody = CreateUserRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// PostAuthLogin Log in
+	// (POST /auth/login)
+	PostAuthLogin(w http.ResponseWriter, r *http.Request)
+	// PostAuthLogout Log out
+	// (POST /auth/logout)
+	PostAuthLogout(w http.ResponseWriter, r *http.Request)
+	// GetAuthMe Current user
+	// (GET /auth/me)
+	GetAuthMe(w http.ResponseWriter, r *http.Request)
+	// PostAuthSetup Initial admin setup
+	// (POST /auth/setup)
+	PostAuthSetup(w http.ResponseWriter, r *http.Request)
+	// GetAuthStatus Authentication status
+	// (GET /auth/status)
+	GetAuthStatus(w http.ResponseWriter, r *http.Request)
+	// ListCameras List cameras
+	// (GET /cameras)
+	ListCameras(w http.ResponseWriter, r *http.Request)
+	// CreateCamera Create camera
+	// (POST /cameras)
+	CreateCamera(w http.ResponseWriter, r *http.Request)
+	// ProbeCamera Probe RTSP stream
+	// (POST /cameras/probe)
+	ProbeCamera(w http.ResponseWriter, r *http.Request)
+	// DeleteCamera Delete camera
+	// (DELETE /cameras/{id})
+	DeleteCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// GetCamera Get camera
+	// (GET /cameras/{id})
+	GetCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// UpdateCamera Update camera
+	// (PATCH /cameras/{id})
+	UpdateCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// PostCameraLive Start or get live stream endpoints
+	// (POST /cameras/{id}/live)
+	PostCameraLive(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// PostCameraPlayback Start playback session
+	// (POST /cameras/{id}/playback)
+	PostCameraPlayback(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// ListCameraRecordings List camera recordings
+	// (GET /cameras/{id}/recordings)
+	ListCameraRecordings(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListCameraRecordingsParams)
+	// GetCameraSnapshot Camera snapshot
+	// (GET /cameras/{id}/snapshot)
+	GetCameraSnapshot(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
+	// ListEvents List events
+	// (GET /events)
+	ListEvents(w http.ResponseWriter, r *http.Request, params ListEventsParams)
+	// AcknowledgeEvent Acknowledge an event
+	// (POST /events/{id}/acknowledge)
+	AcknowledgeEvent(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 
 	// (GET /health)
 	GetHealth(w http.ResponseWriter, r *http.Request)
+	// GetSettings Get settings
+	// (GET /settings)
+	GetSettings(w http.ResponseWriter, r *http.Request)
+	// PatchSettings Update settings
+	// (PATCH /settings)
+	PatchSettings(w http.ResponseWriter, r *http.Request)
+	// GetSystemDisk Disk usage
+	// (GET /system/disk)
+	GetSystemDisk(w http.ResponseWriter, r *http.Request)
+	// GetSystemStatus System status overview
+	// (GET /system/status)
+	GetSystemStatus(w http.ResponseWriter, r *http.Request)
 
 	// (GET /system/version)
 	GetVersion(w http.ResponseWriter, r *http.Request)
+	// ListUsers List users
+	// (GET /users)
+	ListUsers(w http.ResponseWriter, r *http.Request)
+	// CreateUser Create user
+	// (POST /users)
+	CreateUser(w http.ResponseWriter, r *http.Request)
+	// DeleteUser Delete user
+	// (DELETE /users/{id})
+	DeleteUser(w http.ResponseWriter, r *http.Request, id string)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
 
+// PostAuthLogin Log in
+// (POST /auth/login)
+func (_ Unimplemented) PostAuthLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostAuthLogout Log out
+// (POST /auth/logout)
+func (_ Unimplemented) PostAuthLogout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAuthMe Current user
+// (GET /auth/me)
+func (_ Unimplemented) GetAuthMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostAuthSetup Initial admin setup
+// (POST /auth/setup)
+func (_ Unimplemented) PostAuthSetup(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAuthStatus Authentication status
+// (GET /auth/status)
+func (_ Unimplemented) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListCameras List cameras
+// (GET /cameras)
+func (_ Unimplemented) ListCameras(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateCamera Create camera
+// (POST /cameras)
+func (_ Unimplemented) CreateCamera(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ProbeCamera Probe RTSP stream
+// (POST /cameras/probe)
+func (_ Unimplemented) ProbeCamera(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteCamera Delete camera
+// (DELETE /cameras/{id})
+func (_ Unimplemented) DeleteCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCamera Get camera
+// (GET /cameras/{id})
+func (_ Unimplemented) GetCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateCamera Update camera
+// (PATCH /cameras/{id})
+func (_ Unimplemented) UpdateCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostCameraLive Start or get live stream endpoints
+// (POST /cameras/{id}/live)
+func (_ Unimplemented) PostCameraLive(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostCameraPlayback Start playback session
+// (POST /cameras/{id}/playback)
+func (_ Unimplemented) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListCameraRecordings List camera recordings
+// (GET /cameras/{id}/recordings)
+func (_ Unimplemented) ListCameraRecordings(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListCameraRecordingsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCameraSnapshot Camera snapshot
+// (GET /cameras/{id}/snapshot)
+func (_ Unimplemented) GetCameraSnapshot(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListEvents List events
+// (GET /events)
+func (_ Unimplemented) ListEvents(w http.ResponseWriter, r *http.Request, params ListEventsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AcknowledgeEvent Acknowledge an event
+// (POST /events/{id}/acknowledge)
+func (_ Unimplemented) AcknowledgeEvent(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /health)
 func (_ Unimplemented) GetHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetSettings Get settings
+// (GET /settings)
+func (_ Unimplemented) GetSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PatchSettings Update settings
+// (PATCH /settings)
+func (_ Unimplemented) PatchSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetSystemDisk Disk usage
+// (GET /system/disk)
+func (_ Unimplemented) GetSystemDisk(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetSystemStatus System status overview
+// (GET /system/status)
+func (_ Unimplemented) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // (GET /system/version)
 func (_ Unimplemented) GetVersion(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListUsers List users
+// (GET /users)
+func (_ Unimplemented) ListUsers(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateUser Create user
+// (POST /users)
+func (_ Unimplemented) CreateUser(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteUser Delete user
+// (DELETE /users/{id})
+func (_ Unimplemented) DeleteUser(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -81,6 +718,440 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// PostAuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostAuthLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostAuthLogout operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthLogout(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostAuthLogout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuthMe operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuthMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostAuthSetup operation middleware
+func (siw *ServerInterfaceWrapper) PostAuthSetup(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostAuthSetup(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuthStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuthStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCameras operation middleware
+func (siw *ServerInterfaceWrapper) ListCameras(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCameras(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCamera operation middleware
+func (siw *ServerInterfaceWrapper) CreateCamera(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCamera(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ProbeCamera operation middleware
+func (siw *ServerInterfaceWrapper) ProbeCamera(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ProbeCamera(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteCamera operation middleware
+func (siw *ServerInterfaceWrapper) DeleteCamera(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteCamera(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCamera operation middleware
+func (siw *ServerInterfaceWrapper) GetCamera(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCamera(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateCamera operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCamera(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateCamera(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostCameraLive operation middleware
+func (siw *ServerInterfaceWrapper) PostCameraLive(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostCameraLive(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostCameraPlayback operation middleware
+func (siw *ServerInterfaceWrapper) PostCameraPlayback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostCameraPlayback(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListCameraRecordings operation middleware
+func (siw *ServerInterfaceWrapper) ListCameraRecordings(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCameraRecordingsParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListCameraRecordings(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCameraSnapshot operation middleware
+func (siw *ServerInterfaceWrapper) GetCameraSnapshot(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCameraSnapshot(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListEvents operation middleware
+func (siw *ServerInterfaceWrapper) ListEvents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListEventsParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "before" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "before", r.URL.Query(), &params.Before, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "before"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "before", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cameraId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cameraId", r.URL.Query(), &params.CameraId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cameraId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cameraId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "type" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "type", r.URL.Query(), &params.Type, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "type"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "type", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "unacknowledgedOnly" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "unacknowledgedOnly", r.URL.Query(), &params.UnacknowledgedOnly, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "unacknowledgedOnly"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "unacknowledgedOnly", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListEvents(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AcknowledgeEvent operation middleware
+func (siw *ServerInterfaceWrapper) AcknowledgeEvent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AcknowledgeEvent(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
@@ -96,11 +1167,121 @@ func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// GetSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PatchSettings operation middleware
+func (siw *ServerInterfaceWrapper) PatchSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PatchSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSystemDisk operation middleware
+func (siw *ServerInterfaceWrapper) GetSystemDisk(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSystemDisk(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSystemStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSystemStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetVersion operation middleware
 func (siw *ServerInterfaceWrapper) GetVersion(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetVersion(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUsers operation middleware
+func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUsers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateUser operation middleware
+func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateUser(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteUser operation middleware
+func (siw *ServerInterfaceWrapper) DeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteUser(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -229,6 +1410,78 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/system/version", wrapper.GetVersion)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/auth/status", wrapper.GetAuthStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/setup", wrapper.PostAuthSetup)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/login", wrapper.PostAuthLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/logout", wrapper.PostAuthLogout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/auth/me", wrapper.GetAuthMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/cameras", wrapper.ListCameras)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/cameras", wrapper.CreateCamera)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/cameras/probe", wrapper.ProbeCamera)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/cameras/{id}", wrapper.DeleteCamera)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/cameras/{id}", wrapper.GetCamera)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/cameras/{id}", wrapper.UpdateCamera)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/cameras/{id}/live", wrapper.PostCameraLive)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/cameras/{id}/snapshot", wrapper.GetCameraSnapshot)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/cameras/{id}/recordings", wrapper.ListCameraRecordings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/cameras/{id}/playback", wrapper.PostCameraPlayback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/events", wrapper.ListEvents)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/events/{id}/acknowledge", wrapper.AcknowledgeEvent)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/system/disk", wrapper.GetSystemDisk)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/system/status", wrapper.GetSystemStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/settings", wrapper.GetSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/settings", wrapper.PatchSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/users", wrapper.ListUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users", wrapper.CreateUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/users/{id}", wrapper.DeleteUser)
+	})
 
 	return r
 }
@@ -238,13 +1491,66 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"tFLBbhMxEP2V1YNDK5k4hZtviEOpkABxyKXKwdiTjdtd29iTSlW0/47Gu2kKFUgcuM16Z96b994c4dKY",
-	"U6TIFeaI6vY02lZ+JDvwXqpcUqbCgeYWtnxoFcXDCHOLdA8FT32xnjy2CvyYCQaVS4g9pkmh0I9DKOSl",
-	"fQE496Xvd+QYk8KGSg0pviR1aRwDS/UbtsLDeebvvKdGdUJ7uYGMhLhLAuapuhIyN2x8SJGLddztUumu",
-	"U3eRbA5vXPLUU7zsbPRdtu7e9lR1+zMEitxdpExRvoVoxrtcQYEDD0L8efOte//1Bs9kYL26Wq1F2TIL",
-	"g3ftSSFb3jc/9P4pnZ6aL+KWlWVvPAyuiZf8xIOaU6yzkW/X69nPyBTboM15CK6N6rs6GzmfgVSvC+1g",
-	"8Eqf70QvR6IXhubar259+dTcZ9vXlvhjZRqxlTc9f+hnsf1JweYpsP8m4UTxLxomhUpF9oe5PeJQBhhI",
-	"6PrhCtN2+hkAAP//",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

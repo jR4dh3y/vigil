@@ -1,50 +1,96 @@
 # NVR
 
-Self-hosted NVR monorepo (see design `arch.md`).
+Self-hosted network video recorder monorepo (design: `arch.md`).
 
 ```
 nvr/
-├── server/              # Go modular monolith + openapi.yaml
+├── server/              # Go modular monolith (nvrd) + openapi.yaml
 ├── apps/
 │   ├── dashboard/       # SvelteKit SPA (adapter-static → embed in Go)
-│   ├── mobile/          # Expo
-│   └── landing/         # Astro
+│   ├── mobile/          # Expo (not required for core)
+│   └── landing/         # Astro marketing (not required for core)
 ├── packages/
-│   ├── api-client/      # OpenAPI TS client
-│   └── typescript-config/
-└── deploy/
+│   └── api-client/      # OpenAPI TypeScript client
+└── deploy/              # Docker, MediaMTX config, example env
 ```
+
+## What works
+
+| Area | Features |
+|------|----------|
+| Auth | First-boot setup, login/logout, session cookies, roles |
+| Cameras | CRUD, RTSP probe, enable/disable → MediaMTX paths |
+| Live | HLS (+ WHEP fallback), short-lived stream tokens |
+| Recordings | Segment index hook, timeline query, playback tokens |
+| Events | Online/offline + disk alerts, acknowledge, list |
+| Jobs | Health probe, retention prune, disk monitor |
+| System | Disk usage, status, site settings |
+| Users | Admin user management |
+| UI | Live grid, cameras, timeline, events, settings — embedded in `nvrd` |
 
 ## Prerequisites
 
 - Bun
 - Go 1.22+
-- `oapi-codegen` + `sqlc` on `PATH` for server codegen
-- FFmpeg / MediaMTX at runtime
+- FFmpeg / ffprobe
+- MediaMTX (see `deploy/mediamtx.yml` or `docker compose`)
+- `oapi-codegen` + `sqlc` on `PATH` for codegen
 
-## Commands
+## Dev
 
 ```bash
-bun install
-bun run dev:dashboard
-bun run dev:landing
-bun run dev:mobile
+# Terminal 1 — MediaMTX
+./.bin/mediamtx deploy/mediamtx.yml   # or download bluenviron/mediamtx
+
+# Terminal 2 — API
+export NVR_DATA_DIR=./server/data
+export NVR_RECORDINGS_DIR=./recordings
+export NVR_MEDIAMTX_API_URL=http://127.0.0.1:9997
+export NVR_MEDIAMTX_WEBRTC_URL=http://127.0.0.1:8889
+export NVR_MEDIAMTX_HLS_URL=http://127.0.0.1:8888
 bun run dev:server
-bun run gen:api          # TS client from openapi.yaml
-bun run lint             # Biome (lint + format check)
-bun run format           # Biome format --write
-cd server && make generate   # oapi-codegen + sqlc
+# or: cd server && go run ./cmd/nvrd
+
+# Terminal 3 — Dashboard (hot reload; proxies /api → :8080)
+bun run dev:dashboard
 ```
 
-## Libraries (arch.md §16)
+Open http://localhost:5173
 
-**Go:** chi, oapi-codegen, modernc/sqlite, sqlc, golang-migrate, coder/websocket,
-argon2id, minio-go, use-go/onvif, robfig/cron, goqite, koanf, gopsutil, slog.
+## Production-style single binary
 
-**Dashboard:** Svelte 5, adapter-static, Tailwind v4, bits-ui, TanStack Query,
-openapi-fetch client, hls.js, zod + superforms, lucide-svelte.
+```bash
+bun run build --filter=@nvr/dashboard
+rm -rf server/internal/ui/dist && mkdir -p server/internal/ui/dist
+cp -a apps/dashboard/build/. server/internal/ui/dist/
+cd server && go build -o bin/nvrd ./cmd/nvrd
+./bin/nvrd   # serves API + SPA on :8080
+```
 
-**Mobile:** expo-router, TanStack Query, zustand, react-native-webrtc, expo-video,
-expo-notifications, expo-secure-store.
+## Docker
 
-**Tooling:** Biome (lint + format) — not ESLint/Prettier.
+```bash
+cd deploy && docker compose up --build
+```
+
+Compose runs MediaMTX + `nvrd` with host networking for WebRTC.
+
+## Codegen
+
+```bash
+bun run gen:api          # TS client from openapi.yaml
+bun run gen:server       # oapi-codegen + sqlc
+bun run lint && bun run format && bun run check
+```
+
+## Env
+
+See `deploy/nvr.example.env`.
+
+## Out of scope (later)
+
+- Expo mobile + push
+- Astro landing/docs
+- S3 archive tier
+- ONVIF / vendor drivers
+- Full event rules + webhooks

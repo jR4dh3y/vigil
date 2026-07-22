@@ -25,5 +25,24 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		strictPort: true,
+		proxy: {
+			// Same-origin cookies in dev: browser talks to Vite, API to Go on :8080
+			"/api": {
+				target: "http://127.0.0.1:8080",
+				changeOrigin: true,
+			},
+			// MediaMTX HLS (same-origin avoids Secure cookie / CORS pain on http://localhost)
+			"/mtx-hls": {
+				target: "http://127.0.0.1:8888",
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/mtx-hls/, ""),
+			},
+			// MediaMTX WHEP signaling (ICE still goes to MediaMTX UDP :8189)
+			"/mtx-webrtc": {
+				target: "http://127.0.0.1:8889",
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/mtx-webrtc/, ""),
+			},
+		},
 	},
 });

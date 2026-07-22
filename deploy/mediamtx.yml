@@ -1,0 +1,70 @@
+# Local/dev MediaMTX for NVR — open LAN auth, API on, CORS open.
+# Production: set authMethod: http and authHTTPAddress to nvrd's hook.
+
+logLevel: info
+logDestinations: [stdout]
+
+# Open for local home use so the dashboard can play immediately.
+# Go still mints stream tokens; MediaMTX does not enforce them in this profile.
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+      - action: playback
+  - user: any
+    pass:
+    ips: ["127.0.0.1", "::1"]
+    permissions:
+      - action: api
+      - action: metrics
+      - action: pprof
+
+# Production alternative:
+# authMethod: http
+# authHTTPAddress: http://127.0.0.1:8080/internal/mediamtx/auth
+# authHTTPExclude:
+#   - action: api
+#   - action: metrics
+#   - action: pprof
+
+api: true
+apiAddress: :9997
+apiAllowOrigins: ["*"]
+
+playback: true
+playbackAddress: :9996
+playbackAllowOrigins: ["*"]
+
+hls: true
+hlsAddress: :8888
+hlsAllowOrigins: ["*"]
+hlsAlwaysRemux: false
+hlsVariant: lowLatency
+
+webrtc: true
+webrtcAddress: :8889
+webrtcAllowOrigins: ["*"]
+webrtcLocalUDPAddress: :8189
+# Helps browsers on the same machine discover the right candidate.
+webrtcIPsFromInterfaces: true
+webrtcAdditionalHosts: ["127.0.0.1"]
+
+rtsp: true
+rtspAddress: :8554
+
+# Default path defaults applied when nvrd creates paths via Control API.
+# Segment-complete notifies nvrd to index recordings.
+pathDefaults:
+  # After each completed record segment, POST metadata to nvrd.
+  # MediaMTX expands env vars for the hook command.
+  runOnRecordSegmentComplete: >-
+    curl -sS -X POST http://127.0.0.1:8080/internal/mediamtx/segment-complete
+    -H 'Content-Type: application/json'
+    -d '{"path":"$MTX_PATH","file_path":"$MTX_SEGMENT_PATH","duration_ms":"$MTX_SEGMENT_DURATION"}'
+
+# Paths are created at runtime by nvrd via the Control API.
+paths: {}

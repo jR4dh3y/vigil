@@ -66,3 +66,9 @@ recordings/
 # Secrets
 *.pem
 *.key
+
+# Embedded dashboard SPA for go:embed (override dist/)
+!server/internal/ui/
+!server/internal/ui/**
+!server/internal/ui/dist/
+!server/internal/ui/dist/**
