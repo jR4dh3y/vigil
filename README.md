@@ -38,24 +38,22 @@ nvr/
 
 ## Dev
 
+One command starts the full stack via Turbo (MediaMTX, Go API, dashboard, landing, mobile):
+
 ```bash
-# Terminal 1 — MediaMTX
-./.bin/mediamtx deploy/mediamtx.yml   # or download bluenviron/mediamtx
-
-# Terminal 2 — API
-export NVR_DATA_DIR=./server/data
-export NVR_RECORDINGS_DIR=./recordings
-export NVR_MEDIAMTX_API_URL=http://127.0.0.1:9997
-export NVR_MEDIAMTX_WEBRTC_URL=http://127.0.0.1:8889
-export NVR_MEDIAMTX_HLS_URL=http://127.0.0.1:8888
-bun run dev:server
-# or: cd server && go run ./cmd/nvrd
-
-# Terminal 3 — Dashboard (hot reload; proxies /api → :8080)
-bun run dev:dashboard
+# Needs Go, FFmpeg, and MediaMTX at .bin/mediamtx or on PATH
+bun run dev
 ```
 
-Open http://localhost:5173
+| Process | Filter / script | Notes |
+|---------|-----------------|--------|
+| MediaMTX | `bun run dev:mediamtx` | Uses `deploy/mediamtx.yml` |
+| Go API (`nvrd`) | `bun run dev:server` | `:8080`, data in `server/data`, recordings in `./recordings` |
+| Dashboard | `bun run dev:dashboard` | Vite on `:5173`, proxies `/api` → Go |
+| Landing | `bun run dev:landing` | Astro |
+| Mobile | `bun run dev:mobile` | Expo |
+
+Open the dashboard at http://localhost:5173
 
 ## Production-style single binary
 

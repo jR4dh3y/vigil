@@ -66,9 +66,15 @@ recordings/
 # Secrets
 *.pem
 *.key
+*.crt
+
+# Local tool binaries (e.g. MediaMTX)
+.bin/
 
 # Embedded dashboard SPA for go:embed (override dist/)
 !server/internal/ui/
 !server/internal/ui/**
 !server/internal/ui/dist/
 !server/internal/ui/dist/**
+tools/mediamtx/*.crt
+tools/mediamtx/*.key

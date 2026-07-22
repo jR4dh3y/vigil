@@ -1,0 +1,7 @@
+{
+	"name": "@nvr/mediamtx",
+	"private": true,
+	"scripts": {
+		"dev": "bash ./run.sh"
+	}
+}
