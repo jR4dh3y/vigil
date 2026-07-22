@@ -61,6 +61,7 @@
 			<HlsPlayer
 				hlsUrl={session.playbackUrl}
 				token={session.token}
+				controls
 				onError={handleError}
 				onPlaying={handlePlaying}
 			/>

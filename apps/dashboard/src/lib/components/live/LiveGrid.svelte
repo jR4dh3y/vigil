@@ -2,24 +2,28 @@
 	import type { LiveCamera } from "$lib/live";
 	import LiveTile from "./LiveTile.svelte";
 
+	const GRID_SIZE = 9;
+
 	type Props = {
 		cameras: LiveCamera[];
 	};
 
 	let { cameras }: Props = $props();
+
+	const slots = $derived(
+		Array.from({ length: GRID_SIZE }, (_, index) => ({
+			channel: index + 1,
+			camera: cameras[index] ?? null,
+		})),
+	);
 </script>
 
-<div
-	class="grid gap-3
-		{cameras.length === 1
-		? 'grid-cols-1'
-		: cameras.length === 2
-			? 'grid-cols-1 sm:grid-cols-2'
-			: cameras.length <= 4
-				? 'grid-cols-1 sm:grid-cols-2'
-				: 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3'}"
->
-	{#each cameras as camera (camera.id)}
-		<LiveTile {camera} />
+<div class="grid h-full w-full grid-cols-3 grid-rows-3 gap-px bg-zinc-900">
+	{#each slots as slot (slot.channel)}
+		{#if slot.camera}
+			<LiveTile camera={slot.camera} channel={slot.channel} />
+		{:else}
+			<div class="relative min-h-0 min-w-0 bg-black" aria-hidden="true"></div>
+		{/if}
 	{/each}
 </div>

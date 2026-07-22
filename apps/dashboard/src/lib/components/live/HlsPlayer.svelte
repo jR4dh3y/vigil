@@ -6,11 +6,20 @@
 		hlsUrl: string;
 		token: string;
 		class?: string;
+		/** Native browser controls (useful for recording playback). Off for live mosaic. */
+		controls?: boolean;
 		onError?: (error: Error) => void;
 		onPlaying?: () => void;
 	};
 
-	let { hlsUrl, token, class: className = "", onError, onPlaying }: Props = $props();
+	let {
+		hlsUrl,
+		token,
+		class: className = "object-contain",
+		controls = false,
+		onError,
+		onPlaying,
+	}: Props = $props();
 
 	let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -90,10 +99,10 @@
 
 <video
 	bind:this={videoEl}
-	class="h-full w-full bg-black object-contain {className}"
+	class="h-full w-full bg-black {className}"
 	autoplay
 	playsinline
 	muted
-	controls
+	{controls}
 	onplaying={() => onPlaying?.()}
 ></video>

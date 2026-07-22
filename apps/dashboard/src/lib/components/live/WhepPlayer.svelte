@@ -9,7 +9,13 @@
 		onPlaying?: () => void;
 	};
 
-	let { whepUrl, token, class: className = "", onError, onPlaying }: Props = $props();
+	let {
+		whepUrl,
+		token,
+		class: className = "object-contain",
+		onError,
+		onPlaying,
+	}: Props = $props();
 
 	let videoEl = $state<HTMLVideoElement | null>(null);
 
@@ -148,7 +154,7 @@
 
 <video
 	bind:this={videoEl}
-	class="h-full w-full bg-black object-contain {className}"
+	class="h-full w-full bg-black {className}"
 	autoplay
 	playsinline
 	muted

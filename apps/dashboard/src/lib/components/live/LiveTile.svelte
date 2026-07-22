@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createQuery } from "@tanstack/svelte-query";
-	import { AlertCircle, Radio } from "lucide-svelte";
+	import { AlertCircle } from "lucide-svelte";
 	import {
 		type LiveCamera,
 		liveKeys,
@@ -16,9 +16,10 @@
 
 	type Props = {
 		camera: LiveCamera;
+		channel: number;
 	};
 
-	let { camera }: Props = $props();
+	let { camera, channel }: Props = $props();
 
 	let mode = $state<PlaybackMode>("hls");
 	let playing = $state(false);
@@ -70,28 +71,21 @@
 	}
 </script>
 
-<article
-	class="flex flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-sm"
->
-	<div class="relative aspect-video w-full bg-black">
+<article class="group relative min-h-0 min-w-0 bg-black">
+	<div class="absolute inset-0">
 		{#if loading}
 			<div class="absolute inset-0 flex items-center justify-center bg-zinc-950">
 				<Spinner label="Connecting" />
 			</div>
 		{:else if requestFailed}
 			<div
-				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 px-4 text-center"
+				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 px-3 text-center"
 			>
-				<AlertCircle class="size-6 text-red-400" />
-				<p class="text-sm font-medium text-red-200">Could not start stream</p>
-				<p class="max-w-xs text-xs text-red-300/80">
-					{liveQuery.error instanceof Error
-						? liveQuery.error.message
-						: "Live session request failed."}
-				</p>
+				<AlertCircle class="size-5 text-red-400" />
+				<p class="text-xs text-red-200">Stream failed</p>
 				<button
 					type="button"
-					class="mt-1 rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-100 hover:bg-zinc-700"
+					class="rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
 					onclick={retry}
 				>
 					Retry
@@ -99,19 +93,16 @@
 			</div>
 		{:else if stream && mode === "failed"}
 			<div
-				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 px-4 text-center"
+				class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-zinc-950 px-3 text-center"
 			>
-				<AlertCircle class="size-6 text-amber-400" />
-				<p class="text-sm font-medium text-zinc-200">Playback unavailable</p>
-				<p class="max-w-xs text-xs text-zinc-500">
-					WebRTC (WHEP) and HLS both failed
-					{#if playerError}
-						— {playerError}
-					{/if}
-				</p>
+				<AlertCircle class="size-5 text-amber-400" />
+				<p class="text-xs text-zinc-300">Unavailable</p>
+				{#if playerError}
+					<p class="max-w-[90%] truncate text-[10px] text-zinc-500">{playerError}</p>
+				{/if}
 				<button
 					type="button"
-					class="mt-1 rounded-md bg-zinc-800 px-3 py-1.5 text-xs text-zinc-100 hover:bg-zinc-700"
+					class="rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
 					onclick={retry}
 				>
 					Retry
@@ -123,6 +114,7 @@
 					<HlsPlayer
 						hlsUrl={stream.hlsUrl}
 						token={stream.token}
+						class="object-cover"
 						onError={handleHlsError}
 						onPlaying={handlePlaying}
 					/>
@@ -130,6 +122,7 @@
 					<WhepPlayer
 						whepUrl={stream.whepUrl}
 						token={stream.token}
+						class="object-cover"
 						onError={handleWhepError}
 						onPlaying={handlePlaying}
 					/>
@@ -148,31 +141,12 @@
 		{/if}
 	</div>
 
-	<div class="flex items-center justify-between gap-2 border-t border-zinc-800/80 px-3 py-2">
-		<div class="min-w-0">
-			<h2 class="truncate text-sm font-medium text-zinc-100">{camera.name}</h2>
-			<p class="text-[11px] text-zinc-500">
-				{#if mode === "hls" && playing}
-					HLS
-				{:else if mode === "whep" && playing}
-					WebRTC
-				{:else if mode === "failed"}
-					Offline
-				{:else}
-					Connecting…
-				{/if}
-			</p>
-		</div>
-		<span
-			class="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide
-				{playing
-				? 'bg-emerald-500/15 text-emerald-300'
-				: mode === 'failed' || requestFailed
-					? 'bg-red-500/15 text-red-300'
-					: 'bg-zinc-800 text-zinc-500'}"
-		>
-			<Radio class="size-3 {playing ? 'animate-pulse' : ''}" />
-			{playing ? "Live" : mode === "failed" || requestFailed ? "Error" : "…"}
-		</span>
+	<!-- Channel label: hover only -->
+	<div
+		class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 py-2 opacity-0 transition-opacity group-hover:opacity-100"
+	>
+		<p class="truncate text-xs font-medium text-white drop-shadow">
+			CH{channel} · {camera.name}
+		</p>
 	</div>
 </article>
