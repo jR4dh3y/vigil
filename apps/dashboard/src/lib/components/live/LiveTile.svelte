@@ -17,9 +17,12 @@
 	type Props = {
 		camera: LiveCamera;
 		channel: number;
+		/** When true, tile fills the live viewing area. */
+		focused?: boolean;
+		onSelect?: () => void;
 	};
 
-	let { camera, channel }: Props = $props();
+	let { camera, channel, focused = false, onSelect }: Props = $props();
 
 	let mode = $state<PlaybackMode>("hls");
 	let playing = $state(false);
@@ -69,9 +72,13 @@
 		playerError = null;
 		void liveQuery.refetch();
 	}
+
+	function handleSelect() {
+		onSelect?.();
+	}
 </script>
 
-<article class="group relative min-h-0 min-w-0 bg-black">
+<article class="group relative h-full min-h-0 w-full min-w-0 bg-black">
 	<div class="absolute inset-0">
 		{#if loading}
 			<div class="absolute inset-0 flex items-center justify-center bg-zinc-950">
@@ -85,7 +92,7 @@
 				<p class="text-xs text-red-200">Stream failed</p>
 				<button
 					type="button"
-					class="rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
+					class="relative z-20 rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
 					onclick={retry}
 				>
 					Retry
@@ -102,7 +109,7 @@
 				{/if}
 				<button
 					type="button"
-					class="rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
+					class="relative z-20 rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-100 hover:bg-zinc-700"
 					onclick={retry}
 				>
 					Retry
@@ -114,7 +121,7 @@
 					<HlsPlayer
 						hlsUrl={stream.hlsUrl}
 						token={stream.token}
-						class="object-cover"
+						class={focused ? "object-contain" : "object-cover"}
 						onError={handleHlsError}
 						onPlaying={handlePlaying}
 					/>
@@ -122,7 +129,7 @@
 					<WhepPlayer
 						whepUrl={stream.whepUrl}
 						token={stream.token}
-						class="object-cover"
+						class={focused ? "object-contain" : "object-cover"}
 						onError={handleWhepError}
 						onPlaying={handlePlaying}
 					/>
@@ -141,9 +148,21 @@
 		{/if}
 	</div>
 
-	<!-- Channel label: hover only -->
+	{#if !focused && onSelect}
+		<button
+			type="button"
+			class="absolute inset-0 z-10 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-500/70"
+			aria-label="Open {camera.name} full view"
+			onclick={handleSelect}
+		></button>
+	{/if}
+
+	<!-- Channel label: always visible when focused, hover only in grid -->
 	<div
-		class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 py-2 opacity-0 transition-opacity group-hover:opacity-100"
+		class="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 to-transparent px-2.5 py-2
+			{focused
+			? 'opacity-100'
+			: 'opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100'}"
 	>
 		<p class="truncate text-xs font-medium text-white drop-shadow">
 			CH{channel} · {camera.name}

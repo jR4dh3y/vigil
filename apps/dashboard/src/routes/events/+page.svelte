@@ -10,6 +10,7 @@
 	} from "$lib/events";
 	import EventRow from "$lib/components/events/EventRow.svelte";
 	import EventsEmptyState from "$lib/components/events/EventsEmptyState.svelte";
+	import PageActions from "$lib/components/PageActions.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 
 	const queryClient = useQueryClient();
@@ -61,37 +62,30 @@
 	<title>Events · NVR</title>
 </svelte:head>
 
-<section class="flex flex-col gap-6">
-	<div class="flex flex-wrap items-start justify-between gap-4">
-		<div class="flex flex-col gap-1">
-			<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">Events</h1>
-			<p class="text-sm text-zinc-400">
-				System and camera alerts. Auto-refreshes every 15 seconds.
-			</p>
-		</div>
-		<div class="flex flex-wrap items-center gap-2">
-			<label
-				class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-700"
-			>
-				<input
-					type="checkbox"
-					class="rounded border-zinc-600 bg-zinc-950 text-emerald-500 focus:ring-emerald-500/40"
-					bind:checked={unacknowledgedOnly}
-				/>
-				Unacknowledged only
-			</label>
-			<button
-				type="button"
-				class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
-				disabled={eventsQuery.isFetching}
-				onclick={() => eventsQuery.refetch()}
-			>
-				<RefreshCw class="size-3.5 {eventsQuery.isFetching ? 'animate-spin' : ''}" />
-				Refresh
-			</button>
-		</div>
-	</div>
+<PageActions>
+	<label
+		class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700"
+	>
+		<input
+			type="checkbox"
+			class="rounded border-zinc-600 bg-zinc-950 text-emerald-500 focus:ring-emerald-500/40"
+			bind:checked={unacknowledgedOnly}
+		/>
+		<span class="hidden sm:inline">Unacknowledged only</span>
+		<span class="sm:hidden">Unacked</span>
+	</label>
+	<button
+		type="button"
+		class="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+		disabled={eventsQuery.isFetching}
+		onclick={() => eventsQuery.refetch()}
+	>
+		<RefreshCw class="size-3.5 {eventsQuery.isFetching ? 'animate-spin' : ''}" />
+		<span class="hidden sm:inline">Refresh</span>
+	</button>
+</PageActions>
 
+<section class="flex flex-col gap-6">
 	{#if actionError}
 		<p
 			class="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"

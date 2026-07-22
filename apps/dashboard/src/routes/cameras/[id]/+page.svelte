@@ -23,6 +23,7 @@
 	import CameraForm from "$lib/components/cameras/CameraForm.svelte";
 	import CameraSnapshot from "$lib/components/cameras/CameraSnapshot.svelte";
 	import CameraStatusBadge from "$lib/components/cameras/CameraStatusBadge.svelte";
+	import PageActions from "$lib/components/PageActions.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 
 	const queryClient = useQueryClient();
@@ -161,53 +162,43 @@
 			</div>
 		</div>
 	{:else if camera && initial}
-		<div class="flex flex-col gap-3">
-			<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-				<a href="/cameras" class="text-zinc-500 no-underline hover:text-zinc-300">Cameras</a>
-				<span class="mx-1.5 text-zinc-700">/</span>
-				<span class="text-zinc-400">{camera.name}</span>
-			</p>
-			<div class="flex flex-wrap items-start justify-between gap-3">
-				<div class="flex flex-col gap-1">
-					<div class="flex flex-wrap items-center gap-2">
-						<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">
-							{camera.name}
-						</h1>
-						<CameraStatusBadge status={camera.status} />
-					</div>
-					<p class="font-mono text-sm text-zinc-500">{camera.host}</p>
-				</div>
-				<div class="flex flex-wrap items-center gap-2 text-xs">
-					<a
-						href="/cameras/{camera.id}/timeline"
-						class="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-emerald-300 no-underline transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/15"
-					>
-						Timeline
-					</a>
-					<span
-						class="rounded-md border px-2 py-0.5
-							{camera.enabled
-							? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
-							: 'border-zinc-700 bg-zinc-800 text-zinc-500'}"
-					>
-						{camera.enabled ? "Enabled" : "Disabled"}
-					</span>
-					{#if codec}
-						<span
-							class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-300"
-						>
-							{codec}
-						</span>
-					{/if}
-					{#if resolution}
-						<span
-							class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-400"
-						>
-							{resolution}
-						</span>
-					{/if}
-				</div>
-			</div>
+		<PageActions>
+			<span class="hidden max-w-[30vw] truncate text-sm text-zinc-400 sm:inline">
+				{camera.name}
+			</span>
+			<a
+				href="/cameras/{camera.id}/timeline"
+				class="inline-flex items-center rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-sm text-emerald-300 no-underline transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/15"
+			>
+				Timeline
+			</a>
+		</PageActions>
+
+		<div class="flex flex-wrap items-center gap-2 text-xs">
+			<CameraStatusBadge status={camera.status} />
+			<span
+				class="rounded-md border px-2 py-0.5
+					{camera.enabled
+					? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+					: 'border-zinc-700 bg-zinc-800 text-zinc-500'}"
+			>
+				{camera.enabled ? "Enabled" : "Disabled"}
+			</span>
+			{#if codec}
+				<span
+					class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-300"
+				>
+					{codec}
+				</span>
+			{/if}
+			{#if resolution}
+				<span
+					class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-400"
+				>
+					{resolution}
+				</span>
+			{/if}
+			<span class="font-mono text-zinc-500">{camera.host}</span>
 		</div>
 
 		<CameraSnapshot cameraId={camera.id} cameraName={camera.name} />

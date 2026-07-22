@@ -4,6 +4,10 @@
 		type MainSection,
 		type SubRoute,
 	} from "$lib/nav/subroutes";
+	import {
+		PAGE_ACTIONS_HOST_ID,
+		PAGE_META_HOST_ID,
+	} from "$lib/nav/page-actions.svelte";
 
 	type Props = {
 		section: MainSection;
@@ -21,10 +25,16 @@
 <header
 	class="flex h-14 shrink-0 items-center gap-4 border-b border-zinc-800/80 bg-zinc-950/90 px-4 backdrop-blur-md sm:px-6"
 >
-	<h1 class="text-sm font-semibold tracking-tight text-zinc-100">{section.title}</h1>
+	<h1 class="shrink-0 text-sm font-semibold tracking-tight text-zinc-100">{section.title}</h1>
+
+	<!-- Left-side meta (e.g. focused camera label) -->
+	<div
+		id={PAGE_META_HOST_ID}
+		class="flex min-w-0 items-center gap-2 empty:hidden"
+	></div>
 
 	{#if visibleRoutes.length > 0}
-		<nav class="flex flex-1 items-center gap-1" aria-label="Section">
+		<nav class="flex items-center gap-1" aria-label="Section">
 			{#each visibleRoutes as route (route.href)}
 				{@const active = isSubRouteActive(pathname, route)}
 				<a
@@ -40,4 +50,10 @@
 			{/each}
 		</nav>
 	{/if}
+
+	<!-- Right-side actions -->
+	<div
+		id={PAGE_ACTIONS_HOST_ID}
+		class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 empty:hidden"
+	></div>
 </header>

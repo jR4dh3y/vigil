@@ -101,16 +101,6 @@
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
-	<div class="flex flex-col gap-1">
-		<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-			<a href="/settings" class="text-zinc-500 no-underline hover:text-zinc-300">Settings</a>
-			<span class="mx-1.5 text-zinc-700">/</span>
-			<span class="text-zinc-400">Users</span>
-		</p>
-		<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">Users</h1>
-		<p class="text-sm text-zinc-400">Manage dashboard accounts and roles. Admin only.</p>
-	</div>
-
 	{#if statusQuery.isPending || (statusQuery.isSuccess && !isAdmin)}
 		<div class="flex min-h-[240px] items-center justify-center">
 			<Spinner label={isAdmin ? "Loading" : "Redirecting"} />

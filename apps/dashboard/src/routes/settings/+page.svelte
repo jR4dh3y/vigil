@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { createMutation, createQuery, useQueryClient } from "@tanstack/svelte-query";
-	import { RefreshCw, Users } from "lucide-svelte";
+	import { RefreshCw } from "lucide-svelte";
 	import { authKeys, loadStatus } from "$lib/auth";
+	import PageActions from "$lib/components/PageActions.svelte";
 	import SettingsForm from "$lib/components/settings/SettingsForm.svelte";
 	import SystemStatusCard from "$lib/components/settings/SystemStatusCard.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
@@ -83,27 +84,23 @@
 	<title>Settings · NVR</title>
 </svelte:head>
 
-<section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
-	<div class="flex flex-wrap items-start justify-between gap-4">
-		<div class="flex flex-col gap-1">
-			<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">Settings</h1>
-			<p class="text-sm text-zinc-400">Site configuration and system overview.</p>
-		</div>
-		<button
-			type="button"
-			class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
-			disabled={systemQuery.isFetching || settingsQuery.isFetching}
-			onclick={refreshAll}
-		>
-			<RefreshCw
-				class="size-3.5 {systemQuery.isFetching || settingsQuery.isFetching
-					? 'animate-spin'
-					: ''}"
-			/>
-			Refresh
-		</button>
-	</div>
+<PageActions>
+	<button
+		type="button"
+		class="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+		disabled={systemQuery.isFetching || settingsQuery.isFetching}
+		onclick={refreshAll}
+	>
+		<RefreshCw
+			class="size-3.5 {systemQuery.isFetching || settingsQuery.isFetching
+				? 'animate-spin'
+				: ''}"
+		/>
+		<span class="hidden sm:inline">Refresh</span>
+	</button>
+</PageActions>
 
+<section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
 	{#if systemQuery.isPending}
 		<div class="flex min-h-[160px] items-center justify-center">
 			<Spinner label="Loading system status" />
@@ -174,24 +171,4 @@
 			{/key}
 		{/if}
 	</div>
-
-	{#if isAdmin}
-		<a
-			href="/settings/users"
-			class="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-5 py-4 no-underline transition-colors hover:border-zinc-700 hover:bg-zinc-900"
-		>
-			<div class="flex items-center gap-3">
-				<span
-					class="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400"
-				>
-					<Users class="size-4" />
-				</span>
-				<div class="flex flex-col gap-0.5">
-					<span class="text-sm font-medium text-zinc-100">User management</span>
-					<span class="text-xs text-zinc-500">Create and remove dashboard accounts.</span>
-				</div>
-			</div>
-			<span class="text-sm text-zinc-500">Manage →</span>
-		</a>
-	{/if}
 </section>

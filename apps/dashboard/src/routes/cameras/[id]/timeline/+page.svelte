@@ -4,6 +4,7 @@
 	import { Film } from "lucide-svelte";
 	import { cameraKeys, getCamera } from "$lib/cameras";
 	import CameraStatusBadge from "$lib/components/cameras/CameraStatusBadge.svelte";
+	import PageActions from "$lib/components/PageActions.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 	import CoverageTimeline from "$lib/components/timeline/CoverageTimeline.svelte";
 	import PlaybackPlayer from "$lib/components/timeline/PlaybackPlayer.svelte";
@@ -132,43 +133,27 @@
 			</div>
 		</div>
 	{:else if camera}
-		<div class="flex flex-col gap-3">
-			<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-				<a href="/cameras" class="text-zinc-500 no-underline hover:text-zinc-300">Cameras</a>
-				<span class="mx-1.5 text-zinc-700">/</span>
-				<a
-					href="/cameras/{camera.id}"
-					class="text-zinc-500 no-underline hover:text-zinc-300">{camera.name}</a
-				>
-				<span class="mx-1.5 text-zinc-700">/</span>
-				<span class="text-zinc-400">Timeline</span>
-			</p>
+		<PageActions>
+			<span class="hidden max-w-[30vw] truncate text-sm text-zinc-400 sm:inline">
+				{camera.name}
+			</span>
+			<a
+				href="/cameras/{camera.id}"
+				class="inline-flex items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 no-underline transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+			>
+				Settings
+			</a>
+			<a
+				href="/"
+				class="inline-flex items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 no-underline transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+			>
+				Live
+			</a>
+		</PageActions>
 
-			<div class="flex flex-wrap items-start justify-between gap-3">
-				<div class="flex flex-col gap-1">
-					<div class="flex flex-wrap items-center gap-2">
-						<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">
-							{camera.name}
-						</h1>
-						<CameraStatusBadge status={camera.status} />
-					</div>
-					<p class="text-sm text-zinc-500">Recorded playback</p>
-				</div>
-				<div class="flex flex-wrap items-center gap-2">
-					<a
-						href="/cameras/{camera.id}"
-						class="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 no-underline hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
-					>
-						Settings
-					</a>
-					<a
-						href="/"
-						class="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 no-underline hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
-					>
-						Live
-					</a>
-				</div>
-			</div>
+		<div class="flex flex-wrap items-center gap-2">
+			<CameraStatusBadge status={camera.status} />
+			<span class="text-sm text-zinc-500">Recorded playback</span>
 		</div>
 
 		<div class="flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:p-5">

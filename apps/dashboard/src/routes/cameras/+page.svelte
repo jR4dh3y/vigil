@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { createQuery } from "@tanstack/svelte-query";
-	import { Plus, RefreshCw } from "lucide-svelte";
+	import { RefreshCw } from "lucide-svelte";
 	import { cameraKeys, listCameras } from "$lib/cameras";
 	import CameraCard from "$lib/components/cameras/CameraCard.svelte";
 	import CamerasEmptyState from "$lib/components/cameras/CamerasEmptyState.svelte";
+	import PageActions from "$lib/components/PageActions.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 
 	const camerasQuery = createQuery(() => ({
@@ -18,32 +19,19 @@
 	<title>Cameras · NVR</title>
 </svelte:head>
 
-<section class="flex flex-col gap-6">
-	<div class="flex flex-wrap items-start justify-between gap-4">
-		<div class="flex flex-col gap-1">
-			<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">Cameras</h1>
-			<p class="text-sm text-zinc-400">Manage RTSP cameras for live view and recording.</p>
-		</div>
-		<div class="flex items-center gap-2">
-			<button
-				type="button"
-				class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
-				disabled={camerasQuery.isFetching}
-				onclick={() => camerasQuery.refetch()}
-			>
-				<RefreshCw class="size-3.5 {camerasQuery.isFetching ? 'animate-spin' : ''}" />
-				Refresh
-			</button>
-			<a
-				href="/cameras/new"
-				class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white no-underline transition-colors hover:bg-emerald-500"
-			>
-				<Plus class="size-4" />
-				Add camera
-			</a>
-		</div>
-	</div>
+<PageActions>
+	<button
+		type="button"
+		class="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+		disabled={camerasQuery.isFetching}
+		onclick={() => camerasQuery.refetch()}
+	>
+		<RefreshCw class="size-3.5 {camerasQuery.isFetching ? 'animate-spin' : ''}" />
+		<span class="hidden sm:inline">Refresh</span>
+	</button>
+</PageActions>
 
+<section class="flex flex-col gap-6">
 	{#if camerasQuery.isPending}
 		<div class="flex min-h-[280px] items-center justify-center">
 			<Spinner label="Loading cameras" />

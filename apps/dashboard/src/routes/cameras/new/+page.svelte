@@ -66,18 +66,6 @@
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-2xl flex-col gap-6">
-	<div class="flex flex-col gap-1">
-		<p class="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-			<a href="/cameras" class="text-zinc-500 no-underline hover:text-zinc-300">Cameras</a>
-			<span class="mx-1.5 text-zinc-700">/</span>
-			<span class="text-zinc-400">New</span>
-		</p>
-		<h1 class="text-2xl font-semibold tracking-tight text-zinc-50">Add camera</h1>
-		<p class="text-sm text-zinc-400">
-			Configure RTSP endpoints and optionally probe the live stream before saving.
-		</p>
-	</div>
-
 	<div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
 		<CameraForm
 			mode="create"
