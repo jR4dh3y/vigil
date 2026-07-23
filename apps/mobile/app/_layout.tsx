@@ -1,32 +1,49 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Stack } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-navigation";
-import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
+import { hydrateSession } from "@/lib/api/session";
 import { queryClient } from "@/lib/query-client";
+import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
 	const colorScheme = useColorScheme();
+	const [sessionReady, setSessionReady] = useState(false);
+
+	useEffect(() => {
+		void hydrateSession().finally(() => setSessionReady(true));
+	}, []);
+
+	if (!sessionReady) {
+		return (
+			<View style={styles.boot}>
+				<ActivityIndicator color={colors.accent} size="large" />
+			</View>
+		);
+	}
 
 	return (
 		<QueryClientProvider client={queryClient}>
 			<ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
 				<StatusBar style="auto" />
-				<NativeTabs>
-					<NativeTabs.Trigger name="(live)">
-						<NativeTabs.Trigger.Icon sf="rectangle.grid.2x2.fill" md="dashboard" />
-						<NativeTabs.Trigger.Label>Live</NativeTabs.Trigger.Label>
-					</NativeTabs.Trigger>
-					<NativeTabs.Trigger name="(events)">
-						<NativeTabs.Trigger.Icon sf="bell.fill" md="notifications" />
-						<NativeTabs.Trigger.Label>Events</NativeTabs.Trigger.Label>
-					</NativeTabs.Trigger>
-					<NativeTabs.Trigger name="(settings)">
-						<NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
-						<NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-					</NativeTabs.Trigger>
-				</NativeTabs>
+				<Stack screenOptions={{ headerShown: false }}>
+					<Stack.Screen name="(tabs)" />
+					<Stack.Screen name="login" options={{ animation: "fade" }} />
+					<Stack.Screen name="setup" options={{ animation: "fade" }} />
+					<Stack.Screen name="+not-found" options={{ headerShown: true, title: "Not found" }} />
+				</Stack>
 			</ThemeProvider>
 		</QueryClientProvider>
 	);
 }
+
+const styles = StyleSheet.create({
+	boot: {
+		alignItems: "center",
+		backgroundColor: colors.background,
+		flex: 1,
+		justifyContent: "center",
+	},
+});
