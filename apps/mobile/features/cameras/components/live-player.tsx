@@ -1,22 +1,34 @@
 import { useVideoPlayer, VideoView } from "expo-video";
-import { StyleSheet, View } from "react-native";
+import { useEffect } from "react";
+import { type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 
 type LivePlayerProps = {
 	uri: string;
+	/** Fills parent by default; pass styles to override. */
+	style?: StyleProp<ViewStyle>;
+	/** Show native transport controls (default off for mosaic tiles). */
+	nativeControls?: boolean;
 };
 
-export function LivePlayer({ uri }: LivePlayerProps) {
+export function LivePlayer({ uri, style, nativeControls = false }: LivePlayerProps) {
 	const player = useVideoPlayer(uri, (instance) => {
+		instance.loop = true;
+		instance.muted = true;
 		instance.play();
 	});
 
+	useEffect(() => {
+		player.replace(uri);
+		player.play();
+	}, [player, uri]);
+
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container, style]} pointerEvents={nativeControls ? "auto" : "none"}>
 			<VideoView
-				allowsPictureInPicture
-				contentFit="contain"
-				fullscreenOptions={{ enable: true }}
-				nativeControls
+				allowsPictureInPicture={nativeControls}
+				contentFit="cover"
+				fullscreenOptions={{ enable: nativeControls }}
+				nativeControls={nativeControls}
 				player={player}
 				style={styles.video}
 			/>
@@ -26,11 +38,8 @@ export function LivePlayer({ uri }: LivePlayerProps) {
 
 const styles = StyleSheet.create({
 	container: {
-		aspectRatio: 16 / 9,
+		...StyleSheet.absoluteFill,
 		backgroundColor: "#000000",
-		borderCurve: "continuous",
-		borderRadius: 22,
-		overflow: "hidden",
 	},
 	video: {
 		flex: 1,

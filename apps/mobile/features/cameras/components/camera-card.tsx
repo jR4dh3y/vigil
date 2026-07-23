@@ -1,6 +1,9 @@
 import type { Camera } from "@nvr/api-client";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { StatusDot } from "@/components/status-dot";
+import { useQuery } from "@tanstack/react-query";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { cameraKeys, getLiveStream } from "@/features/cameras/api";
+import { LivePlayer } from "@/features/cameras/components/live-player";
+import { resolveMediaUrl } from "@/lib/api/config";
 import { colors, swatches } from "@/theme/colors";
 
 type CameraCardProps = {
@@ -8,48 +11,43 @@ type CameraCardProps = {
 	onPress: () => void;
 };
 
-const statusTone = {
-	online: "online",
-	offline: "offline",
-	unknown: "neutral",
-} as const;
-
 export function CameraCard({ camera, onPress }: CameraCardProps) {
-	const statusLabel = camera.status.charAt(0).toUpperCase() + camera.status.slice(1);
+	const streamQuery = useQuery({
+		queryKey: cameraKeys.live(camera.id),
+		queryFn: () => getLiveStream(camera.id),
+		enabled: camera.status === "online" && camera.enabled,
+		staleTime: 45_000,
+		refetchInterval: 50_000,
+	});
+
+	const streamUrl = streamQuery.data
+		? resolveMediaUrl(streamQuery.data.hlsUrl, streamQuery.data.token)
+		: undefined;
 
 	return (
 		<Pressable
 			accessibilityHint="Opens the live camera"
-			accessibilityLabel={`${camera.name}, ${statusLabel}`}
+			accessibilityLabel={camera.name}
 			accessibilityRole="button"
 			onPress={onPress}
 			style={({ pressed }) => [styles.container, pressed && styles.pressed]}
 		>
 			<View style={styles.preview}>
-				<View style={styles.previewGlow} />
-				<View style={styles.frame}>
-					<View style={styles.frameCornerTop} />
-					<View style={styles.frameCornerBottom} />
-				</View>
-				<View style={styles.livePill}>
-					<StatusDot
-						inverted
-						label={camera.status === "online" ? "LIVE" : statusLabel.toUpperCase()}
-						tone={statusTone[camera.status]}
-					/>
-				</View>
-				<Text style={styles.monogram}>{camera.name.slice(0, 2).toUpperCase()}</Text>
-			</View>
-			<View style={styles.footer}>
-				<View style={styles.copy}>
-					<Text numberOfLines={1} selectable style={styles.name}>
+				{streamUrl ? (
+					<LivePlayer uri={streamUrl} />
+				) : camera.status === "online" && streamQuery.isPending ? (
+					<View style={styles.loading}>
+						<ActivityIndicator color={swatches.white} />
+					</View>
+				) : (
+					<View style={styles.empty} />
+				)}
+
+				<View style={styles.nameBar} pointerEvents="none">
+					<Text numberOfLines={1} style={styles.name}>
 						{camera.name}
 					</Text>
-					<Text numberOfLines={1} selectable style={styles.host}>
-						{camera.host}
-					</Text>
 				</View>
-				<Text style={styles.chevron}>›</Text>
 			</View>
 		</Pressable>
 	);
@@ -63,95 +61,36 @@ const styles = StyleSheet.create({
 		overflow: "hidden",
 	},
 	pressed: {
-		opacity: 0.78,
-		transform: [{ scale: 0.99 }],
+		opacity: 0.9,
+		transform: [{ scale: 0.995 }],
 	},
 	preview: {
-		alignItems: "center",
 		aspectRatio: 16 / 9,
 		backgroundColor: swatches.preview,
-		justifyContent: "center",
 		overflow: "hidden",
 	},
-	previewGlow: {
-		backgroundColor: "rgba(108, 168, 132, 0.10)",
-		borderRadius: 999,
-		height: 210,
-		position: "absolute",
-		right: -64,
-		top: -120,
-		width: 210,
-	},
-	frame: {
-		borderColor: "rgba(255, 255, 255, 0.06)",
-		borderRadius: 18,
-		borderWidth: 1,
-		height: "58%",
-		position: "absolute",
-		transform: [{ rotate: "-5deg" }],
-		width: "56%",
-	},
-	frameCornerTop: {
-		borderLeftColor: "rgba(255, 255, 255, 0.17)",
-		borderLeftWidth: 2,
-		borderTopColor: "rgba(255, 255, 255, 0.17)",
-		borderTopLeftRadius: 7,
-		borderTopWidth: 2,
-		height: 20,
-		left: 8,
-		position: "absolute",
-		top: 8,
-		width: 20,
-	},
-	frameCornerBottom: {
-		borderBottomColor: "rgba(255, 255, 255, 0.17)",
-		borderBottomRightRadius: 7,
-		borderBottomWidth: 2,
-		borderRightColor: "rgba(255, 255, 255, 0.17)",
-		borderRightWidth: 2,
-		bottom: 8,
-		height: 20,
-		position: "absolute",
-		right: 8,
-		width: 20,
-	},
-	livePill: {
-		backgroundColor: "rgba(0, 0, 0, 0.5)",
-		borderRadius: 99,
-		left: 12,
-		paddingHorizontal: 10,
-		paddingVertical: 6,
-		position: "absolute",
-		top: 12,
-	},
-	monogram: {
-		color: "rgba(255, 255, 255, 0.38)",
-		fontSize: 27,
-		fontWeight: "300",
-		letterSpacing: 4,
-	},
-	footer: {
+	loading: {
+		...StyleSheet.absoluteFill,
 		alignItems: "center",
-		flexDirection: "row",
-		gap: 12,
-		padding: 16,
+		backgroundColor: swatches.preview,
+		justifyContent: "center",
 	},
-	copy: {
-		flex: 1,
-		gap: 3,
+	empty: {
+		...StyleSheet.absoluteFill,
+		backgroundColor: swatches.preview,
+	},
+	nameBar: {
+		backgroundColor: "rgba(0, 0, 0, 0.45)",
+		left: 0,
+		paddingHorizontal: 12,
+		paddingVertical: 8,
+		position: "absolute",
+		right: 0,
+		top: 0,
 	},
 	name: {
-		color: colors.label,
-		fontSize: 16,
+		color: swatches.white,
+		fontSize: 14,
 		fontWeight: "700",
-	},
-	host: {
-		color: colors.secondaryLabel,
-		fontSize: 12,
-	},
-	chevron: {
-		color: colors.secondaryLabel,
-		fontSize: 26,
-		fontWeight: "300",
 	},
 });
