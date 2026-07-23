@@ -176,6 +176,8 @@ func (s *Server) issueSession(w http.ResponseWriter, r *http.Request, userID str
 		return err
 	}
 	auth.SetSessionCookie(w, token, expires)
+	// Mobile clients (React Native) often cannot read Set-Cookie; mirror the token.
+	auth.WriteSessionTokenHeader(w, token)
 	return nil
 }
 

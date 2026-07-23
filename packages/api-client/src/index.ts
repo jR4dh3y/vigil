@@ -45,3 +45,5 @@ export function createApiClient(baseUrl: string, options?: CreateApiClientOption
 		credentials: options?.credentials ?? "include",
 	});
 }
+
+export type { Middleware } from "openapi-fetch";

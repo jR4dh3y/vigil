@@ -2,8 +2,13 @@ package auth
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
+
+// HeaderSessionToken is an alternate way for non-browser clients (e.g. React Native)
+// to receive and send the opaque session token when cookie jars are unreliable.
+const HeaderSessionToken = "X-Session-Token"
 
 // SetSessionCookie writes the nvr_session cookie (HttpOnly, Path=/, SameSite=Lax).
 // Secure is left false for local HTTP; reverse proxies terminate TLS in production.
@@ -34,11 +39,28 @@ func ClearSessionCookie(w http.ResponseWriter) {
 	})
 }
 
-// SessionTokenFromRequest reads the raw session token from the cookie, if present.
+// WriteSessionTokenHeader exposes the raw token for mobile / API clients.
+func WriteSessionTokenHeader(w http.ResponseWriter, token string) {
+	w.Header().Set(HeaderSessionToken, token)
+}
+
+// SessionTokenFromRequest reads the session token from cookie, Authorization Bearer,
+// or X-Session-Token (cookie wins when multiple are present).
 func SessionTokenFromRequest(r *http.Request) (string, bool) {
-	c, err := r.Cookie(CookieName)
-	if err != nil || c.Value == "" {
-		return "", false
+	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
+		return c.Value, true
 	}
-	return c.Value, true
+	if authz := r.Header.Get("Authorization"); authz != "" {
+		const prefix = "bearer "
+		if len(authz) > len(prefix) && strings.EqualFold(authz[:len(prefix)], prefix) {
+			token := strings.TrimSpace(authz[len(prefix):])
+			if token != "" {
+				return token, true
+			}
+		}
+	}
+	if token := strings.TrimSpace(r.Header.Get(HeaderSessionToken)); token != "" {
+		return token, true
+	}
+	return "", false
 }
