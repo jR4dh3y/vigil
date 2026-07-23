@@ -1,5 +1,6 @@
 {
 	"name": "nvr",
+	"license": "MIT",
 	"private": true,
 	"scripts": {
 		"build": "turbo run build",
