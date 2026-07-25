@@ -23,6 +23,7 @@ import (
 	"github.com/nvr/nvr/server/internal/jobs"
 	"github.com/nvr/nvr/server/internal/media"
 	"github.com/nvr/nvr/server/internal/recording"
+	"github.com/nvr/nvr/server/internal/storage/gdrive"
 	"github.com/nvr/nvr/server/internal/store"
 	"github.com/nvr/nvr/server/internal/ui"
 )
@@ -98,10 +99,17 @@ func main() {
 	eventBus := event.NewBus()
 	eventSvc := event.NewService(queries, eventBus)
 
+	gdriveSvc := gdrive.NewService(gdrive.Config{
+		ClientID:     cfg.GoogleClientID,
+		ClientSecret: cfg.GoogleClientSecret,
+		RedirectURL:  cfg.GoogleRedirectURL,
+	}, queries, cfg.SecretsKey)
+
 	scheduler := jobs.NewScheduler(jobs.Config{
 		Cameras:       cameraSvc,
 		Events:        eventSvc,
 		Recording:     recordingSvc,
+		GDrive:        gdriveSvc,
 		RecordingsDir: recordingsDir,
 	})
 	if err := scheduler.Start(); err != nil {
@@ -116,6 +124,7 @@ func main() {
 		mediaSvc,
 		recordingSvc,
 		eventSvc,
+		gdriveSvc,
 		cfg.Version,
 		cfg.Commit,
 		recordingsDir,

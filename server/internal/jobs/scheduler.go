@@ -10,6 +10,7 @@ import (
 	"github.com/nvr/nvr/server/internal/camera"
 	"github.com/nvr/nvr/server/internal/event"
 	"github.com/nvr/nvr/server/internal/recording"
+	"github.com/nvr/nvr/server/internal/storage/gdrive"
 	"github.com/robfig/cron/v3"
 	"github.com/shirou/gopsutil/v4/disk"
 )
@@ -19,6 +20,7 @@ type Config struct {
 	Cameras       *camera.Service
 	Events        *event.Service
 	Recording     *recording.Service
+	GDrive        *gdrive.Service
 	RecordingsDir string
 	// HealthTimeout bounds each camera health probe (default 8s).
 	HealthTimeout time.Duration
@@ -43,8 +45,9 @@ func NewScheduler(cfg Config) *Scheduler {
 		cfg.DiskThreshold = 90
 	}
 	return &Scheduler{
-		cfg:  cfg,
-		cron: cron.New(cron.WithSeconds()),
+		cfg: cfg,
+		// All schedules (including midnight archive) use UTC for predictable ops.
+		cron: cron.New(cron.WithSeconds(), cron.WithLocation(time.UTC)),
 	}
 }
 
@@ -62,33 +65,42 @@ func (s *Scheduler) Start() error {
 	if _, err := s.cron.AddFunc("0 */5 * * * *", s.safeRun("disk_check", s.checkDisk)); err != nil {
 		return err
 	}
+	// Midnight UTC: archive unarchived recordings to Google Drive (long timeout).
+	if _, err := s.cron.AddFunc("0 0 0 * * *", s.safeRunTimeout("gdrive_archive", 30*time.Minute, s.archiveToGDrive)); err != nil {
+		return err
+	}
 	s.cron.Start()
-	slog.Info("jobs scheduler started")
+	slog.Info("jobs scheduler started", "cron_location", "UTC")
 	return nil
 }
 
-// Stop gracefully stops cron jobs, waiting up to 15s for running jobs.
+// Stop gracefully stops cron jobs, waiting for in-flight work (incl. long archive runs).
 func (s *Scheduler) Stop() {
 	if s.cron == nil {
 		return
 	}
 	ctx := s.cron.Stop()
+	// Archive job may run up to 30m; wait a bit longer than default short jobs.
 	select {
 	case <-ctx.Done():
-	case <-time.After(15 * time.Second):
+	case <-time.After(2 * time.Minute):
 		slog.Warn("jobs scheduler stop timed out")
 	}
 	slog.Info("jobs scheduler stopped")
 }
 
 func (s *Scheduler) safeRun(name string, fn func(context.Context)) func() {
+	return s.safeRunTimeout(name, 2*time.Minute, fn)
+}
+
+func (s *Scheduler) safeRunTimeout(name string, timeout time.Duration, fn func(context.Context)) func() {
 	return func() {
 		defer func() {
 			if r := recover(); r != nil {
 				slog.Error("job panicked", "job", name, "recover", r)
 			}
 		}()
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		fn(ctx)
 	}
@@ -172,7 +184,17 @@ func (s *Scheduler) pruneRecordings(ctx context.Context) {
 	if s.cfg.Recording == nil {
 		return
 	}
-	n, err := s.cfg.Recording.Prune(ctx)
+	var (
+		n   int64
+		err error
+	)
+	if s.cfg.GDrive != nil && s.cfg.GDrive.HasStoredConnection(ctx) {
+		// A linked archive target makes archive-before-prune the durable policy:
+		// failed/pending uploads remain indexed for the next retry.
+		n, err = s.cfg.Recording.PruneArchived(ctx)
+	} else {
+		n, err = s.cfg.Recording.Prune(ctx)
+	}
 	if err != nil {
 		slog.Warn("retention prune failed", "err", err)
 		return

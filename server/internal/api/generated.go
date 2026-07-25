@@ -255,6 +255,41 @@ type EventList struct {
 	Events []Event `json:"events"`
 }
 
+// GDriveArchiveRequest defines model for GDriveArchiveRequest.
+type GDriveArchiveRequest struct {
+	// Limit Max segments to archive in this batch (default 50)
+	Limit *int `json:"limit,omitempty"`
+}
+
+// GDriveArchiveResponse defines model for GDriveArchiveResponse.
+type GDriveArchiveResponse struct {
+	Failed   int `json:"failed"`
+	Skipped  int `json:"skipped"`
+	Uploaded int `json:"uploaded"`
+}
+
+// GDriveConnectResponse defines model for GDriveConnectResponse.
+type GDriveConnectResponse struct {
+	// AuthorizationUrl Google OAuth consent URL
+	AuthorizationUrl string `json:"authorizationUrl"`
+}
+
+// GDriveStatus defines model for GDriveStatus.
+type GDriveStatus struct {
+	AccountEmail *string `json:"accountEmail,omitempty"`
+
+	// Configured True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL are set
+	Configured bool `json:"configured"`
+
+	// Connected True when stored credentials can be decrypted
+	Connected   bool       `json:"connected"`
+	ConnectedAt *time.Time `json:"connectedAt,omitempty"`
+
+	// ConnectionError Recoverable stored-credential problem; reconnecting resolves it
+	ConnectionError *string `json:"connectionError,omitempty"`
+	FolderId        *string `json:"folderId,omitempty"`
+}
+
 // Health defines model for Health.
 type Health struct {
 	Status HealthStatus `json:"status"`
@@ -455,6 +490,14 @@ type ListEventsParams struct {
 	UnacknowledgedOnly *bool `form:"unacknowledgedOnly,omitempty" json:"unacknowledgedOnly,omitempty"`
 }
 
+// GetGDriveCallbackParams defines parameters for GetGDriveCallback.
+type GetGDriveCallbackParams struct {
+	Code             *string `form:"code,omitempty" json:"code,omitempty"`
+	State            *string `form:"state,omitempty" json:"state,omitempty"`
+	Error            *string `form:"error,omitempty" json:"error,omitempty"`
+	ErrorDescription *string `form:"error_description,omitempty" json:"error_description,omitempty"`
+}
+
 // PostAuthLoginJSONRequestBody defines body for PostAuthLogin for application/json ContentType.
 type PostAuthLoginJSONRequestBody = LoginRequest
 
@@ -475,6 +518,9 @@ type PostCameraPlaybackJSONRequestBody = PlaybackRequest
 
 // PatchSettingsJSONRequestBody defines body for PatchSettings for application/json ContentType.
 type PatchSettingsJSONRequestBody = PatchSettingsRequest
+
+// PostGDriveArchiveJSONRequestBody defines body for PostGDriveArchive for application/json ContentType.
+type PostGDriveArchiveJSONRequestBody = GDriveArchiveRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest
@@ -541,6 +587,21 @@ type ServerInterface interface {
 	// PatchSettings Update settings
 	// (PATCH /settings)
 	PatchSettings(w http.ResponseWriter, r *http.Request)
+	// PostGDriveArchive Archive recordings to Google Drive
+	// (POST /storage/gdrive/archive)
+	PostGDriveArchive(w http.ResponseWriter, r *http.Request)
+	// GetGDriveCallback Google Drive OAuth callback
+	// (GET /storage/gdrive/callback)
+	GetGDriveCallback(w http.ResponseWriter, r *http.Request, params GetGDriveCallbackParams)
+	// PostGDriveConnect Begin Google Drive OAuth connect
+	// (POST /storage/gdrive/connect)
+	PostGDriveConnect(w http.ResponseWriter, r *http.Request)
+	// DeleteGDriveDisconnect Disconnect Google Drive
+	// (DELETE /storage/gdrive/disconnect)
+	DeleteGDriveDisconnect(w http.ResponseWriter, r *http.Request)
+	// GetGDriveStatus Google Drive connection status
+	// (GET /storage/gdrive/status)
+	GetGDriveStatus(w http.ResponseWriter, r *http.Request)
 	// GetSystemDisk Disk usage
 	// (GET /system/disk)
 	GetSystemDisk(w http.ResponseWriter, r *http.Request)
@@ -681,6 +742,36 @@ func (_ Unimplemented) GetSettings(w http.ResponseWriter, r *http.Request) {
 // PatchSettings Update settings
 // (PATCH /settings)
 func (_ Unimplemented) PatchSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostGDriveArchive Archive recordings to Google Drive
+// (POST /storage/gdrive/archive)
+func (_ Unimplemented) PostGDriveArchive(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetGDriveCallback Google Drive OAuth callback
+// (GET /storage/gdrive/callback)
+func (_ Unimplemented) GetGDriveCallback(w http.ResponseWriter, r *http.Request, params GetGDriveCallbackParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PostGDriveConnect Begin Google Drive OAuth connect
+// (POST /storage/gdrive/connect)
+func (_ Unimplemented) PostGDriveConnect(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteGDriveDisconnect Disconnect Google Drive
+// (DELETE /storage/gdrive/disconnect)
+func (_ Unimplemented) DeleteGDriveDisconnect(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetGDriveStatus Google Drive connection status
+// (GET /storage/gdrive/status)
+func (_ Unimplemented) GetGDriveStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1204,6 +1295,134 @@ func (siw *ServerInterfaceWrapper) PatchSettings(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// PostGDriveArchive operation middleware
+func (siw *ServerInterfaceWrapper) PostGDriveArchive(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostGDriveArchive(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGDriveCallback operation middleware
+func (siw *ServerInterfaceWrapper) GetGDriveCallback(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetGDriveCallbackParams
+
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", r.URL.Query(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "code"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", r.URL.Query(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "state"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "state", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "error_description" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error_description", r.URL.Query(), &params.ErrorDescription, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error_description"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error_description", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGDriveCallback(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostGDriveConnect operation middleware
+func (siw *ServerInterfaceWrapper) PostGDriveConnect(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostGDriveConnect(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteGDriveDisconnect operation middleware
+func (siw *ServerInterfaceWrapper) DeleteGDriveDisconnect(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteGDriveDisconnect(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetGDriveStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetGDriveStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetGDriveStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetSystemDisk operation middleware
 func (siw *ServerInterfaceWrapper) GetSystemDisk(w http.ResponseWriter, r *http.Request) {
 
@@ -1483,6 +1702,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Patch(options.BaseURL+"/settings", wrapper.PatchSettings)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/storage/gdrive/status", wrapper.GetGDriveStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/storage/gdrive/connect", wrapper.PostGDriveConnect)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/storage/gdrive/callback", wrapper.GetGDriveCallback)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/storage/gdrive/disconnect", wrapper.DeleteGDriveDisconnect)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/storage/gdrive/archive", wrapper.PostGDriveArchive)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/users", wrapper.ListUsers)
 	})
 	r.Group(func(r chi.Router) {
@@ -1500,68 +1734,82 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"iw6jMS7IeP4sur+9/1cAAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

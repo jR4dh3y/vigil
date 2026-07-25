@@ -11,9 +11,10 @@ const (
 
 // Common event types produced by the system.
 const (
-	TypeCameraOnline  = "camera.online"
-	TypeCameraOffline = "camera.offline"
-	TypeDiskLow       = "disk.low"
+	TypeCameraOnline    = "camera.online"
+	TypeCameraOffline   = "camera.offline"
+	TypeDiskLow         = "disk.low"
+	TypeArchiveComplete = "archive.complete"
 )
 
 // Event is the domain event model.

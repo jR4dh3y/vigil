@@ -700,6 +700,163 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /storage/gdrive/status:
+    get:
+      operationId: getGDriveStatus
+      tags: [storage]
+      summary: Google Drive connection status
+      description: Authenticated users. Returns OAuth configuration and connection status (never tokens).
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDriveStatus"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/gdrive/connect:
+    post:
+      operationId: postGDriveConnect
+      tags: [storage]
+      summary: Begin Google Drive OAuth connect
+      description: Admin only. Returns the Google authorization URL to open in a browser.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Authorization URL ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDriveConnectResponse"
+        "400":
+          description: Google OAuth not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/gdrive/callback:
+    get:
+      operationId: getGDriveCallback
+      tags: [storage]
+      summary: Google Drive OAuth callback
+      description: |
+        Public OAuth redirect target. Exchanges the authorization code, stores tokens,
+        and redirects (302) to the settings UI.
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to settings UI after connect success or failure
+          headers:
+            Location:
+              description: Frontend settings URL with gdrive status query params
+              schema:
+                type: string
+  /storage/gdrive/disconnect:
+    delete:
+      operationId: deleteGDriveDisconnect
+      tags: [storage]
+      summary: Disconnect Google Drive
+      description: Admin only. Clears stored tokens and best-effort revokes with Google.
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Disconnected
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /storage/gdrive/archive:
+    post:
+      operationId: postGDriveArchive
+      tags: [storage]
+      summary: Archive recordings to Google Drive
+      description: |
+        Admin only. Uploads a batch of unarchived local recordings to the connected
+        Google Drive account (same work as the midnight archive job).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GDriveArchiveRequest"
+      responses:
+        "200":
+          description: Archive batch result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDriveArchiveResponse"
+        "400":
+          description: Drive not connected or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: An archive pass is already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /users:
     get:
       operationId: listUsers
@@ -1232,6 +1389,51 @@ components:
           description: Absolute or relative path on the NVR server for new recordings.
         recordingEnabled:
           type: boolean
+    GDriveStatus:
+      type: object
+      required: [configured, connected]
+      properties:
+        configured:
+          type: boolean
+          description: True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL are set
+        connected:
+          type: boolean
+          description: True when stored credentials can be decrypted
+        connectionError:
+          type: string
+          description: Recoverable stored-credential problem; reconnecting resolves it
+        accountEmail:
+          type: string
+        connectedAt:
+          type: string
+          format: date-time
+        folderId:
+          type: string
+    GDriveConnectResponse:
+      type: object
+      required: [authorizationUrl]
+      properties:
+        authorizationUrl:
+          type: string
+          description: Google OAuth consent URL
+    GDriveArchiveRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 500
+          description: Max segments to archive in this batch (default 50)
+    GDriveArchiveResponse:
+      type: object
+      required: [uploaded, failed, skipped]
+      properties:
+        uploaded:
+          type: integer
+        failed:
+          type: integer
+        skipped:
+          type: integer
 
     CreateUserRequest:
       type: object

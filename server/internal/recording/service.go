@@ -3,6 +3,7 @@ package recording
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,14 +19,16 @@ const DefaultRetentionDays = 7
 
 // Segment is a recorded media segment in the index.
 type Segment struct {
-	ID            string
-	CameraID      string
-	StartedAt     time.Time
-	DurationSec   float64
-	SizeBytes     int64
-	Path          string
-	Codec         *string
-	ThumbnailPath *string
+	ID              string
+	CameraID        string
+	StartedAt       time.Time
+	DurationSec     float64
+	SizeBytes       int64
+	Path            string
+	Codec           *string
+	ThumbnailPath   *string
+	ArchivedAt      *time.Time
+	ArchiveLocation *string
 }
 
 // CoverageBar is a continuous coverage window for the timeline UI.
@@ -160,6 +163,17 @@ func (s *Service) Prune(ctx context.Context) (int64, error) {
 	return s.DeleteOlderThan(ctx, cutoff)
 }
 
+// PruneArchived removes only old rows that have completed (or explicitly skipped)
+// archive processing. It keeps pending rows available for a later archive retry.
+func (s *Service) PruneArchived(ctx context.Context) (int64, error) {
+	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
+	n, err := s.q.DeleteArchivedRecordingsOlderThan(ctx, formatTime(cutoff))
+	if err != nil {
+		return 0, fmt.Errorf("delete archived recordings older than: %w", err)
+	}
+	return n, nil
+}
+
 // RetentionDays returns the configured retention window in days.
 func (s *Service) RetentionDays() int {
 	return s.retentionDays
@@ -177,6 +191,113 @@ func (s *Service) SetRetentionDays(days int) {
 // RecordingsDir returns the configured recordings root.
 func (s *Service) RecordingsDir() string {
 	return s.recordingsDir
+}
+
+// AbsolutePath joins rel under RecordingsDir and rejects path traversal.
+func (s *Service) AbsolutePath(rel string) (string, error) {
+	rel = strings.TrimSpace(rel)
+	if rel == "" {
+		return "", fmt.Errorf("empty path")
+	}
+	if s.recordingsDir == "" {
+		return "", fmt.Errorf("recordings dir not configured")
+	}
+	if filepath.IsAbs(rel) {
+		return "", fmt.Errorf("absolute path not allowed")
+	}
+	clean := filepath.Clean(rel)
+	// Reject ".." segments after Clean (e.g. "../x" → still escapes).
+	for _, part := range strings.Split(filepath.ToSlash(clean), "/") {
+		if part == ".." {
+			return "", fmt.Errorf("path traversal not allowed")
+		}
+	}
+	if clean == ".." || strings.HasPrefix(clean, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path traversal not allowed")
+	}
+
+	absRoot, err := filepath.Abs(s.recordingsDir)
+	if err != nil {
+		return "", fmt.Errorf("recordings dir: %w", err)
+	}
+	absPath, err := filepath.Abs(filepath.Join(absRoot, clean))
+	if err != nil {
+		return "", err
+	}
+	// Ensure result stays under root.
+	if absPath != absRoot && !strings.HasPrefix(absPath, absRoot+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path outside recordings dir")
+	}
+
+	// Resolve symlinks for existing archive candidates. Without this check, a
+	// symlink stored below RecordingsDir could expose an arbitrary host file.
+	realRoot, err := filepath.EvalSymlinks(absRoot)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return absPath, nil
+		}
+		return "", fmt.Errorf("resolve recordings dir: %w", err)
+	}
+	realPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return absPath, nil
+		}
+		return "", fmt.Errorf("resolve recording path: %w", err)
+	}
+	relToRoot, err := filepath.Rel(realRoot, realPath)
+	if err != nil {
+		return "", fmt.Errorf("compare recording path: %w", err)
+	}
+	if relToRoot == ".." || strings.HasPrefix(relToRoot, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("recording path resolves outside recordings dir")
+	}
+	return absPath, nil
+}
+
+// ListUnarchived returns up to limit segments that have not been archived yet.
+func (s *Service) ListUnarchived(ctx context.Context, limit int) ([]Segment, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.q.ListUnarchivedRecordings(ctx, int64(limit))
+	if err != nil {
+		return nil, fmt.Errorf("list unarchived recordings: %w", err)
+	}
+	segments := make([]Segment, 0, len(rows))
+	for _, row := range rows {
+		seg, err := toSegment(row)
+		if err != nil {
+			return nil, err
+		}
+		segments = append(segments, seg)
+	}
+	return segments, nil
+}
+
+// MarkArchived sets archived_at to now (UTC RFC3339) and archive_location.
+func (s *Service) MarkArchived(ctx context.Context, id, location string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+	location = strings.TrimSpace(location)
+	if location == "" {
+		return fmt.Errorf("archive location is required")
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	n, err := s.q.MarkRecordingArchived(ctx, store.MarkRecordingArchivedParams{
+		ArchivedAt:      sql.NullString{String: now, Valid: true},
+		ArchiveLocation: sql.NullString{String: location, Valid: true},
+		ID:              id,
+	})
+	if err != nil {
+		return fmt.Errorf("mark recording archived: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("mark recording archived: recording %q not found", id)
+	}
+	return nil
 }
 
 // relativizePath stores paths relative to RecordingsDir when possible.
@@ -223,6 +344,15 @@ func toSegment(row store.Recording) (Segment, error) {
 	if row.ThumbnailPath.Valid {
 		t := row.ThumbnailPath.String
 		seg.ThumbnailPath = &t
+	}
+	if row.ArchivedAt.Valid && row.ArchivedAt.String != "" {
+		if t, err := parseTime(row.ArchivedAt.String); err == nil {
+			seg.ArchivedAt = &t
+		}
+	}
+	if row.ArchiveLocation.Valid && row.ArchiveLocation.String != "" {
+		loc := row.ArchiveLocation.String
+		seg.ArchiveLocation = &loc
 	}
 	return seg, nil
 }

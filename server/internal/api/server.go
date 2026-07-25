@@ -6,6 +6,7 @@ import (
 	"github.com/nvr/nvr/server/internal/event"
 	"github.com/nvr/nvr/server/internal/media"
 	"github.com/nvr/nvr/server/internal/recording"
+	"github.com/nvr/nvr/server/internal/storage/gdrive"
 	"github.com/nvr/nvr/server/internal/store"
 )
 
@@ -17,6 +18,7 @@ type Server struct {
 	Media         *media.Service
 	Recording     *recording.Service
 	Event         *event.Service
+	GDrive        *gdrive.Service
 	Version       string
 	Commit        string
 	RecordingsDir string
@@ -32,6 +34,7 @@ func NewServer(
 	mediaSvc *media.Service,
 	recordingSvc *recording.Service,
 	eventSvc *event.Service,
+	gdriveSvc *gdrive.Service,
 	version, commit string,
 	recordingsDir string,
 	defaultRetentionDays int,
@@ -46,6 +49,7 @@ func NewServer(
 		Media:                mediaSvc,
 		Recording:            recordingSvc,
 		Event:                eventSvc,
+		GDrive:               gdriveSvc,
 		Version:              version,
 		Commit:               commit,
 		RecordingsDir:        recordingsDir,
