@@ -102,17 +102,6 @@ func (s *Service) Status(ctx context.Context) (Status, error) {
 	return st, nil
 }
 
-// HasStoredConnection reports whether Drive credentials exist, even if the
-// current secrets key cannot decrypt them. Retention uses this conservative
-// signal so a key configuration mistake cannot prune pending archive rows.
-func (s *Service) HasStoredConnection(ctx context.Context) bool {
-	if s == nil || s.q == nil {
-		return false
-	}
-	refresh, err := s.getSetting(ctx, KeyRefreshToken)
-	return err == nil && strings.TrimSpace(refresh) != ""
-}
-
 // BeginConnect starts the OAuth flow and returns the Google authorization URL.
 func (s *Service) BeginConnect(ctx context.Context) (authorizationURL string, err error) {
 	if err := s.cfg.Validate(); err != nil {
@@ -185,7 +174,10 @@ func (s *Service) HandleCallback(ctx context.Context, code, state, errParam, err
 		email = ""
 	}
 
-	if err := s.saveToken(ctx, tok, email); err != nil {
+	if err := s.saveToken(ctx, tok, &connectionMetadata{
+		AccountEmail: email,
+		ConnectedAt:  time.Now().UTC(),
+	}); err != nil {
 		return CallbackResult{}, fmt.Errorf("save token: %w", err)
 	}
 	return CallbackResult{OK: true, Message: "connected"}, nil

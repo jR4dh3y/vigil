@@ -751,12 +751,13 @@ export interface components {
             recordingEnabled?: boolean;
         };
         GDriveStatus: {
-            /** @description True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL are set */
+            /** @description True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL and a non-empty NVR_SECRETS_KEY are set */
             configured: boolean;
             /** @description True when stored credentials can be decrypted */
             connected: boolean;
             /** @description Recoverable stored-credential problem; reconnecting resolves it */
             connectionError?: string;
+            /** @description Connected Google account email; returned only to administrators */
             accountEmail?: string;
             /** Format: date-time */
             connectedAt?: string;
@@ -767,8 +768,11 @@ export interface components {
             authorizationUrl: string;
         };
         GDriveArchiveRequest: {
-            /** @description Max segments to archive in this batch (default 50) */
-            limit?: number;
+            /**
+             * @description Max segments to archive in this batch (default 50)
+             * @default 50
+             */
+            limit: number;
         };
         GDriveArchiveResponse: {
             uploaded: number;

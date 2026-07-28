@@ -188,8 +188,8 @@ func (s *Scheduler) pruneRecordings(ctx context.Context) {
 		n   int64
 		err error
 	)
-	if s.cfg.GDrive != nil && s.cfg.GDrive.HasStoredConnection(ctx) {
-		// A linked archive target makes archive-before-prune the durable policy:
+	if s.cfg.GDrive != nil && s.cfg.GDrive.Connected(ctx) {
+		// A usable linked archive target makes archive-before-prune the durable policy:
 		// failed/pending uploads remain indexed for the next retry.
 		n, err = s.cfg.Recording.PruneArchived(ctx)
 	} else {

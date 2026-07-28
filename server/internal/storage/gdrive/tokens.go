@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -16,15 +17,14 @@ import (
 
 // Settings keys for Google Drive OAuth state and tokens.
 const (
-	KeyAccessToken       = "gdrive.access_token"
-	KeyRefreshToken      = "gdrive.refresh_token"
-	KeyTokenExpiry       = "gdrive.token_expiry"
-	KeyTokenType         = "gdrive.token_type"
-	KeyAccountEmail      = "gdrive.account_email"
-	KeyConnectedAt       = "gdrive.connected_at"
-	KeyFolderID          = "gdrive.folder_id"
-	KeyOAuthState        = "gdrive.oauth_state"
-	KeyOAuthStateExpires = "gdrive.oauth_state_expires"
+	KeyAccessToken  = "gdrive.access_token"
+	KeyRefreshToken = "gdrive.refresh_token"
+	KeyTokenExpiry  = "gdrive.token_expiry"
+	KeyTokenType    = "gdrive.token_type"
+	KeyAccountEmail = "gdrive.account_email"
+	KeyConnectedAt  = "gdrive.connected_at"
+	KeyFolderID     = "gdrive.folder_id"
+	KeyOAuthStates  = "gdrive.oauth_states"
 )
 
 var allTokenKeys = []string{
@@ -35,15 +35,30 @@ var allTokenKeys = []string{
 	KeyAccountEmail,
 	KeyConnectedAt,
 	KeyFolderID,
-	KeyOAuthState,
-	KeyOAuthStateExpires,
+	KeyOAuthStates,
+}
+
+const maxPendingOAuthStates = 16
+
+type oauthStateEntry struct {
+	Value     string    `json:"value"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+type connectionMetadata struct {
+	AccountEmail string
+	ConnectedAt  time.Time
 }
 
 func (s *Service) getSetting(ctx context.Context, key string) (string, error) {
 	if s == nil || s.q == nil {
 		return "", fmt.Errorf("settings store is not configured")
 	}
-	row, err := s.q.GetSetting(ctx, key)
+	return getSetting(ctx, s.q, key)
+}
+
+func getSetting(ctx context.Context, q *store.Queries, key string) (string, error) {
+	row, err := q.GetSetting(ctx, key)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
@@ -60,54 +75,105 @@ func (s *Service) setSetting(ctx context.Context, key, value string) error {
 	return s.q.UpsertSetting(ctx, store.UpsertSettingParams{Key: key, Value: value})
 }
 
-func (s *Service) deleteSetting(ctx context.Context, key string) error {
+func (s *Service) saveOAuthState(ctx context.Context, state string, expires time.Time) error {
 	if s == nil || s.q == nil {
 		return fmt.Errorf("settings store is not configured")
 	}
-	return s.q.DeleteSetting(ctx, key)
-}
-
-func (s *Service) saveOAuthState(ctx context.Context, state string, expires time.Time) error {
-	if err := s.setSetting(ctx, KeyOAuthState, state); err != nil {
-		return err
-	}
-	return s.setSetting(ctx, KeyOAuthStateExpires, expires.UTC().Format(time.RFC3339))
+	return store.InTransaction(ctx, s.q, func(q *store.Queries) error {
+		states, err := loadOAuthStates(ctx, q)
+		if err != nil {
+			return err
+		}
+		now := time.Now().UTC()
+		active := make([]oauthStateEntry, 0, len(states)+1)
+		for _, pending := range states {
+			if pending.ExpiresAt.After(now) {
+				active = append(active, pending)
+			}
+		}
+		active = append(active, oauthStateEntry{
+			Value:     state,
+			ExpiresAt: expires.UTC(),
+		})
+		if len(active) > maxPendingOAuthStates {
+			active = active[len(active)-maxPendingOAuthStates:]
+		}
+		return saveOAuthStates(ctx, q, active)
+	})
 }
 
 func (s *Service) consumeOAuthState(ctx context.Context, state string) error {
-	stored, err := s.getSetting(ctx, KeyOAuthState)
-	if err != nil {
-		return err
-	}
-	if stored == "" || subtle.ConstantTimeCompare([]byte(stored), []byte(state)) != 1 {
-		return fmt.Errorf("invalid oauth state")
-	}
-	expStr, err := s.getSetting(ctx, KeyOAuthStateExpires)
-	if err != nil {
-		return err
-	}
-	// Single-use: clear before further checks so retries cannot reuse.
-	if err := s.deleteSetting(ctx, KeyOAuthState); err != nil {
-		return fmt.Errorf("consume oauth state: %w", err)
-	}
-	if err := s.deleteSetting(ctx, KeyOAuthStateExpires); err != nil {
-		return fmt.Errorf("consume oauth state expiry: %w", err)
+	if s == nil || s.q == nil {
+		return fmt.Errorf("settings store is not configured")
 	}
 
-	if expStr == "" {
-		return fmt.Errorf("oauth state expired")
-	}
-	exp, err := time.Parse(time.RFC3339, expStr)
+	var stateErr error
+	err := store.InTransaction(ctx, s.q, func(q *store.Queries) error {
+		states, err := loadOAuthStates(ctx, q)
+		if err != nil {
+			return err
+		}
+		now := time.Now().UTC()
+		remaining := make([]oauthStateEntry, 0, len(states))
+		matched := false
+		for _, pending := range states {
+			isMatch := subtle.ConstantTimeCompare([]byte(pending.Value), []byte(state)) == 1
+			if isMatch {
+				matched = true
+				if !pending.ExpiresAt.After(now) {
+					stateErr = fmt.Errorf("oauth state expired")
+				}
+				continue
+			}
+			if pending.ExpiresAt.After(now) {
+				remaining = append(remaining, pending)
+			}
+		}
+		if !matched {
+			stateErr = fmt.Errorf("invalid oauth state")
+		}
+		return saveOAuthStates(ctx, q, remaining)
+	})
 	if err != nil {
-		return fmt.Errorf("oauth state expiry: %w", err)
+		return err
 	}
-	if time.Now().UTC().After(exp) {
-		return fmt.Errorf("oauth state expired")
-	}
-	return nil
+	return stateErr
 }
 
-func (s *Service) saveToken(ctx context.Context, tok *oauth2.Token, email string) error {
+func loadOAuthStates(ctx context.Context, q *store.Queries) ([]oauthStateEntry, error) {
+	raw, err := getSetting(ctx, q, KeyOAuthStates)
+	if err != nil || raw == "" {
+		return nil, err
+	}
+	var states []oauthStateEntry
+	if err := json.Unmarshal([]byte(raw), &states); err != nil {
+		return nil, fmt.Errorf("decode oauth states: %w", err)
+	}
+	return states, nil
+}
+
+func saveOAuthStates(ctx context.Context, q *store.Queries, states []oauthStateEntry) error {
+	if len(states) == 0 {
+		return q.DeleteSetting(ctx, KeyOAuthStates)
+	}
+	raw, err := json.Marshal(states)
+	if err != nil {
+		return fmt.Errorf("encode oauth states: %w", err)
+	}
+	return q.UpsertSetting(ctx, store.UpsertSettingParams{
+		Key:   KeyOAuthStates,
+		Value: string(raw),
+	})
+}
+
+func (s *Service) saveToken(
+	ctx context.Context,
+	tok *oauth2.Token,
+	metadata *connectionMetadata,
+) error {
+	if s == nil || s.q == nil {
+		return fmt.Errorf("settings store is not configured")
+	}
 	if tok == nil {
 		return fmt.Errorf("nil token")
 	}
@@ -127,41 +193,69 @@ func (s *Service) saveToken(ctx context.Context, tok *oauth2.Token, email string
 		return fmt.Errorf("encrypt refresh token: %w", err)
 	}
 
-	if err := s.setSetting(ctx, KeyAccessToken, encAccess); err != nil {
-		return err
-	}
-	if err := s.setSetting(ctx, KeyRefreshToken, encRefresh); err != nil {
-		return err
-	}
 	tokenType := tok.TokenType
 	if tokenType == "" {
 		tokenType = "Bearer"
 	}
-	if err := s.setSetting(ctx, KeyTokenType, tokenType); err != nil {
-		return err
-	}
-	if !tok.Expiry.IsZero() {
-		if err := s.setSetting(ctx, KeyTokenExpiry, tok.Expiry.UTC().Format(time.RFC3339)); err != nil {
+
+	return store.InTransaction(ctx, s.q, func(q *store.Queries) error {
+		settings := []store.UpsertSettingParams{
+			{Key: KeyAccessToken, Value: encAccess},
+			{Key: KeyRefreshToken, Value: encRefresh},
+			{Key: KeyTokenType, Value: tokenType},
+		}
+		if !tok.Expiry.IsZero() {
+			settings = append(settings, store.UpsertSettingParams{
+				Key:   KeyTokenExpiry,
+				Value: tok.Expiry.UTC().Format(time.RFC3339),
+			})
+		}
+		if metadata != nil {
+			connectedAt := metadata.ConnectedAt
+			if connectedAt.IsZero() {
+				connectedAt = time.Now().UTC()
+			}
+			settings = append(settings,
+				store.UpsertSettingParams{
+					Key:   KeyAccountEmail,
+					Value: strings.TrimSpace(metadata.AccountEmail),
+				},
+				store.UpsertSettingParams{
+					Key:   KeyConnectedAt,
+					Value: connectedAt.UTC().Format(time.RFC3339),
+				},
+			)
+		}
+		for _, setting := range settings {
+			if err := q.UpsertSetting(ctx, setting); err != nil {
+				return fmt.Errorf("save %s: %w", setting.Key, err)
+			}
+		}
+		if tok.Expiry.IsZero() {
+			if err := q.DeleteSetting(ctx, KeyTokenExpiry); err != nil {
+				return fmt.Errorf("clear %s: %w", KeyTokenExpiry, err)
+			}
+		}
+		if metadata != nil {
+			if err := q.DeleteSetting(ctx, KeyFolderID); err != nil {
+				return fmt.Errorf("clear %s: %w", KeyFolderID, err)
+			}
+			return nil
+		}
+		connectedAt, err := getSetting(ctx, q, KeyConnectedAt)
+		if err != nil {
 			return err
 		}
-	}
-	if email != "" {
-		if err := s.setSetting(ctx, KeyAccountEmail, email); err != nil {
-			return err
+		if connectedAt == "" {
+			if err := q.UpsertSetting(ctx, store.UpsertSettingParams{
+				Key:   KeyConnectedAt,
+				Value: time.Now().UTC().Format(time.RFC3339),
+			}); err != nil {
+				return fmt.Errorf("save %s: %w", KeyConnectedAt, err)
+			}
 		}
-	}
-	// Preserve first-connect timestamp on token refresh (email empty).
-	if email != "" {
-		return s.setSetting(ctx, KeyConnectedAt, time.Now().UTC().Format(time.RFC3339))
-	}
-	existing, err := s.getSetting(ctx, KeyConnectedAt)
-	if err != nil {
-		return err
-	}
-	if existing != "" {
 		return nil
-	}
-	return s.setSetting(ctx, KeyConnectedAt, time.Now().UTC().Format(time.RFC3339))
+	})
 }
 
 func (s *Service) loadToken(ctx context.Context) (*oauth2.Token, error) {
@@ -208,11 +302,15 @@ func (s *Service) loadToken(ctx context.Context) (*oauth2.Token, error) {
 }
 
 func (s *Service) clearAllGDriveSettings(ctx context.Context) error {
-	var first error
-	for _, key := range allTokenKeys {
-		if err := s.deleteSetting(ctx, key); err != nil && first == nil {
-			first = err
-		}
+	if s == nil || s.q == nil {
+		return fmt.Errorf("settings store is not configured")
 	}
-	return first
+	return store.InTransaction(ctx, s.q, func(q *store.Queries) error {
+		for _, key := range allTokenKeys {
+			if err := q.DeleteSetting(ctx, key); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

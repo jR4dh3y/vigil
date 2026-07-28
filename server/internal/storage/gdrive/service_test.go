@@ -38,7 +38,10 @@ func newTestService(t *testing.T) *Service {
 		RefreshToken: "refresh-token",
 		TokenType:    "Bearer",
 		Expiry:       time.Now().Add(time.Hour),
-	}, "admin@example.com"); err != nil {
+	}, &connectionMetadata{
+		AccountEmail: "admin@example.com",
+		ConnectedAt:  time.Now().UTC(),
+	}); err != nil {
 		t.Fatalf("save token: %v", err)
 	}
 	return service
@@ -83,9 +86,6 @@ func TestStatusAllowsRecoveryFromWrongSecretsKey(t *testing.T) {
 	if status.ConnectionError == "" {
 		t.Fatalf("expected recoverable connection error: %+v", status)
 	}
-	if !service.HasStoredConnection(context.Background()) {
-		t.Fatal("stored connection must remain visible to retention protection")
-	}
 }
 
 func TestOAuthStateIsSingleUse(t *testing.T) {
@@ -129,6 +129,73 @@ func TestOAuthStateIsSingleUse(t *testing.T) {
 	}
 	if reused.OK || reused.Message != "invalid or expired state" {
 		t.Fatalf("state was reusable: %+v", reused)
+	}
+}
+
+func TestOAuthStateAllowsConcurrentConnectionFlows(t *testing.T) {
+	service := newTestService(t)
+
+	firstURL, err := service.BeginConnect(context.Background())
+	if err != nil {
+		t.Fatalf("first BeginConnect: %v", err)
+	}
+	secondURL, err := service.BeginConnect(context.Background())
+	if err != nil {
+		t.Fatalf("second BeginConnect: %v", err)
+	}
+
+	for name, authorizationURL := range map[string]string{
+		"first":  firstURL,
+		"second": secondURL,
+	} {
+		t.Run(name, func(t *testing.T) {
+			parsed, err := url.Parse(authorizationURL)
+			if err != nil {
+				t.Fatalf("parse authorization URL: %v", err)
+			}
+			result, err := service.HandleCallback(
+				context.Background(),
+				"",
+				parsed.Query().Get("state"),
+				"access_denied",
+				"",
+			)
+			if err != nil {
+				t.Fatalf("HandleCallback: %v", err)
+			}
+			if result.OK || result.Message != "access denied" {
+				t.Fatalf("unexpected callback result: %+v", result)
+			}
+		})
+	}
+}
+
+func TestSaveConnectedTokenClearsStaleAccountMetadata(t *testing.T) {
+	service := newTestService(t)
+	if err := service.setSetting(context.Background(), KeyFolderID, "old-folder"); err != nil {
+		t.Fatalf("set old folder: %v", err)
+	}
+
+	if err := service.saveToken(context.Background(), &oauth2.Token{
+		AccessToken:  "new-access-token",
+		RefreshToken: "new-refresh-token",
+		Expiry:       time.Now().Add(time.Hour),
+	}, &connectionMetadata{
+		AccountEmail: "",
+		ConnectedAt:  time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("save replacement token: %v", err)
+	}
+
+	status, err := service.Status(context.Background())
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if status.AccountEmail != "" {
+		t.Fatalf("stale account email retained: %q", status.AccountEmail)
+	}
+	if status.FolderID != "" {
+		t.Fatalf("stale folder id retained: %q", status.FolderID)
 	}
 }
 

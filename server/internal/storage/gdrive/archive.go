@@ -40,7 +40,7 @@ const DefaultArchiveBatchLimit = 100
 // the service's single-flight lock.
 var ErrArchiveInProgress = errors.New("google drive archive already in progress")
 
-// Connected reports whether a refresh token is stored (Drive is linked).
+// Connected reports whether stored Drive credentials are configured and decryptable.
 func (s *Service) Connected(ctx context.Context) bool {
 	if s == nil || s.q == nil {
 		return false

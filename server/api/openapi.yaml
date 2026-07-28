@@ -1395,7 +1395,7 @@ components:
       properties:
         configured:
           type: boolean
-          description: True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL are set
+          description: True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL and a non-empty NVR_SECRETS_KEY are set
         connected:
           type: boolean
           description: True when stored credentials can be decrypted
@@ -1404,6 +1404,7 @@ components:
           description: Recoverable stored-credential problem; reconnecting resolves it
         accountEmail:
           type: string
+          description: Connected Google account email; returned only to administrators
         connectedAt:
           type: string
           format: date-time
@@ -1422,7 +1423,8 @@ components:
         limit:
           type: integer
           minimum: 1
-          maximum: 500
+          maximum: 50
+          default: 50
           description: Max segments to archive in this batch (default 50)
     GDriveArchiveResponse:
       type: object

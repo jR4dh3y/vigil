@@ -69,7 +69,7 @@ export async function postGDriveArchive(
 	body?: GDriveArchiveRequest,
 ): Promise<GDriveArchiveResponse> {
 	const { data, error, response } = await api.POST("/storage/gdrive/archive", {
-		body: body ?? {},
+		body: body ?? { limit: 50 },
 	});
 	if (data) {
 		return data;

@@ -18,21 +18,14 @@ const DefaultGDriveArchiveLimit = 100
 // Safe to call from the API and from the midnight cron job.
 func (s *Scheduler) RunGDriveArchive(ctx context.Context, limit int) (gdrive.ArchiveStats, error) {
 	var zero gdrive.ArchiveStats
-	if s.cfg.GDrive == nil {
-		return zero, fmt.Errorf("google drive is not configured")
-	}
-	if s.cfg.Recording == nil {
-		return zero, fmt.Errorf("recording service is not configured")
-	}
-	if !s.cfg.GDrive.Connected(ctx) {
-		return zero, fmt.Errorf("google drive is not connected")
+	index, err := storage.PrepareGDriveArchive(ctx, s.cfg.GDrive, s.cfg.Recording)
+	if err != nil {
+		return zero, err
 	}
 	if limit <= 0 {
 		limit = DefaultGDriveArchiveLimit
 	}
-	return s.cfg.GDrive.ArchivePending(ctx, storage.RecordingArchiveIndex{
-		Recording: s.cfg.Recording,
-	}, limit)
+	return s.cfg.GDrive.ArchivePending(ctx, index, limit)
 }
 
 func (s *Scheduler) archiveToGDrive(ctx context.Context) {

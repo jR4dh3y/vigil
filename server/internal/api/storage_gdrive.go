@@ -1,19 +1,28 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/nvr/nvr/server/internal/auth"
 	"github.com/nvr/nvr/server/internal/storage"
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
 )
 
+const (
+	defaultGDriveArchiveLimit = 50
+	maxGDriveArchiveLimit     = 50
+	gDriveArchiveTimeout      = 30 * time.Second
+)
+
 // GetGDriveStatus returns Google Drive OAuth configuration and connection status.
 func (s *Server) GetGDriveStatus(w http.ResponseWriter, r *http.Request) {
-	if requireUser(w, r) == nil {
+	user := requireUser(w, r)
+	if user == nil {
 		return
 	}
 	if s.GDrive == nil {
@@ -37,7 +46,7 @@ func (s *Server) GetGDriveStatus(w http.ResponseWriter, r *http.Request) {
 		connectionError := st.ConnectionError
 		out.ConnectionError = &connectionError
 	}
-	if st.AccountEmail != "" {
+	if st.AccountEmail != "" && user.Role == auth.RoleAdmin {
 		email := st.AccountEmail
 		out.AccountEmail = &email
 	}
@@ -132,44 +141,41 @@ func (s *Server) PostGDriveArchive(w http.ResponseWriter, r *http.Request) {
 	if requireAdmin(w, r) == nil {
 		return
 	}
-	if s.GDrive == nil {
-		writeError(w, http.StatusBadRequest, "google drive is not configured", "not_configured")
-		return
-	}
-	if s.Recording == nil {
-		writeError(w, http.StatusBadRequest, "recording service is not configured", "not_configured")
-		return
-	}
-	if !s.GDrive.Connected(r.Context()) {
-		writeError(w, http.StatusBadRequest, "google drive is not connected", "not_connected")
+	index, err := storage.PrepareGDriveArchive(r.Context(), s.GDrive, s.Recording)
+	if err != nil {
+		writeGDriveArchivePreconditionError(w, err)
 		return
 	}
 
-	limit := 50
+	limit := defaultGDriveArchiveLimit
 	if r.Body != nil && r.Body != http.NoBody {
 		var body GDriveArchiveRequest
 		// Empty body is allowed (optional requestBody).
-		err := decodeJSON(r, &body)
+		err = decodeJSON(r, &body)
 		if err != nil && err != io.EOF {
 			writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
 			return
 		}
 		if err == nil && body.Limit != nil {
-			if *body.Limit < 1 || *body.Limit > 500 {
-				writeError(w, http.StatusBadRequest, "limit must be between 1 and 500", "validation")
+			if *body.Limit < 1 || *body.Limit > maxGDriveArchiveLimit {
+				writeError(w, http.StatusBadRequest, "limit must be between 1 and 50", "validation")
 				return
 			}
 			limit = *body.Limit
 		}
 	}
 
-	stats, err := s.GDrive.ArchivePending(r.Context(), storage.RecordingArchiveIndex{
-		Recording: s.Recording,
-	}, limit)
+	archiveCtx, cancel := context.WithTimeout(r.Context(), gDriveArchiveTimeout)
+	defer cancel()
+	stats, err := s.GDrive.ArchivePending(archiveCtx, index, limit)
 	if err != nil {
 		slog.Error("gdrive archive", "err", err)
 		if errors.Is(err, gdrive.ErrArchiveInProgress) {
 			writeError(w, http.StatusConflict, err.Error(), "archive_in_progress")
+			return
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			writeError(w, http.StatusGatewayTimeout, "archive request timed out", "archive_timeout")
 			return
 		}
 		writeError(w, http.StatusBadRequest, "archive failed", "archive_failed")
@@ -180,4 +186,17 @@ func (s *Server) PostGDriveArchive(w http.ResponseWriter, r *http.Request) {
 		Failed:   stats.Failed,
 		Skipped:  stats.Skipped,
 	})
+}
+
+func writeGDriveArchivePreconditionError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, storage.ErrGDriveNotConfigured):
+		writeError(w, http.StatusBadRequest, err.Error(), "not_configured")
+	case errors.Is(err, storage.ErrRecordingNotConfigured):
+		writeError(w, http.StatusBadRequest, err.Error(), "not_configured")
+	case errors.Is(err, storage.ErrGDriveNotConnected):
+		writeError(w, http.StatusBadRequest, err.Error(), "not_connected")
+	default:
+		writeError(w, http.StatusBadRequest, "archive failed", "archive_failed")
+	}
 }

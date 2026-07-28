@@ -62,7 +62,7 @@ func (p *persistingTokenSource) Token() (*oauth2.Token, error) {
 		if toSave.RefreshToken == "" {
 			toSave.RefreshToken = p.refresh
 		}
-		if err := p.svc.saveToken(context.Background(), &toSave, ""); err != nil {
+		if err := p.svc.saveToken(context.Background(), &toSave, nil); err != nil {
 			slog.Warn("gdrive persist refreshed token", "err", err)
 		}
 		p.last = tok
