@@ -1,14 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
 import { login } from "@/features/auth/api";
 import { AuthScreen } from "@/features/auth/components/auth-screen";
 import { authKeys } from "@/features/auth/keys";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
-import { apiBaseUrl } from "@/lib/api/config";
+import { RecorderLink } from "@/features/server/components/recorder-link";
 import { ApiError } from "@/lib/api/error";
-import { colors } from "@/theme/colors";
 
 export default function LoginScreen() {
 	const queryClient = useQueryClient();
@@ -44,7 +42,7 @@ export default function LoginScreen() {
 		<AuthScreen
 			description="Sign in with the same account you use on the web dashboard."
 			error={error}
-			footer={<Text style={styles.server}>Server · {apiBaseUrl}</Text>}
+			footer={<RecorderLink />}
 			onPasswordChange={setPassword}
 			onSubmit={() => {
 				setError(null);
@@ -59,12 +57,3 @@ export default function LoginScreen() {
 		/>
 	);
 }
-
-const styles = StyleSheet.create({
-	server: {
-		color: colors.secondaryLabel,
-		fontSize: 12,
-		paddingHorizontal: 8,
-		textAlign: "center",
-	},
-});

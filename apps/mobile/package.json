@@ -1,6 +1,6 @@
 {
 	"name": "@nvr/mobile",
-	"description": "NVR mobile — live view, events, push (not admin)",
+	"description": "Vigil mobile — live view, event playback, and alerts",
 	"license": "0BSD",
 	"version": "57.0.9",
 	"main": "expo-router/entry",

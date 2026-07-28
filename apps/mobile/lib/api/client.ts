@@ -1,5 +1,5 @@
 import { createApiClient, type Middleware } from "@nvr/api-client";
-import { apiBaseUrl } from "@/lib/api/config";
+import { getApiBaseUrl } from "@/lib/api/config";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/lib/api/session";
 
 const SESSION_HEADER = "X-Session-Token";
@@ -38,5 +38,18 @@ const sessionMiddleware: Middleware = {
 	},
 };
 
-export const api = createApiClient(apiBaseUrl, { credentials: "include" });
-api.use(sessionMiddleware);
+let cachedBaseUrl: string | null = null;
+let cachedClient: ReturnType<typeof createApiClient> | null = null;
+
+export function getApiClient(): ReturnType<typeof createApiClient> {
+	const baseUrl = getApiBaseUrl();
+	if (cachedClient && cachedBaseUrl === baseUrl) {
+		return cachedClient;
+	}
+
+	const client = createApiClient(baseUrl, { credentials: "include" });
+	client.use(sessionMiddleware);
+	cachedBaseUrl = baseUrl;
+	cachedClient = client;
+	return client;
+}

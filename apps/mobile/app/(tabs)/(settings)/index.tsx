@@ -1,12 +1,17 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text } from "react-native";
 import { logout } from "@/features/auth/api";
 import { authKeys } from "@/features/auth/keys";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
+import { useNotificationPreference } from "@/features/notifications/use-notification-preference";
+import { useApiBaseUrl } from "@/features/server/use-api-base-url";
 import { SettingsGroup } from "@/features/settings/components/settings-group";
+import { SettingsLinkRow } from "@/features/settings/components/settings-link-row";
 import { SettingsRow } from "@/features/settings/components/settings-row";
-import { apiBaseUrl } from "@/lib/api/config";
+import { getSystemStatus, systemKeys } from "@/features/system/api";
+import { SystemSummary } from "@/features/system/components/system-summary";
 import { useAppStore } from "@/lib/store";
 import { colors } from "@/theme/colors";
 
@@ -16,8 +21,13 @@ export default function SettingsScreen() {
 	const user = auth.data?.user;
 	const armed = useAppStore((state) => state.armed);
 	const setArmed = useAppStore((state) => state.setArmed);
-	const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
-	const setNotificationsEnabled = useAppStore((state) => state.setNotificationsEnabled);
+	const notificationPreference = useNotificationPreference();
+	const apiBaseUrl = useApiBaseUrl();
+	const statusQuery = useQuery({
+		queryKey: systemKeys.status,
+		queryFn: getSystemStatus,
+		refetchInterval: 30_000,
+	});
 
 	const logoutMutation = useMutation({
 		mutationFn: logout,
@@ -43,7 +53,7 @@ export default function SettingsScreen() {
 			</SettingsGroup>
 
 			<SettingsGroup
-				footer="Arming controls whether this device surfaces new activity alerts. Live video remains available."
+				footer="On-device alerts are checked while Vigil is running. Remote push requires notification support from the recorder."
 				title="Monitoring"
 			>
 				<SettingsRow
@@ -56,26 +66,43 @@ export default function SettingsScreen() {
 				<SettingsRow
 					control={
 						<Switch
-							onValueChange={setNotificationsEnabled}
+							disabled={notificationPreference.requesting}
+							onValueChange={(enabled) => {
+								void notificationPreference.update(enabled).then((granted) => {
+									if (enabled && !granted) {
+										Alert.alert(
+											"Notifications are off",
+											"Allow notifications in system settings, then try again.",
+										);
+									}
+								});
+							}}
 							trackColor={{ true: colors.green }}
-							value={notificationsEnabled}
+							value={notificationPreference.enabled}
 						/>
 					}
-					detail="Critical and warning events"
+					detail="Warning and critical events"
 					label="Notifications"
 					last
 				/>
 			</SettingsGroup>
 
+			{statusQuery.data ? <SystemSummary status={statusQuery.data} /> : null}
+
 			<SettingsGroup
-				footer="Set EXPO_PUBLIC_API_URL to point this app at your recorder. The URL is bundled with the app and must not contain credentials."
+				footer={
+					statusQuery.isError
+						? `Status unavailable: ${statusQuery.error.message}`
+						: "The recorder address is stored on this device and must not contain credentials."
+				}
 				title="Recorder"
 			>
-				<SettingsRow label="Server" last value={apiBaseUrl} />
+				<SettingsLinkRow href="/server" label="Server" last value={apiBaseUrl} />
 			</SettingsGroup>
 
 			<SettingsGroup title="About">
-				<SettingsRow label="App" value="NVR Mobile" />
+				<SettingsRow label="App" value="Vigil" />
+				<SettingsRow label="Version" value={Constants.expoConfig?.version ?? "—"} />
 				<SettingsRow label="Scope" last value="Live · Events · Alerts" />
 			</SettingsGroup>
 

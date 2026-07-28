@@ -2,10 +2,12 @@ import { Redirect } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
+import { useEventAlerts } from "@/features/notifications/use-event-alerts";
 import { colors } from "@/theme/colors";
 
 export default function TabsLayout() {
 	const auth = useAuthStatus();
+	const unacknowledgedCount = useEventAlerts(Boolean(auth.data?.user));
 
 	if (auth.isPending) {
 		return (
@@ -36,6 +38,11 @@ export default function TabsLayout() {
 			<NativeTabs.Trigger name="(events)">
 				<NativeTabs.Trigger.Icon sf="bell.fill" md="notifications" />
 				<NativeTabs.Trigger.Label>Events</NativeTabs.Trigger.Label>
+				{unacknowledgedCount > 0 ? (
+					<NativeTabs.Trigger.Badge>
+						{unacknowledgedCount > 99 ? "99+" : String(unacknowledgedCount)}
+					</NativeTabs.Trigger.Badge>
+				) : null}
 			</NativeTabs.Trigger>
 			<NativeTabs.Trigger name="(settings)">
 				<NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />

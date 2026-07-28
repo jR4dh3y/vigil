@@ -1,16 +1,22 @@
 {
 	"expo": {
-		"name": "NVR",
-		"slug": "nvr",
+		"name": "Vigil",
+		"slug": "vigil",
 		"version": "0.0.1",
 		"orientation": "portrait",
 		"icon": "./assets/icon.png",
-		"scheme": "nvr",
+		"scheme": "vigil",
 		"userInterfaceStyle": "automatic",
 		"newArchEnabled": true,
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.nvr.app"
+			"bundleIdentifier": "com.nvr.app",
+			"infoPlist": {
+				"NSLocalNetworkUsageDescription": "Vigil connects to your recorder on the local network.",
+				"NSAppTransportSecurity": {
+					"NSAllowsLocalNetworking": true
+				}
+			}
 		},
 		"android": {
 			"adaptiveIcon": {

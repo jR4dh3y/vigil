@@ -1,6 +1,8 @@
+import type { Camera } from "@nvr/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useIsFocused } from "expo-router/react-navigation";
+import { useCallback } from "react";
+import { FlatList, type ListRenderItem, RefreshControl, StyleSheet, View } from "react-native";
 import { SectionHeading } from "@/components/section-heading";
 import { StatePanel } from "@/components/state-panel";
 import { cameraKeys, listCameras } from "@/features/cameras/api";
@@ -9,36 +11,29 @@ import { CameraCard } from "@/features/cameras/components/camera-card";
 import { colors } from "@/theme/colors";
 
 export default function LiveScreen() {
+	const isFocused = useIsFocused();
 	const camerasQuery = useQuery({
 		queryKey: cameraKeys.all,
 		queryFn: listCameras,
+		enabled: isFocused,
 		refetchInterval: 30_000,
 	});
 	const cameras = camerasQuery.data ?? [];
 	const onlineCount = cameras.filter((camera) => camera.status === "online").length;
+	const renderCamera = useCallback<ListRenderItem<Camera>>(
+		({ item }) => <CameraCard active={isFocused} camera={item} />,
+		[isFocused],
+	);
 
 	return (
-		<ScrollView
+		<FlatList
 			contentInsetAdjustmentBehavior="automatic"
 			contentContainerStyle={styles.content}
-			refreshControl={
-				<RefreshControl
-					refreshing={camerasQuery.isRefetching}
-					onRefresh={() => camerasQuery.refetch()}
-					tintColor={colors.accent}
-				/>
-			}
-			style={styles.screen}
-		>
-			<ArmCard />
-
-			<View style={styles.section}>
-				<SectionHeading
-					detail={cameras.length > 0 ? `${onlineCount} of ${cameras.length} online` : undefined}
-					title="Cameras"
-				/>
-
-				{camerasQuery.isPending ? (
+			data={cameras}
+			ItemSeparatorComponent={CameraSeparator}
+			keyExtractor={cameraKey}
+			ListEmptyComponent={
+				camerasQuery.isPending ? (
 					<StatePanel detail="Checking camera availability…" loading title="Connecting" />
 				) : camerasQuery.isError ? (
 					<StatePanel
@@ -47,25 +42,41 @@ export default function LiveScreen() {
 						onAction={() => camerasQuery.refetch()}
 						title="Cameras are out of reach"
 					/>
-				) : cameras.length === 0 ? (
+				) : (
 					<StatePanel
 						detail="Add and enable a camera from the web dashboard, then it will appear here."
 						title="No cameras yet"
 					/>
-				) : (
-					<View style={styles.grid}>
-						{cameras.map((camera) => (
-							<CameraCard
-								camera={camera}
-								key={camera.id}
-								onPress={() => router.push({ pathname: "/camera/[id]", params: { id: camera.id } })}
-							/>
-						))}
-					</View>
-				)}
-			</View>
-		</ScrollView>
+				)
+			}
+			ListHeaderComponent={
+				<View style={styles.header}>
+					<ArmCard />
+					<SectionHeading
+						detail={cameras.length > 0 ? `${onlineCount} of ${cameras.length} online` : undefined}
+						title="Cameras"
+					/>
+				</View>
+			}
+			refreshControl={
+				<RefreshControl
+					refreshing={camerasQuery.isRefetching}
+					onRefresh={() => camerasQuery.refetch()}
+					tintColor={colors.accent}
+				/>
+			}
+			renderItem={renderCamera}
+			style={styles.screen}
+		/>
 	);
+}
+
+function cameraKey(camera: Camera): string {
+	return camera.id;
+}
+
+function CameraSeparator() {
+	return <View style={styles.separator} />;
 }
 
 const styles = StyleSheet.create({
@@ -74,14 +85,14 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	content: {
-		gap: 28,
 		padding: 16,
 		paddingBottom: 40,
 	},
-	section: {
-		gap: 14,
+	header: {
+		gap: 28,
+		paddingBottom: 14,
 	},
-	grid: {
-		gap: 14,
+	separator: {
+		height: 14,
 	},
 });
