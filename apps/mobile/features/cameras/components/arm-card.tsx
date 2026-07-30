@@ -20,7 +20,9 @@ export function ArmCard() {
 						{armed ? "Armed and watching" : "Monitoring paused"}
 					</Text>
 					<Text selectable style={styles.detail}>
-						{armed ? "Alerts are active for every camera." : "Live video is still available."}
+						{armed
+							? "This device will surface new camera alerts."
+							: "Live video is still available."}
 					</Text>
 				</View>
 			</View>

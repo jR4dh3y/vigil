@@ -10,6 +10,11 @@ const dayFormatter = new Intl.DateTimeFormat(undefined, {
 	day: "numeric",
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+	dateStyle: "medium",
+	timeStyle: "short",
+});
+
 export function formatEventTime(value: string): string {
 	const date = new Date(value);
 	const today = new Date();
@@ -17,6 +22,10 @@ export function formatEventTime(value: string): string {
 	return isToday
 		? timeFormatter.format(date)
 		: `${dayFormatter.format(date)}, ${timeFormatter.format(date)}`;
+}
+
+export function formatEventDateTime(value: string): string {
+	return dateTimeFormatter.format(new Date(value));
 }
 
 export function eventEyebrow(event: Event): string {

@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import {
 	ActivityIndicator,
 	KeyboardAvoidingView,
-	Platform,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -45,7 +44,7 @@ export function AuthScreen({
 
 	return (
 		<KeyboardAvoidingView
-			behavior={Platform.OS === "ios" ? "padding" : undefined}
+			behavior={process.env.EXPO_OS === "ios" ? "padding" : undefined}
 			style={styles.flex}
 		>
 			<ScrollView
@@ -55,7 +54,7 @@ export function AuthScreen({
 				style={styles.flex}
 			>
 				<View style={styles.hero}>
-					<Text style={styles.kicker}>NVR</Text>
+					<Text style={styles.kicker}>Vigil</Text>
 					<Text style={styles.title}>{title}</Text>
 					<Text style={styles.description}>{description}</Text>
 				</View>

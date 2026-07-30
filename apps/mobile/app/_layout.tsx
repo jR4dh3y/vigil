@@ -4,16 +4,22 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-naviga
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
+import { useNotificationRouting } from "@/features/notifications/use-notification-routing";
+import { hydrateApiConfig } from "@/lib/api/config";
 import { hydrateSession } from "@/lib/api/session";
 import { queryClient } from "@/lib/query-client";
+import { hydrateAppPreferences } from "@/lib/store";
 import { colors } from "@/theme/colors";
 
 export default function RootLayout() {
 	const colorScheme = useColorScheme();
 	const [sessionReady, setSessionReady] = useState(false);
+	useNotificationRouting();
 
 	useEffect(() => {
-		void hydrateSession().finally(() => setSessionReady(true));
+		void Promise.all([hydrateApiConfig(), hydrateSession(), hydrateAppPreferences()]).finally(() =>
+			setSessionReady(true),
+		);
 	}, []);
 
 	if (!sessionReady) {
@@ -32,6 +38,15 @@ export default function RootLayout() {
 					<Stack.Screen name="(tabs)" />
 					<Stack.Screen name="login" options={{ animation: "fade" }} />
 					<Stack.Screen name="setup" options={{ animation: "fade" }} />
+					<Stack.Screen
+						name="server"
+						options={{
+							headerShown: true,
+							presentation: "formSheet",
+							sheetAllowedDetents: [0.75, 1],
+							sheetGrabberVisible: true,
+						}}
+					/>
 					<Stack.Screen name="+not-found" options={{ headerShown: true, title: "Not found" }} />
 				</Stack>
 			</ThemeProvider>

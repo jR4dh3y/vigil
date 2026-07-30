@@ -1,14 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
 import { setup } from "@/features/auth/api";
 import { AuthScreen } from "@/features/auth/components/auth-screen";
 import { authKeys } from "@/features/auth/keys";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
-import { apiBaseUrl } from "@/lib/api/config";
+import { RecorderLink } from "@/features/server/components/recorder-link";
 import { ApiError } from "@/lib/api/error";
-import { colors } from "@/theme/colors";
 
 export default function SetupScreen() {
 	const queryClient = useQueryClient();
@@ -41,7 +39,7 @@ export default function SetupScreen() {
 		<AuthScreen
 			description="Create the first admin account for this recorder. Password must be at least 8 characters."
 			error={error}
-			footer={<Text style={styles.server}>Server · {apiBaseUrl}</Text>}
+			footer={<RecorderLink />}
 			onPasswordChange={setPassword}
 			onSubmit={() => {
 				setError(null);
@@ -61,12 +59,3 @@ export default function SetupScreen() {
 		/>
 	);
 }
-
-const styles = StyleSheet.create({
-	server: {
-		color: colors.secondaryLabel,
-		fontSize: 12,
-		paddingHorizontal: 8,
-		textAlign: "center",
-	},
-});

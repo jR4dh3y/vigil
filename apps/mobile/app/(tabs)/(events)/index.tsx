@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import { Alert, FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { SectionHeading } from "@/components/section-heading";
 import { StatePanel } from "@/components/state-panel";
 import { acknowledgeEvent, eventKeys, listEvents } from "@/features/events/api";
@@ -22,6 +22,9 @@ export default function EventsScreen() {
 		onMutate: (id) => setAcknowledgingId(id),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: eventKeys.all });
+		},
+		onError: (error: Error) => {
+			Alert.alert("Could not review event", error.message);
 		},
 		onSettled: () => setAcknowledgingId(null),
 	});

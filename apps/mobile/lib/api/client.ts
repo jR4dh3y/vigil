@@ -1,5 +1,5 @@
 import { createApiClient, type Middleware } from "@nvr/api-client";
-import { apiBaseUrl } from "@/lib/api/config";
+import { getApiBaseUrl } from "@/lib/api/config";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/lib/api/session";
 
 const SESSION_HEADER = "X-Session-Token";
@@ -18,6 +18,13 @@ const sessionMiddleware: Middleware = {
 		return new Request(request, { headers });
 	},
 	async onResponse({ response, request }) {
+		// Ignore responses from a recorder that is no longer active: a request
+		// still in flight during a recorder switch must not persist the old
+		// recorder's session token or clear the new recorder's session.
+		if (!request.url.startsWith(getApiBaseUrl())) {
+			return undefined;
+		}
+
 		const issued = response.headers.get(SESSION_HEADER);
 		if (issued) {
 			await setSessionToken(issued);
@@ -38,5 +45,18 @@ const sessionMiddleware: Middleware = {
 	},
 };
 
-export const api = createApiClient(apiBaseUrl, { credentials: "include" });
-api.use(sessionMiddleware);
+let cachedBaseUrl: string | null = null;
+let cachedClient: ReturnType<typeof createApiClient> | null = null;
+
+export function getApiClient(): ReturnType<typeof createApiClient> {
+	const baseUrl = getApiBaseUrl();
+	if (cachedClient && cachedBaseUrl === baseUrl) {
+		return cachedClient;
+	}
+
+	const client = createApiClient(baseUrl, { credentials: "include" });
+	client.use(sessionMiddleware);
+	cachedBaseUrl = baseUrl;
+	cachedClient = client;
+	return client;
+}

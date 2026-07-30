@@ -1,6 +1,6 @@
 {
 	"name": "@nvr/mobile",
-	"description": "NVR mobile — live view, events, push (not admin)",
+	"description": "Vigil mobile — live view, event playback, and alerts",
 	"license": "0BSD",
 	"version": "57.0.9",
 	"main": "expo-router/entry",
@@ -8,6 +8,7 @@
 		"@nvr/api-client": "workspace:*",
 		"@tanstack/react-query": "^5.101.4",
 		"expo": "~57.0.7",
+		"expo-build-properties": "~57.0.8",
 		"expo-constants": "^57.0.6",
 		"expo-linking": "^57.0.3",
 		"expo-notifications": "^57.0.6",

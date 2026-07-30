@@ -1,4 +1,5 @@
 import type { Event, EventSeverity } from "@nvr/api-client";
+import { Link } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { eventEyebrow, formatEventTime, severityLabel } from "@/features/events/format";
 import { colors, swatches } from "@/theme/colors";
@@ -43,6 +44,16 @@ export function EventCard({ event, acknowledging, onAcknowledge }: EventCardProp
 					{event.message}
 				</Text>
 			</View>
+
+			<Link href={{ pathname: "/event/[id]", params: { id: event.id } }} asChild>
+				<Pressable
+					accessibilityHint="Shows event details and recorded video"
+					accessibilityRole="button"
+					style={({ pressed }) => [styles.detailAction, pressed ? styles.actionPressed : null]}
+				>
+					<Text style={styles.detailActionLabel}>View details</Text>
+				</Pressable>
+			</Link>
 
 			{event.acknowledged ? (
 				<Text style={styles.reviewed}>Reviewed</Text>
@@ -134,6 +145,22 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		paddingHorizontal: 14,
 		paddingVertical: 10,
+	},
+	detailAction: {
+		alignItems: "center",
+		borderColor: colors.separator,
+		borderCurve: "continuous",
+		borderRadius: 12,
+		borderWidth: StyleSheet.hairlineWidth,
+		minHeight: 40,
+		justifyContent: "center",
+		paddingHorizontal: 14,
+		paddingVertical: 10,
+	},
+	detailActionLabel: {
+		color: colors.accent,
+		fontSize: 13,
+		fontWeight: "700",
 	},
 	actionPressed: {
 		opacity: 0.6,
