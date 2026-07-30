@@ -20,7 +20,11 @@ export default function CameraScreen() {
 	const streamQuery = useQuery({
 		queryKey: cameraKeys.live(id),
 		queryFn: () => getLiveStream(id),
-		enabled: Boolean(id) && isFocused && cameraQuery.data?.status === "online" && cameraQuery.data?.enabled,
+		enabled:
+			Boolean(id) &&
+			isFocused &&
+			cameraQuery.data?.status === "online" &&
+			cameraQuery.data?.enabled,
 		staleTime: 45_000,
 		refetchInterval: (query) => liveRefetchInterval(query.state.data?.expiresAt),
 	});

@@ -24,7 +24,7 @@ export default function SettingsScreen() {
 	const notificationPreference = useNotificationPreference();
 	const apiBaseUrl = useApiBaseUrl();
 	const statusQuery = useQuery({
-		queryKey: systemKeys.status,
+		queryKey: systemKeys.status(apiBaseUrl),
 		queryFn: getSystemStatus,
 		refetchInterval: 30_000,
 	});

@@ -36,9 +36,10 @@ export function useWhepStream(uri: string): WhepStreamState {
 					return;
 				}
 
-				peer = new webRtc.RTCPeerConnection({
-					iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-				});
+				// No public STUN servers: recorders are reached over the local network,
+				// where host candidates suffice and streaming must not depend on (or
+				// leak to) third-party infrastructure.
+				peer = new webRtc.RTCPeerConnection({ iceServers: [] });
 				peer.addTransceiver("video", { direction: "recvonly" });
 				peer.addTransceiver("audio", { direction: "recvonly" });
 				peer.ontrack = (event: unknown) => {
@@ -53,11 +54,9 @@ export function useWhepStream(uri: string): WhepStreamState {
 					}
 				};
 				peer.onconnectionstatechange = () => {
-					if (
-						!cancelled &&
-						peer &&
-						(peer.connectionState === "failed" || peer.connectionState === "disconnected")
-					) {
+					// Only "failed" is terminal; "disconnected" is often transient and
+					// can recover on its own, so it must not trigger the HLS fallback.
+					if (!cancelled && peer && peer.connectionState === "failed") {
 						peer.close();
 						setState((current) => ({ ...current, failed: true }));
 					}

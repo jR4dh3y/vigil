@@ -18,6 +18,13 @@ const sessionMiddleware: Middleware = {
 		return new Request(request, { headers });
 	},
 	async onResponse({ response, request }) {
+		// Ignore responses from a recorder that is no longer active: a request
+		// still in flight during a recorder switch must not persist the old
+		// recorder's session token or clear the new recorder's session.
+		if (!request.url.startsWith(getApiBaseUrl())) {
+			return undefined;
+		}
+
 		const issued = response.headers.get(SESSION_HEADER);
 		if (issued) {
 			await setSessionToken(issued);

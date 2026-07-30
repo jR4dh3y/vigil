@@ -13,5 +13,6 @@ export async function getSystemStatus(): Promise<SystemStatus> {
 
 export const systemKeys = {
 	all: ["system"] as const,
-	status: ["system", "status"] as const,
+	// Scoped per recorder so cached health data cannot leak across a switch.
+	status: (baseUrl: string) => ["system", "status", baseUrl] as const,
 };
