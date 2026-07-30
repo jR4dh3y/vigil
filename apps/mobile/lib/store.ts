@@ -57,10 +57,15 @@ export async function hydrateAppPreferences(): Promise<void> {
 	}
 }
 
+let persistQueue = Promise.resolve();
+
 async function persistPreferences(): Promise<void> {
-	const { armed, notificationsEnabled, lastSeenEventAt } = useAppStore.getState();
-	await SecureStore.setItemAsync(
-		STORAGE_KEY,
-		JSON.stringify({ armed, notificationsEnabled, lastSeenEventAt }),
-	).catch(() => undefined);
+	persistQueue = persistQueue.then(async () => {
+		const { armed, notificationsEnabled, lastSeenEventAt } = useAppStore.getState();
+		await SecureStore.setItemAsync(
+			STORAGE_KEY,
+			JSON.stringify({ armed, notificationsEnabled, lastSeenEventAt }),
+		).catch(() => undefined);
+	});
+	return persistQueue;
 }

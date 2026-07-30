@@ -88,7 +88,18 @@ export function useWhepStream(uri: string): WhepStreamState {
 				}
 
 				const location = response.headers.get("Location");
-				resourceUrl = location ? new URL(location, uri).toString() : null;
+				if (location) {
+					const resolvedUrl = new URL(location, uri);
+					const baseUri = new URL(uri);
+					for (const [key, value] of baseUri.searchParams) {
+						if (!resolvedUrl.searchParams.has(key)) {
+							resolvedUrl.searchParams.set(key, value);
+						}
+					}
+					resourceUrl = resolvedUrl.toString();
+				} else {
+					resourceUrl = null;
+				}
 				await peer.setRemoteDescription({ type: "answer", sdp: answer });
 			} catch {
 				if (!cancelled) {

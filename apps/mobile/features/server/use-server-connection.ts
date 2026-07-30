@@ -13,8 +13,8 @@ export function useServerConnection(initialUrl: string) {
 	const mutation = useMutation({
 		mutationFn: () => testRecorderConnection(value),
 		onSuccess: async ({ baseUrl }) => {
-			await clearSessionToken();
 			await saveApiBaseUrl(baseUrl);
+			await clearSessionToken();
 			useAppStore.getState().setLastSeenEventAt(null);
 			queryClient.clear();
 			setError(null);

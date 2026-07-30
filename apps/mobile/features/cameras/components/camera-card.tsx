@@ -40,7 +40,7 @@ export function CameraCard({ camera, active }: CameraCardProps) {
 				<View style={styles.preview}>
 					{active && hlsUrl && whepUrl ? (
 						<LiveStreamPlayer hlsUri={hlsUrl} whepUri={whepUrl} />
-					) : active && camera.status === "online" && streamQuery.isPending ? (
+					) : active && camera.status === "online" && camera.enabled && streamQuery.isPending ? (
 						<View style={styles.loading}>
 							<ActivityIndicator color={swatches.white} />
 						</View>

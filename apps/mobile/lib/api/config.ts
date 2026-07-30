@@ -46,7 +46,7 @@ export function getApiBaseUrl(): string {
 
 export async function saveApiBaseUrl(value: string): Promise<string> {
 	const normalized = normalizeApiBaseUrl(value);
-	await SecureStore.setItemAsync(STORAGE_KEY, normalized).catch(() => undefined);
+	await SecureStore.setItemAsync(STORAGE_KEY, normalized);
 	updateActiveUrl(normalized);
 	return normalized;
 }
