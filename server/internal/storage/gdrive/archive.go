@@ -34,7 +34,8 @@ type ArchiveStats struct {
 }
 
 // DefaultArchiveBatchLimit is used when limit <= 0.
-const DefaultArchiveBatchLimit = 100
+// This limit is aligned with the API's maximum validation to ensure consistent batch sizes.
+const DefaultArchiveBatchLimit = 50
 
 // ErrArchiveInProgress is returned when a cron or API archive pass already owns
 // the service's single-flight lock.

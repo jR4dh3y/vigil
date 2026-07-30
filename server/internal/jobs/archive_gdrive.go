@@ -12,7 +12,8 @@ import (
 )
 
 // DefaultGDriveArchiveLimit is the max segments archived per cron/API run when unspecified.
-const DefaultGDriveArchiveLimit = 100
+// This limit is aligned with the API's maximum validation (see api/storage_gdrive.go).
+const DefaultGDriveArchiveLimit = 50
 
 // RunGDriveArchive archives up to limit unarchived recordings to Google Drive.
 // Safe to call from the API and from the midnight cron job.
