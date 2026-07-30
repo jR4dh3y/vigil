@@ -33,6 +33,10 @@ export type Settings = components["schemas"]["Settings"];
 export type PatchSettingsRequest = components["schemas"]["PatchSettingsRequest"];
 export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 export type UserRole = UserPublic["role"];
+export type GDriveStatus = components["schemas"]["GDriveStatus"];
+export type GDriveConnectResponse = components["schemas"]["GDriveConnectResponse"];
+export type GDriveArchiveRequest = components["schemas"]["GDriveArchiveRequest"];
+export type GDriveArchiveResponse = components["schemas"]["GDriveArchiveResponse"];
 
 export type CreateApiClientOptions = {
 	/** Defaults to `"include"` so cookie sessions work cross-origin when needed. */

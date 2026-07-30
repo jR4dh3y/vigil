@@ -31,6 +31,11 @@ type Config struct {
 
 	// RetentionDays is how long recording index rows are kept (default 7).
 	RetentionDays int
+
+	// Google Drive OAuth (optional archive tier).
+	GoogleClientID     string // NVR_GOOGLE_CLIENT_ID
+	GoogleClientSecret string // NVR_GOOGLE_CLIENT_SECRET
+	GoogleRedirectURL  string // NVR_GOOGLE_REDIRECT_URL
 }
 
 func Load() (*Config, error) {
@@ -47,6 +52,9 @@ func Load() (*Config, error) {
 		MediaMTXHLSURL:      env("NVR_MEDIAMTX_HLS_URL", "http://127.0.0.1:8888"),
 		MediaMTXPlaybackURL: env("NVR_MEDIAMTX_PLAYBACK_URL", ""),
 		RetentionDays:       envInt("NVR_RETENTION_DAYS", 7),
+		GoogleClientID:      env("NVR_GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:  env("NVR_GOOGLE_CLIENT_SECRET", ""),
+		GoogleRedirectURL:   env("NVR_GOOGLE_REDIRECT_URL", ""),
 	}
 	return cfg, nil
 }

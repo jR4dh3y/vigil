@@ -2,6 +2,7 @@ package recording
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -111,6 +112,113 @@ func TestCameraIDFromPathName(t *testing.T) {
 	}
 	if _, ok := CameraIDFromPathName("not-a-path"); ok {
 		t.Fatal("expected failure")
+	}
+}
+
+func TestAbsolutePathRejectsTraversal(t *testing.T) {
+	svc, _ := setupTestService(t)
+	if _, err := svc.AbsolutePath("../etc/passwd"); err == nil {
+		t.Fatal("expected traversal rejection")
+	}
+	if _, err := svc.AbsolutePath("/abs/path"); err == nil {
+		t.Fatal("expected absolute rejection")
+	}
+	got, err := svc.AbsolutePath("cam/seg.mp4")
+	if err != nil {
+		t.Fatalf("AbsolutePath: %v", err)
+	}
+	want := filepath.Join(svc.RecordingsDir(), "cam", "seg.mp4")
+	absWant, err := filepath.Abs(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != absWant {
+		t.Fatalf("got %q want %q", got, absWant)
+	}
+}
+
+func TestAbsolutePathRejectsSymlinkEscape(t *testing.T) {
+	svc, _ := setupTestService(t)
+	if err := os.MkdirAll(svc.RecordingsDir(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.mp4")
+	if err := os.WriteFile(outside, []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(svc.RecordingsDir(), "segment.mp4")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.AbsolutePath("segment.mp4"); err == nil {
+		t.Fatal("expected symlink escape rejection")
+	}
+}
+
+func TestListUnarchivedAndMarkArchived(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	camID := "550e8400-e29b-41d4-a716-446655440000"
+
+	start := time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC)
+	seg, err := svc.IndexSegment(ctx, camID, "cam/seg.mp4", start, 60, 1024, "h264")
+	if err != nil {
+		t.Fatalf("IndexSegment: %v", err)
+	}
+
+	list, err := svc.ListUnarchived(ctx, 10)
+	if err != nil {
+		t.Fatalf("ListUnarchived: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != seg.ID {
+		t.Fatalf("unarchived: %+v", list)
+	}
+
+	if err := svc.MarkArchived(ctx, seg.ID, "gdrive:file123"); err != nil {
+		t.Fatalf("MarkArchived: %v", err)
+	}
+	list, err = svc.ListUnarchived(ctx, 10)
+	if err != nil {
+		t.Fatalf("ListUnarchived after mark: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty unarchived, got %+v", list)
+	}
+	if err := svc.MarkArchived(ctx, "missing-recording", "gdrive:file123"); err == nil {
+		t.Fatal("expected missing recording error")
+	}
+}
+
+func TestPruneArchivedPreservesPendingRows(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	camID := "550e8400-e29b-41d4-a716-446655440000"
+	old := time.Now().UTC().AddDate(0, 0, -30)
+
+	archived, err := svc.IndexSegment(ctx, camID, "old/archived.mp4", old, 60, 1, "")
+	if err != nil {
+		t.Fatalf("index archived: %v", err)
+	}
+	if _, err := svc.IndexSegment(ctx, camID, "old/pending.mp4", old.Add(time.Minute), 60, 1, ""); err != nil {
+		t.Fatalf("index pending: %v", err)
+	}
+	if err := svc.MarkArchived(ctx, archived.ID, "gdrive:file123"); err != nil {
+		t.Fatalf("mark archived: %v", err)
+	}
+
+	n, err := svc.PruneArchived(ctx)
+	if err != nil {
+		t.Fatalf("PruneArchived: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("expected 1 archived row pruned, got %d", n)
+	}
+	pending, err := svc.ListUnarchived(ctx, 10)
+	if err != nil {
+		t.Fatalf("ListUnarchived: %v", err)
+	}
+	if len(pending) != 1 || pending[0].Path != "old/pending.mp4" {
+		t.Fatalf("unexpected pending rows: %+v", pending)
 	}
 }
 

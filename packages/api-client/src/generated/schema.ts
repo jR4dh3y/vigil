@@ -383,6 +383,108 @@ export interface paths {
         patch: operations["patchSettings"];
         trace?: never;
     };
+    "/storage/gdrive/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google Drive connection status
+         * @description Authenticated users. Returns OAuth configuration and connection status (never tokens).
+         */
+        get: operations["getGDriveStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/gdrive/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Begin Google Drive OAuth connect
+         * @description Admin only. Returns the Google authorization URL to open in a browser.
+         */
+        post: operations["postGDriveConnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/gdrive/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google Drive OAuth callback
+         * @description Public OAuth redirect target. Exchanges the authorization code, stores tokens,
+         *     and redirects (302) to the settings UI.
+         */
+        get: operations["getGDriveCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/gdrive/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disconnect Google Drive
+         * @description Admin only. Clears stored tokens and best-effort revokes with Google.
+         */
+        delete: operations["deleteGDriveDisconnect"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storage/gdrive/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive recordings to Google Drive
+         * @description Admin only. Uploads a batch of unarchived local recordings to the connected
+         *     Google Drive account (same work as the midnight archive job).
+         */
+        post: operations["postGDriveArchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -647,6 +749,35 @@ export interface components {
             /** @description Absolute or relative path on the NVR server for new recordings. */
             recordingsDir?: string;
             recordingEnabled?: boolean;
+        };
+        GDriveStatus: {
+            /** @description True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL and a non-empty NVR_SECRETS_KEY are set */
+            configured: boolean;
+            /** @description True when stored credentials can be decrypted */
+            connected: boolean;
+            /** @description Recoverable stored-credential problem; reconnecting resolves it */
+            connectionError?: string;
+            /** @description Connected Google account email; returned only to administrators */
+            accountEmail?: string;
+            /** Format: date-time */
+            connectedAt?: string;
+            folderId?: string;
+        };
+        GDriveConnectResponse: {
+            /** @description Google OAuth consent URL */
+            authorizationUrl: string;
+        };
+        GDriveArchiveRequest: {
+            /**
+             * @description Max segments to archive in this batch (default 50)
+             * @default 50
+             */
+            limit: number;
+        };
+        GDriveArchiveResponse: {
+            uploaded: number;
+            failed: number;
+            skipped: number;
         };
         CreateUserRequest: {
             username: string;
@@ -1517,6 +1648,203 @@ export interface operations {
             };
             /** @description Forbidden — admin only */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getGDriveStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GDriveStatus"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postGDriveConnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorization URL ready */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GDriveConnectResponse"];
+                };
+            };
+            /** @description Google OAuth not configured */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden — admin only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getGDriveCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to settings UI after connect success or failure */
+            302: {
+                headers: {
+                    /** @description Frontend settings URL with gdrive status query params */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteGDriveDisconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden — admin only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    postGDriveArchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["GDriveArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description Archive batch result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GDriveArchiveResponse"];
+                };
+            };
+            /** @description Drive not connected or invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden — admin only */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description An archive pass is already running */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

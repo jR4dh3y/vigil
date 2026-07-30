@@ -27,3 +27,22 @@ DELETE FROM recordings WHERE id = ?;
 
 -- name: DeleteRecordingsOlderThan :execrows
 DELETE FROM recordings WHERE started_at < sqlc.arg(before_ts);
+
+-- name: DeleteArchivedRecordingsOlderThan :execrows
+DELETE FROM recordings
+WHERE started_at < sqlc.arg(before_ts)
+  AND archived_at IS NOT NULL
+  AND archived_at != '';
+
+-- name: ListUnarchivedRecordings :many
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE archived_at IS NULL OR archived_at = ''
+ORDER BY started_at ASC
+LIMIT ?;
+
+-- name: MarkRecordingArchived :execrows
+UPDATE recordings
+SET archived_at = ?, archive_location = ?
+WHERE id = ?;

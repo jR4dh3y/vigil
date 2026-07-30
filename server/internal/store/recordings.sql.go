@@ -10,6 +10,21 @@ import (
 	"database/sql"
 )
 
+const deleteArchivedRecordingsOlderThan = `-- name: DeleteArchivedRecordingsOlderThan :execrows
+DELETE FROM recordings
+WHERE started_at < ?1
+  AND archived_at IS NOT NULL
+  AND archived_at != ''
+`
+
+func (q *Queries) DeleteArchivedRecordingsOlderThan(ctx context.Context, beforeTs string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteArchivedRecordingsOlderThan, beforeTs)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteRecording = `-- name: DeleteRecording :exec
 DELETE FROM recordings WHERE id = ?
 `
@@ -155,4 +170,68 @@ func (q *Queries) ListRecordingsByCameraRange(ctx context.Context, arg ListRecor
 		return nil, err
 	}
 	return items, nil
+}
+
+const listUnarchivedRecordings = `-- name: ListUnarchivedRecordings :many
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE archived_at IS NULL OR archived_at = ''
+ORDER BY started_at ASC
+LIMIT ?
+`
+
+func (q *Queries) ListUnarchivedRecordings(ctx context.Context, limit int64) ([]Recording, error) {
+	rows, err := q.db.QueryContext(ctx, listUnarchivedRecordings, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Recording{}
+	for rows.Next() {
+		var i Recording
+		if err := rows.Scan(
+			&i.ID,
+			&i.CameraID,
+			&i.StartedAt,
+			&i.DurationSec,
+			&i.SizeBytes,
+			&i.Path,
+			&i.Codec,
+			&i.ThumbnailPath,
+			&i.ArchivedAt,
+			&i.ArchiveLocation,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markRecordingArchived = `-- name: MarkRecordingArchived :execrows
+UPDATE recordings
+SET archived_at = ?, archive_location = ?
+WHERE id = ?
+`
+
+type MarkRecordingArchivedParams struct {
+	ArchivedAt      sql.NullString `json:"archived_at"`
+	ArchiveLocation sql.NullString `json:"archive_location"`
+	ID              string         `json:"id"`
+}
+
+func (q *Queries) MarkRecordingArchived(ctx context.Context, arg MarkRecordingArchivedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markRecordingArchived, arg.ArchivedAt, arg.ArchiveLocation, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

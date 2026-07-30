@@ -18,6 +18,19 @@ vigil/
 - **Live & Playback:** Low-latency HLS/WHEP streams, timeline segment playback.
 - **Management:** RTSP camera CRUD, setup wizard, role-based auth, user control.
 - **Alerts & System:** Camera state/disk monitoring, retention pruning, event logs.
+- **Offsite Archive:** Optional encrypted Google Drive connection with nightly and on-demand uploads.
+
+## Google Drive Archive
+
+Set `NVR_SECRETS_KEY`, `NVR_GOOGLE_CLIENT_ID`, `NVR_GOOGLE_CLIENT_SECRET`, and
+`NVR_GOOGLE_REDIRECT_URL` on the server, then connect an account from
+**Settings → Google Drive**. The redirect URL must exactly match the authorized
+redirect URI configured for the Google OAuth web client.
+
+Vigil uploads pending recordings at 00:00 UTC each day. Archive retries are
+idempotent, and retention preserves pending recording metadata while a Drive
+connection is stored. See [`deploy/nvr.example.env`](deploy/nvr.example.env) for
+the required OAuth scopes and an example callback URL.
 
 ## Quick Start
 
