@@ -17,14 +17,17 @@ import (
 
 // Settings keys for Google Drive OAuth state and tokens.
 const (
-	KeyAccessToken  = "gdrive.access_token"
-	KeyRefreshToken = "gdrive.refresh_token"
-	KeyTokenExpiry  = "gdrive.token_expiry"
-	KeyTokenType    = "gdrive.token_type"
-	KeyAccountEmail = "gdrive.account_email"
-	KeyConnectedAt  = "gdrive.connected_at"
-	KeyFolderID     = "gdrive.folder_id"
-	KeyOAuthStates  = "gdrive.oauth_states"
+	KeyAccessToken   = "gdrive.access_token"
+	KeyRefreshToken  = "gdrive.refresh_token"
+	KeyTokenExpiry   = "gdrive.token_expiry"
+	KeyTokenType     = "gdrive.token_type"
+	KeyAccountEmail  = "gdrive.account_email"
+	KeyConnectedAt   = "gdrive.connected_at"
+	KeyFolderID      = "gdrive.folder_id"
+	KeyOAuthStates   = "gdrive.oauth_states"
+	KeyOAuthClientID = "gdrive.oauth_client_id"
+	KeyOAuthSecret   = "gdrive.oauth_client_secret"
+	KeyOAuthRedirect = "gdrive.oauth_redirect_url"
 )
 
 var allTokenKeys = []string{

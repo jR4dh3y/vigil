@@ -721,6 +721,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /storage/gdrive/configuration:
+    put:
+      operationId: putGDriveConfiguration
+      tags: [storage]
+      summary: Save Google Drive OAuth configuration
+      description: |
+        Admin only. Stores the Google OAuth client configuration used to connect
+        Drive. The client secret is encrypted at rest with NVR_SECRETS_KEY.
+        Saving a new configuration clears any existing Drive connection.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GDriveConfigurationRequest"
+      responses:
+        "200":
+          description: Configuration saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GDriveStatus"
+        "400":
+          description: Invalid or insecure configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden — admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /storage/gdrive/connect:
     post:
       operationId: postGDriveConnect
@@ -1395,7 +1437,7 @@ components:
       properties:
         configured:
           type: boolean
-          description: True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL and a non-empty NVR_SECRETS_KEY are set
+          description: True when Google OAuth client details are saved in the dashboard or supplied by environment, and NVR_SECRETS_KEY is set
         connected:
           type: boolean
           description: True when stored credentials can be decrypted
@@ -1410,6 +1452,23 @@ components:
           format: date-time
         folderId:
           type: string
+    GDriveConfigurationRequest:
+      type: object
+      required: [clientId, clientSecret, redirectUrl]
+      properties:
+        clientId:
+          type: string
+          minLength: 1
+          description: OAuth web client ID from Google Cloud Console
+        clientSecret:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: OAuth web client secret; encrypted at rest and never returned
+        redirectUrl:
+          type: string
+          format: uri
+          description: Authorized OAuth redirect URI configured in Google Cloud Console
     GDriveConnectResponse:
       type: object
       required: [authorizationUrl]

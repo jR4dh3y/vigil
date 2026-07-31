@@ -10,11 +10,11 @@ import (
 
 const scopeUserInfoEmail = "https://www.googleapis.com/auth/userinfo.email"
 
-func (s *Service) oauthConfig() *oauth2.Config {
+func oauthConfig(cfg Config) *oauth2.Config {
 	return &oauth2.Config{
-		ClientID:     s.cfg.ClientID,
-		ClientSecret: s.cfg.ClientSecret,
-		RedirectURL:  s.cfg.RedirectURL,
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		RedirectURL:  cfg.RedirectURL,
 		Scopes: []string{
 			drive.DriveFileScope,
 			scopeUserInfoEmail,
@@ -23,13 +23,13 @@ func (s *Service) oauthConfig() *oauth2.Config {
 	}
 }
 
-func (s *Service) authCodeURL(state string) string {
-	return s.oauthConfig().AuthCodeURL(state,
+func (s *Service) authCodeURL(cfg Config, state string) string {
+	return oauthConfig(cfg).AuthCodeURL(state,
 		oauth2.AccessTypeOffline,
 		oauth2.ApprovalForce,
 	)
 }
 
-func (s *Service) exchange(ctx context.Context, code string) (*oauth2.Token, error) {
-	return s.oauthConfig().Exchange(ctx, code)
+func (s *Service) exchange(ctx context.Context, cfg Config, code string) (*oauth2.Token, error) {
+	return oauthConfig(cfg).Exchange(ctx, code)
 }

@@ -72,6 +72,49 @@ func TestConfigRequiresAbsoluteRedirectURL(t *testing.T) {
 	}
 }
 
+func TestConfigureStoresOAuthClientSecretEncrypted(t *testing.T) {
+	db, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	if err := store.Migrate(db); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+	queries := store.New(db)
+	service := NewService(Config{}, queries, testSecretsKey)
+	config := Config{
+		ClientID:     "dashboard-client-id",
+		ClientSecret: "dashboard-client-secret",
+		RedirectURL:  "https://nvr.example.test/api/v1/storage/gdrive/callback",
+	}
+	if err := service.Configure(context.Background(), config); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
+
+	storedSecret, err := queries.GetSetting(context.Background(), KeyOAuthSecret)
+	if err != nil {
+		t.Fatalf("read stored secret: %v", err)
+	}
+	if strings.Contains(storedSecret.Value, config.ClientSecret) {
+		t.Fatalf("OAuth client secret was stored in plaintext: %q", storedSecret.Value)
+	}
+	activeConfig, err := service.currentConfig(context.Background())
+	if err != nil {
+		t.Fatalf("currentConfig: %v", err)
+	}
+	if activeConfig != config {
+		t.Fatalf("stored configuration mismatch: got %+v, want %+v", activeConfig, config)
+	}
+	status, err := service.Status(context.Background())
+	if err != nil {
+		t.Fatalf("Status: %v", err)
+	}
+	if !status.Configured || status.Connected {
+		t.Fatalf("unexpected status after configuration: %+v", status)
+	}
+}
+
 func TestStatusAllowsRecoveryFromWrongSecretsKey(t *testing.T) {
 	service := newTestService(t)
 	service.secretsKey = "different-key"

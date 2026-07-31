@@ -3,8 +3,8 @@
 	import { createMutation, createQuery } from "@tanstack/svelte-query";
 	import { Film } from "lucide-svelte";
 	import { cameraKeys, getCamera } from "$lib/cameras";
+	import CameraContextBar from "$lib/components/cameras/CameraContextBar.svelte";
 	import CameraStatusBadge from "$lib/components/cameras/CameraStatusBadge.svelte";
-	import PageActions from "$lib/components/PageActions.svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 	import CoverageTimeline from "$lib/components/timeline/CoverageTimeline.svelte";
 	import PlaybackPlayer from "$lib/components/timeline/PlaybackPlayer.svelte";
@@ -133,10 +133,8 @@
 			</div>
 		</div>
 	{:else if camera}
-		<PageActions>
-			<span class="hidden max-w-[30vw] truncate text-sm text-zinc-400 sm:inline">
-				{camera.name}
-			</span>
+		<CameraContextBar {camera}>
+			{#snippet actions()}
 			<a
 				href="/cameras/{camera.id}"
 				class="inline-flex items-center rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 no-underline transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
@@ -149,7 +147,8 @@
 			>
 				Live
 			</a>
-		</PageActions>
+			{/snippet}
+		</CameraContextBar>
 
 		<div class="flex flex-wrap items-center gap-2">
 			<CameraStatusBadge status={camera.status} />

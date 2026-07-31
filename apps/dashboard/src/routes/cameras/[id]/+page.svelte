@@ -14,16 +14,15 @@
 		deleteCamera,
 		formValuesFromCamera,
 		getCamera,
-		primaryCodec,
-		primaryResolution,
 		probeCamera,
 		toUpdateCameraRequest,
 		updateCamera,
 	} from "$lib/cameras";
-	import CameraForm from "$lib/components/cameras/CameraForm.svelte";
+	import CameraContextBar from "$lib/components/cameras/CameraContextBar.svelte";
 	import CameraSnapshot from "$lib/components/cameras/CameraSnapshot.svelte";
+	import CameraSettingsModal from "$lib/components/cameras/CameraSettingsModal.svelte";
 	import CameraStatusBadge from "$lib/components/cameras/CameraStatusBadge.svelte";
-	import PageActions from "$lib/components/PageActions.svelte";
+	import { Settings2 } from "lucide-svelte";
 	import Spinner from "$lib/components/Spinner.svelte";
 
 	const queryClient = useQueryClient();
@@ -39,7 +38,7 @@
 	let serverError = $state<string | null>(null);
 	let probeError = $state<string | null>(null);
 	let probeResult = $state<ProbeResult | null>(null);
-	let formKey = $state(0);
+	let settingsOpen = $state(false);
 
 	const saveMutation = createMutation(() => ({
 		mutationFn: ({ id, body }: { id: string; body: UpdateCameraRequest }) =>
@@ -48,7 +47,7 @@
 			serverError = null;
 			await queryClient.invalidateQueries({ queryKey: cameraKeys.all });
 			queryClient.setQueryData(cameraKeys.detail(camera.id), camera);
-			formKey += 1;
+			settingsOpen = false;
 		},
 		onError: (error: unknown) => {
 			if (error instanceof CameraApiError) {
@@ -91,8 +90,6 @@
 	}));
 
 	const camera = $derived(cameraQuery.data);
-	const codec = $derived(camera ? primaryCodec(camera.streamProfiles) : null);
-	const resolution = $derived(camera ? primaryResolution(camera.streamProfiles) : null);
 	const initial = $derived(camera ? formValuesFromCamera(camera) : undefined);
 
 	async function handleSubmit(values: EditCameraFormValues) {
@@ -130,7 +127,7 @@
 	<title>{camera?.name ?? "Camera"} · NVR</title>
 </svelte:head>
 
-<section class="mx-auto flex w-full max-w-2xl flex-col gap-6">
+<section class="mx-auto flex w-full max-w-5xl flex-col gap-6">
 	{#if cameraQuery.isPending}
 		<div class="flex min-h-[280px] items-center justify-center">
 			<Spinner label="Loading camera" />
@@ -162,17 +159,25 @@
 			</div>
 		</div>
 	{:else if camera && initial}
-		<PageActions>
-			<span class="hidden max-w-[30vw] truncate text-sm text-zinc-400 sm:inline">
-				{camera.name}
-			</span>
+		<CameraContextBar {camera}>
+			{#snippet actions()}
+			<button
+				type="button"
+				class="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
+				onclick={() => (settingsOpen = true)}
+				aria-label="Open camera settings"
+			>
+				<Settings2 class="size-3.5" />
+				<span class="hidden sm:inline">Settings</span>
+			</button>
 			<a
 				href="/cameras/{camera.id}/timeline"
 				class="inline-flex items-center rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-sm text-emerald-300 no-underline transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/15"
 			>
 				Timeline
 			</a>
-		</PageActions>
+			{/snippet}
+		</CameraContextBar>
 
 		<div class="flex flex-wrap items-center gap-2 text-xs">
 			<CameraStatusBadge status={camera.status} />
@@ -184,41 +189,25 @@
 			>
 				{camera.enabled ? "Enabled" : "Disabled"}
 			</span>
-			{#if codec}
-				<span
-					class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-300"
-				>
-					{codec}
-				</span>
-			{/if}
-			{#if resolution}
-				<span
-					class="rounded-md border border-zinc-700/80 bg-zinc-800/80 px-2 py-0.5 text-zinc-400"
-				>
-					{resolution}
-				</span>
-			{/if}
 			<span class="font-mono text-zinc-500">{camera.host}</span>
 		</div>
 
 		<CameraSnapshot cameraId={camera.id} cameraName={camera.name} />
 
-		<div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-			{#key formKey}
-				<CameraForm
-					mode="edit"
-					{initial}
-					submitting={saveMutation.isPending}
-					probing={probeMutation.isPending}
-					deleting={removeMutation.isPending}
-					{serverError}
-					{probeResult}
-					{probeError}
-					onSubmit={handleSubmit}
-					onProbe={handleProbe}
-					onDelete={handleDelete}
-				/>
-			{/key}
-		</div>
+		<CameraSettingsModal
+			open={settingsOpen}
+			cameraName={camera.name}
+			{initial}
+			submitting={saveMutation.isPending}
+			probing={probeMutation.isPending}
+			deleting={removeMutation.isPending}
+			{serverError}
+			{probeResult}
+			{probeError}
+			onClose={() => (settingsOpen = false)}
+			onSubmit={handleSubmit}
+			onProbe={handleProbe}
+			onDelete={handleDelete}
+		/>
 	{/if}
 </section>

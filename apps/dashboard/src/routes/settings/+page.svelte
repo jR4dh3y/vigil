@@ -16,10 +16,12 @@
 		getGDriveStatus,
 		postGDriveArchive,
 		postGDriveConnect,
+		putGDriveConfiguration,
 		readGDriveCallback,
 		StorageApiError,
 		storageKeys,
 		stripGDriveCallback,
+		type GDriveConfigurationRequest,
 	} from "$lib/storage";
 	import {
 		getSettings,
@@ -123,6 +125,23 @@
 		},
 	}));
 
+	const configureMutation = createMutation(() => ({
+		mutationFn: putGDriveConfiguration,
+		onSuccess: (status) => {
+			driveServerError = null;
+			queryClient.setQueryData(storageKeys.gdriveStatus(), status);
+		},
+		onError: (error: unknown) => {
+			driveFlashSuccess = null;
+			if (error instanceof StorageApiError) {
+				driveServerError = error.message;
+				return;
+			}
+			driveServerError =
+				error instanceof Error ? error.message : "Failed to save Google Drive configuration";
+		},
+	}));
+
 	const disconnectMutation = createMutation(() => ({
 		mutationFn: deleteGDriveDisconnect,
 		onSuccess: async () => {
@@ -185,6 +204,16 @@
 		}
 		driveServerError = null;
 		driveFlashSuccess = null;
+		await connectMutation.mutateAsync();
+	}
+
+	async function handleConfigure(values: GDriveConfigurationRequest) {
+		if (!isAdmin) {
+			return;
+		}
+		driveServerError = null;
+		driveFlashSuccess = null;
+		await configureMutation.mutateAsync(values);
 		await connectMutation.mutateAsync();
 	}
 
@@ -342,12 +371,14 @@
 			status={gdriveQuery.data}
 			readonly={!isAdmin}
 			connecting={connectMutation.isPending}
+			configuring={configureMutation.isPending}
 			disconnecting={disconnectMutation.isPending}
 			archiving={archiveMutation.isPending}
 			serverError={driveServerError}
 			onConnect={handleConnect}
 			onDisconnect={handleDisconnect}
 			onArchive={handleArchive}
+			onConfigure={handleConfigure}
 		/>
 	{/if}
 </section>

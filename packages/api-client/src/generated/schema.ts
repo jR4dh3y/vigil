@@ -403,6 +403,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storage/gdrive/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Google Drive OAuth configuration
+         * @description Admin only. Stores the Google OAuth client configuration used to connect
+         *     Drive. The client secret is encrypted at rest with NVR_SECRETS_KEY.
+         *     Saving a new configuration clears any existing Drive connection.
+         */
+        put: operations["putGDriveConfiguration"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storage/gdrive/connect": {
         parameters: {
             query?: never;
@@ -751,7 +773,7 @@ export interface components {
             recordingEnabled?: boolean;
         };
         GDriveStatus: {
-            /** @description True when NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL and a non-empty NVR_SECRETS_KEY are set */
+            /** @description True when Google OAuth client details are saved in the dashboard or supplied by environment, and NVR_SECRETS_KEY is set */
             configured: boolean;
             /** @description True when stored credentials can be decrypted */
             connected: boolean;
@@ -762,6 +784,17 @@ export interface components {
             /** Format: date-time */
             connectedAt?: string;
             folderId?: string;
+        };
+        GDriveConfigurationRequest: {
+            /** @description OAuth web client ID from Google Cloud Console */
+            clientId: string;
+            /** @description OAuth web client secret; encrypted at rest and never returned */
+            clientSecret: string;
+            /**
+             * Format: uri
+             * @description Authorized OAuth redirect URI configured in Google Cloud Console
+             */
+            redirectUrl: string;
         };
         GDriveConnectResponse: {
             /** @description Google OAuth consent URL */
@@ -1677,6 +1710,57 @@ export interface operations {
             };
             /** @description Unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    putGDriveConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GDriveConfigurationRequest"];
+            };
+        };
+        responses: {
+            /** @description Configuration saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GDriveStatus"];
+                };
+            };
+            /** @description Invalid or insecure configuration */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Forbidden — admin only */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

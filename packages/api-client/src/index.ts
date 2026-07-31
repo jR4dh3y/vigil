@@ -34,6 +34,7 @@ export type PatchSettingsRequest = components["schemas"]["PatchSettingsRequest"]
 export type CreateUserRequest = components["schemas"]["CreateUserRequest"];
 export type UserRole = UserPublic["role"];
 export type GDriveStatus = components["schemas"]["GDriveStatus"];
+export type GDriveConfigurationRequest = components["schemas"]["GDriveConfigurationRequest"];
 export type GDriveConnectResponse = components["schemas"]["GDriveConnectResponse"];
 export type GDriveArchiveRequest = components["schemas"]["GDriveArchiveRequest"];
 export type GDriveArchiveResponse = components["schemas"]["GDriveArchiveResponse"];
