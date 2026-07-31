@@ -1,0 +1,34 @@
+---
+import { BellRing, History, Video } from "lucide-astro";
+
+const features = [
+	{ icon: Video, name: "See live", desc: "Sub-second camera view." },
+	{ icon: History, name: "Find fast", desc: "Timeline playback on your disk." },
+	{ icon: BellRing, name: "Know sooner", desc: "Events when something changes." },
+];
+---
+
+<section id="features" class="border-t border-[#10130f]/20 bg-[#7c8e75]">
+	<div class="mx-auto max-w-[1440px] px-4 py-14 sm:px-7 sm:py-20">
+		<div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+			<h2 class="display-type text-[clamp(3.5rem,8vw,7rem)] uppercase leading-[0.78]">
+				Only the<br /><span class="text-[#f3eee3]">essentials.</span>
+			</h2>
+			<p class="max-w-xs text-sm uppercase leading-snug">
+				Your cameras. Your storage. No cloud account required.
+			</p>
+		</div>
+
+		<div class="mt-12 grid gap-px border border-[#10130f]/30 bg-[#10130f]/30 sm:grid-cols-3">
+			{features.map((feature) => (
+				<div class="bg-[#7c8e75] p-5 transition-colors hover:bg-[#f3eee3]">
+					<span class="flex size-9 items-center justify-center bg-[#10130f] text-[#f3eee3]">
+						<feature.icon class="size-4" />
+					</span>
+					<h3 class="mt-8 text-sm font-semibold uppercase">{feature.name}</h3>
+					<p class="mt-1 text-sm text-[#10130f]/65">{feature.desc}</p>
+				</div>
+			))}
+		</div>
+	</div>
+</section>

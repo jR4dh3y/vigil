@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+	--paper: #f3eee3;
+	--ink: #10130f;
+	--olive: #7c8e75;
+	--clay: #c88969;
+	--line: rgba(16, 19, 15, 0.22);
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	min-width: 320px;
+	background-color: var(--paper);
+	background-image:
+		linear-gradient(rgba(16, 19, 15, 0.025) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(16, 19, 15, 0.025) 1px, transparent 1px);
+	background-size: 24px 24px;
+}
+
+button,
+a {
+	-webkit-tap-highlight-color: transparent;
+}
+
+.editorial-rule {
+	border-color: var(--line);
+}
+
+.display-type {
+	font-family: Arial, Helvetica, sans-serif;
+	font-weight: 500;
+	letter-spacing: -0.085em;
+}
+
+.mono-type {
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+	letter-spacing: -0.04em;
+}
+
+.paper-panel {
+	background-color: rgba(243, 238, 227, 0.72);
+	box-shadow: 8px 8px 0 rgba(16, 19, 15, 0.07);
+}
+
+::selection {
+	background: var(--olive);
+	color: var(--paper);
+}

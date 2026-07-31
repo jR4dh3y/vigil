@@ -1,0 +1,33 @@
+---
+import { ArrowUpRight, Menu } from "lucide-astro";
+import OwlMark from "./OwlMark.astro";
+
+const links = [{ href: "#features", label: "Features" }];
+---
+
+<header class="mx-auto max-w-[1440px] px-4 pt-4 sm:px-7 sm:pt-6">
+	<div class="grid grid-cols-[1fr_auto_1fr] items-start border-t-2 border-[#10130f] pt-2">
+		<div class="mono-type flex items-center gap-3 text-[10px] uppercase sm:text-xs">
+			<span>EST — 2026</span>
+			<span class="hidden h-px w-12 bg-[#10130f] sm:block"></span>
+		</div>
+
+		<a href="#top" class="group flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em]">
+			<OwlMark class="size-8 object-contain transition-transform duration-300 group-hover:-rotate-6" />
+			<span>Vigil</span>
+		</a>
+
+		<nav class="flex items-center justify-end gap-1 text-[11px] uppercase sm:gap-3 sm:text-xs">
+			{links.map((link) => (
+				<a href={link.href} class="hidden px-1 py-1 underline-offset-4 hover:underline sm:inline">{link.label}</a>
+			))}
+			<a href="#install" class="group flex items-center gap-1 rounded-full border border-[#10130f] px-3 py-1.5 transition-colors hover:bg-[#10130f] hover:text-[#f3eee3]">
+				<span>Install</span>
+				<ArrowUpRight class="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+			</a>
+			<button type="button" aria-label="Open menu" class="flex size-8 items-center justify-center rounded-full border border-[#10130f] sm:hidden">
+				<Menu class="size-4" />
+			</button>
+		</nav>
+	</div>
+</header>
