@@ -1,6 +1,7 @@
 ---
-import { ArrowDownRight, ArrowUpRight, Copy } from "lucide-astro";
+import { ArrowDownRight, Copy } from "lucide-astro";
 import DvrPreview from "./DvrPreview.astro";
+import Header from "./Header.astro";
 import OwlMark from "./OwlMark.astro";
 
 const install =
@@ -20,19 +21,7 @@ const install =
 		/>
 
 		<div class="absolute inset-x-0 top-0 flex h-[70%] flex-col overflow-hidden bg-[#f3eee3] will-change-transform" data-hero-text>
-			<header class="mx-auto flex w-full max-w-[1440px] items-center justify-between px-4 pt-5 sm:px-7 sm:pt-7">
-				<a href="#top" class="group flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em]">
-					<OwlMark class="size-8 object-contain transition-transform duration-300 group-hover:-rotate-6" />
-					<span>Vigil</span>
-				</a>
-				<nav class="flex items-center gap-3 sm:gap-5">
-					<a href="#features" class="hidden text-[11px] uppercase underline-offset-4 hover:underline sm:inline">Features</a>
-					<a href="#install" class="group flex items-center gap-1 rounded-full border border-[#10130f] px-3 py-1.5 text-[11px] uppercase transition-colors hover:bg-[#10130f] hover:text-[#f3eee3]">
-						<span>Install</span>
-						<ArrowUpRight class="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-					</a>
-				</nav>
-			</header>
+			<Header class="mx-auto max-w-[1440px] px-4 pt-5 sm:px-7 sm:pt-7" />
 
 			<div class="mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-4 pb-10 sm:px-7 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
 				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#10130f]">

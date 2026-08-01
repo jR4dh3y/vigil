@@ -1,0 +1,29 @@
+---
+import Header from "../../components/Header.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Vigil — Docs">
+	<div class="min-h-screen bg-[#f3eee3]">
+		<div class="border-b border-[#10130f]/20">
+			<Header class="mx-auto max-w-[1440px] px-4 py-5 sm:px-7" />
+		</div>
+		<main class="mx-auto grid min-h-[calc(100svh-73px)] max-w-[1440px] place-items-center px-4 py-12 sm:px-7">
+			<section class="grid max-w-xl justify-items-center gap-7 text-center">
+				<img
+					src="/assets/owl-construction.png"
+					alt="Vigil owl wearing a construction helmet and holding a screwdriver"
+					class="w-[min(72vw,430px)] object-contain"
+					width="1254"
+					height="1254"
+					decoding="async"
+				/>
+				<div>
+					<p class="mono-type text-[10px] uppercase tracking-[0.18em] text-[#7c8e75]">Vigil / Docs</p>
+					<h1 class="display-type mt-3 text-5xl uppercase leading-[0.82] sm:text-7xl">Still in development.</h1>
+					<p class="mt-5 text-base text-[#10130f]/65">The project is still in development.</p>
+				</div>
+			</section>
+		</main>
+	</div>
+</BaseLayout>
