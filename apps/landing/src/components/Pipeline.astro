@@ -1,0 +1,84 @@
+---
+import {
+	Camera,
+	ChevronRight,
+	HardDrive,
+	MonitorSmartphone,
+	Server,
+	ShieldCheck,
+	Waves,
+} from "lucide-astro";
+
+const hops = [
+	{ icon: Camera, node: "Cameras", sub: "Any vendor · RTSP/ONVIF", edge: "RTSP" },
+	{ icon: Waves, node: "MediaMTX", sub: "Ingest · live · record", edge: "60s fMP4" },
+	{ icon: HardDrive, node: "recordings/", sub: "Your disk · re-indexable", edge: "WHEP / HLS" },
+	{ icon: MonitorSmartphone, node: "Clients", sub: "Dashboard · mobile", edge: null },
+];
+
+const planes = [
+	{
+		icon: Server,
+		title: "Media plane",
+		body: "MediaMTX owns ingest, live output and recording. FFmpeg is only shelled out to for thumbnails, clip exports and ffprobe during setup — nothing transcodes on the hot path.",
+	},
+	{
+		icon: ShieldCheck,
+		title: "Control plane",
+		body: "The Go server is the sole source of truth: auth, short-lived stream tokens, the segment index in SQLite, retention and jobs. Clients never hold standing MediaMTX credentials — every stream is validated by callback.",
+	},
+];
+---
+
+<section id="how-it-works" class="mx-auto max-w-[1440px] scroll-mt-8 px-4 py-20 sm:px-7 sm:py-28">
+	<div class="grid gap-8 lg:grid-cols-[0.3fr_0.7fr]">
+		<div>
+			<p class="mono-type text-[10px] uppercase">03 / How it works</p>
+			<span class="mt-5 block h-24 w-px bg-[#10130f] lg:h-40"></span>
+		</div>
+		<div>
+			<h2 class="display-type max-w-4xl text-[clamp(3.8rem,8vw,8rem)] uppercase leading-[0.78]">Small parts.<br /><span class="text-[#7c8e75]">Clear job.</span></h2>
+			<p class="mt-8 max-w-xl text-lg leading-snug sm:text-2xl">Two boring programs with a clean split: MediaMTX moves video, the Go server decides who may watch what and remembers where every minute lives.</p>
+		</div>
+	</div>
+
+	<div class="mt-14 flex flex-col items-stretch gap-2 md:flex-row md:items-center">
+		{
+			hops.map((hop, i) => (
+				<>
+					<div class="paper-panel flex-1 border border-[#10130f]/30 p-4">
+						<div class="flex items-center gap-2.5">
+							<span class="flex size-8 shrink-0 items-center justify-center bg-[#7c8e75] text-[#10130f]">
+								<hop.icon class="size-4" />
+							</span>
+							<div class="text-sm font-medium uppercase">{hop.node}</div>
+						</div>
+						<div class="mt-2 text-xs uppercase text-[#10130f]/60">{hop.sub}</div>
+					</div>
+					{i < hops.length - 1 && (
+					<div class="flex items-center justify-center gap-1 text-[#10130f]/60 md:flex-col md:gap-0.5">
+							<ChevronRight class="size-4 rotate-90 md:rotate-0" />
+							<span class="mono-type text-[10px] whitespace-nowrap">
+								{hop.edge}
+							</span>
+						</div>
+					)}
+				</>
+			))
+		}
+	</div>
+
+	<div class="mt-8 grid gap-4 md:grid-cols-2">
+		{
+			planes.map((plane) => (
+				<div class="border-t-2 border-[#10130f] pt-4">
+					<div class="flex items-center gap-2.5">
+						<plane.icon class="size-4 text-emerald-400" />
+						<h3 class="text-sm font-medium uppercase">{plane.title}</h3>
+					</div>
+					<p class="mt-2.5 text-sm leading-relaxed text-[#10130f]/70">{plane.body}</p>
+				</div>
+			))
+		}
+	</div>
+</section>
