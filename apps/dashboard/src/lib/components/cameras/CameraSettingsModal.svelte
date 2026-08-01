@@ -33,11 +33,18 @@
 		onProbe,
 		onDelete,
 	}: Props = $props();
+	const busy = $derived(submitting || probing || deleting);
+
+	function handleClose() {
+		if (!busy) {
+			onClose();
+		}
+	}
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (open && event.key === "Escape") {
 			event.preventDefault();
-			onClose();
+			handleClose();
 		}
 	}
 </script>
@@ -52,7 +59,8 @@
 		<button
 			type="button"
 			class="absolute inset-0 cursor-default"
-			onclick={onClose}
+			disabled={busy}
+			onclick={handleClose}
 			aria-label="Close camera settings"
 		></button>
 		<div
@@ -71,8 +79,9 @@
 				</div>
 				<button
 					type="button"
-					class="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-					onclick={onClose}
+					disabled={busy}
+					class="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+					onclick={handleClose}
 					aria-label="Close camera settings"
 				>
 					<span class="text-xl leading-none" aria-hidden="true">×</span>
@@ -92,7 +101,7 @@
 					onSubmit={onSubmit}
 					onProbe={onProbe}
 					onDelete={onDelete}
-					onCancel={onClose}
+					onCancel={handleClose}
 				/>
 			</div>
 		</div>
