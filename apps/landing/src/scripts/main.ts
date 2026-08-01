@@ -47,22 +47,65 @@ for (const btn of copyButtons) {
 	});
 }
 
-/* Hero scroll reveal: the paper text zone lifts off the sticky night-sky
-   image while the image settles from a close crop on the owl to the full
-   scene (sky, house, fence), then the next section slides over it. */
+/* Hero scroll choreography: the paper text zone lifts off the background,
+   then the owl leads the DVR preview in from the right. */
+const hero = document.querySelector<HTMLElement>("[data-hero]");
 const heroText = document.querySelector<HTMLElement>("[data-hero-text]");
 const heroImg = document.querySelector<HTMLElement>("[data-hero-img]");
+const owlAnchor = document.querySelector<HTMLElement>("[data-hero-owl-anchor]");
+const heroCarrier = document.querySelector<HTMLElement>("[data-hero-carrier]");
+const carrierOwl = document.querySelector<HTMLElement>("[data-hero-carrier-owl]");
+const heroDvr = document.querySelector<HTMLElement>("[data-hero-dvr]");
 
-if (heroText && heroImg) {
-	function updateHero(text: HTMLElement, img: HTMLElement) {
-		const textH = text.offsetHeight;
-		const p = Math.min(1, Math.max(0, window.scrollY / Math.max(1, textH)));
-		text.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
-		img.style.transform = `scale(${(1.12 - p * 0.12).toFixed(3)})`;
+if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && heroDvr) {
+	const textLayer = heroText;
+	const imageLayer = heroImg;
+	const carrier = heroCarrier;
+	const anchor = owlAnchor;
+	const carrierMark = carrierOwl;
+	const dvr = heroDvr;
+	let carrierStartX = 0;
+	let carrierStartY = 0;
+
+	function clamp(value: number): number {
+		return Math.min(1, Math.max(0, value));
 	}
 
-	if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-		updateHero(heroText, heroImg);
+	function measureCarrierStart() {
+		const previousTextTransform = textLayer.style.transform;
+		const previousCarrierTransform = carrier.style.transform;
+		textLayer.style.transform = "none";
+		carrier.style.transform = "none";
+
+		const anchorBounds = anchor.getBoundingClientRect();
+		const owlBounds = carrierMark.getBoundingClientRect();
+		carrierStartX = anchorBounds.left - owlBounds.left;
+		carrierStartY = anchorBounds.top - owlBounds.top;
+
+		textLayer.style.transform = previousTextTransform;
+		carrier.style.transform = previousCarrierTransform;
+	}
+
+	function updateHero(text: HTMLElement, img: HTMLElement) {
+		const textH = text.offsetHeight;
+		const p = clamp(window.scrollY / Math.max(1, textH));
+		const reveal = clamp((window.scrollY - textH * 0.12) / Math.max(1, textH * 0.88));
+		const easedReveal = 1 - (1 - reveal) ** 3;
+		text.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
+		img.style.transform = `scale(${(1.12 - p * 0.12).toFixed(3)})`;
+		carrier.style.transform = `translate3d(${(carrierStartX * (1 - easedReveal)).toFixed(1)}px, ${(carrierStartY * (1 - easedReveal)).toFixed(1)}px, 0) rotate(${((1 - easedReveal) * 5).toFixed(2)}deg)`;
+		dvr.style.opacity = easedReveal.toFixed(3);
+		dvr.style.transform = `scale(${(0.96 + easedReveal * 0.04).toFixed(3)})`;
+	}
+
+	measureCarrierStart();
+
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		carrier.style.transform = "none";
+		dvr.style.opacity = "1";
+		dvr.style.transform = "none";
+	} else {
+		updateHero(textLayer, imageLayer);
 		let ticking = false;
 		window.addEventListener(
 			"scroll",
@@ -70,12 +113,15 @@ if (heroText && heroImg) {
 				if (ticking) return;
 				ticking = true;
 				requestAnimationFrame(() => {
-					updateHero(heroText, heroImg);
+					updateHero(textLayer, imageLayer);
 					ticking = false;
 				});
 			},
 			{ passive: true },
 		);
-		window.addEventListener("resize", () => updateHero(heroText, heroImg));
+		window.addEventListener("resize", () => {
+			measureCarrierStart();
+			updateHero(textLayer, imageLayer);
+		});
 	}
 }

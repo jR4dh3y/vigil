@@ -1,5 +1,6 @@
 ---
 import { ArrowDownRight, ArrowUpRight, Copy } from "lucide-astro";
+import DvrPreview from "./DvrPreview.astro";
 import OwlMark from "./OwlMark.astro";
 
 const install =
@@ -7,9 +8,9 @@ const install =
 ---
 
 <main id="top">
-	<section class="sticky top-0 z-0 h-[100svh] overflow-hidden">
+	<section class="sticky top-0 z-0 h-[100svh] overflow-hidden" data-hero>
 		<img
-			src="/assets/hero-night-clean.webp"
+			src="/assets/hero-night-full.webp"
 			alt="A warmly lit house beneath a star-filled night sky"
 			class="absolute inset-0 h-full w-full object-cover object-[16%_50%] will-change-transform sm:object-[36%_50%]"
 			width="1536"
@@ -37,11 +38,12 @@ const install =
 				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#10130f]">
 					Watch<br />what<br /><span class="text-[#7c8e75]">matters.</span>
 				</h1>
-				<div class="relative z-10 lg:justify-self-end">
-					<OwlMark
-						class="pointer-events-none mx-auto mb-[-1.25rem] block w-[clamp(8rem,18vw,16rem)] opacity-[0.16] mix-blend-multiply sm:mb-[-1.5rem] sm:w-[clamp(10rem,20vw,18rem)]"
-						decorative
-					/>
+				<div class="relative z-10 w-full max-w-xs lg:justify-self-end">
+					<span
+						class="mx-auto mb-[-3.5rem] block aspect-square w-[clamp(12rem,28vw,20rem)] sm:mb-[-4rem] sm:w-[clamp(14rem,22vw,22rem)]"
+						data-hero-owl-anchor
+						aria-hidden="true"
+					></span>
 					<p class="relative z-10 max-w-xs text-base leading-snug sm:text-lg">
 						Vigil records your RTSP/ONVIF cameras to your own hardware. Live view, playback,
 						alerts — one small Go server, no cloud-shaped middleman.
@@ -50,6 +52,23 @@ const install =
 						Install Vigil
 						<ArrowDownRight class="size-4 transition-transform group-hover:translate-x-1 group-hover:translate-y-1" />
 					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="pointer-events-none absolute inset-0 z-20" data-hero-stage>
+			<div
+				class="absolute bottom-5 right-4 flex items-end will-change-transform sm:bottom-8 sm:right-7"
+				data-hero-carrier
+			>
+				<div
+					class="relative z-10 -mr-14 mb-0 w-[clamp(12rem,28vw,20rem)] shrink-0 opacity-90 mix-blend-multiply sm:-mr-20 sm:w-[clamp(14rem,22vw,22rem)]"
+					data-hero-carrier-owl
+				>
+					<OwlMark class="block w-full object-contain" decorative />
+				</div>
+				<div class="w-[min(88vw,620px)] opacity-0 will-change-transform" data-hero-dvr>
+					<DvrPreview />
 				</div>
 			</div>
 		</div>
