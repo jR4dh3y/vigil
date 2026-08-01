@@ -20,7 +20,7 @@ type persistingTokenSource struct {
 	refresh string
 }
 
-func (s *Service) tokenSource(ctx context.Context) (oauth2.TokenSource, error) {
+func (s *Service) tokenSource(ctx context.Context, cfg Config) (oauth2.TokenSource, error) {
 	tok, err := s.loadToken(ctx)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func (s *Service) tokenSource(ctx context.Context) (oauth2.TokenSource, error) {
 	if tok == nil || tok.RefreshToken == "" {
 		return nil, fmt.Errorf("google drive is not connected")
 	}
-	base := s.oauthConfig().TokenSource(ctx, tok)
+	base := oauthConfig(cfg).TokenSource(ctx, tok)
 	return &persistingTokenSource{
 		src:     base,
 		svc:     s,

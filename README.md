@@ -22,10 +22,12 @@ vigil/
 
 ## Google Drive Archive
 
-Set `NVR_SECRETS_KEY`, `NVR_GOOGLE_CLIENT_ID`, `NVR_GOOGLE_CLIENT_SECRET`, and
-`NVR_GOOGLE_REDIRECT_URL` on the server, then connect an account from
-**Settings → Google Drive**. The redirect URL must exactly match the authorized
-redirect URI configured for the Google OAuth web client.
+Set `NVR_SECRETS_KEY` on the server, then enter the Google OAuth web-client ID,
+secret, and redirect URL in **Settings → Google Drive**. The secret is encrypted
+at rest, and the redirect URL must exactly match the authorized redirect URI
+configured for the Google OAuth web client. `NVR_GOOGLE_CLIENT_ID`,
+`NVR_GOOGLE_CLIENT_SECRET`, and `NVR_GOOGLE_REDIRECT_URL` remain available as an
+environment-based fallback for unattended deployments.
 
 Vigil uploads pending recordings at 00:00 UTC each day. Archive retries are
 idempotent, and retention preserves pending recording metadata while a Drive

@@ -1,6 +1,7 @@
 import type {
 	GDriveArchiveRequest,
 	GDriveArchiveResponse,
+	GDriveConfigurationRequest,
 	GDriveConnectResponse,
 	GDriveStatus,
 } from "@nvr/api-client";
@@ -16,6 +17,17 @@ export class StorageApiError extends Error {
 		this.status = status;
 		this.code = code;
 	}
+}
+
+/** PUT /storage/gdrive/configuration — saves encrypted OAuth app credentials. */
+export async function putGDriveConfiguration(
+	body: GDriveConfigurationRequest,
+): Promise<GDriveStatus> {
+	const { data, error, response } = await api.PUT("/storage/gdrive/configuration", { body });
+	if (data) {
+		return data;
+	}
+	throwStorageError(error, response.status, "Failed to save Google Drive configuration");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -62,6 +62,42 @@ func (s *Server) GetGDriveStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// PutGDriveConfiguration saves the OAuth client credentials entered by an administrator.
+func (s *Server) PutGDriveConfiguration(w http.ResponseWriter, r *http.Request) {
+	if requireAdmin(w, r) == nil {
+		return
+	}
+	if s.GDrive == nil {
+		writeError(w, http.StatusBadRequest, "google drive service is unavailable", "not_configured")
+		return
+	}
+
+	var body GDriveConfigurationRequest
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
+		return
+	}
+	if err := s.GDrive.Configure(r.Context(), gdrive.Config{
+		ClientID:     body.ClientId,
+		ClientSecret: body.ClientSecret,
+		RedirectURL:  body.RedirectUrl,
+	}); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error(), "validation")
+		return
+	}
+
+	status, err := s.GDrive.Status(r.Context())
+	if err != nil {
+		slog.Error("gdrive status after configuration", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
+	writeJSON(w, http.StatusOK, GDriveStatus{
+		Configured: status.Configured,
+		Connected:  status.Connected,
+	})
+}
+
 // PostGDriveConnect starts the Google Drive OAuth flow (admin).
 func (s *Server) PostGDriveConnect(w http.ResponseWriter, r *http.Request) {
 	if requireAdmin(w, r) == nil {

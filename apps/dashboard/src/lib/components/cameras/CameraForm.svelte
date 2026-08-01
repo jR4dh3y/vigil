@@ -28,6 +28,7 @@
 			username?: string;
 			password?: string;
 		}) => void | Promise<void>;
+		onCancel?: () => void;
 		onDelete?: () => void | Promise<void>;
 		deleting?: boolean;
 	};
@@ -42,6 +43,7 @@
 		probeError = null,
 		onSubmit,
 		onProbe,
+		onCancel,
 		onDelete,
 		deleting = false,
 	}: Props = $props();
@@ -316,12 +318,23 @@
 			{/if}
 		</div>
 		<div class="flex flex-wrap items-center gap-2">
-			<a
-				href="/cameras"
-				class="rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2 text-sm text-zinc-300 no-underline transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100"
-			>
-				Cancel
-			</a>
+			{#if onCancel}
+				<button
+					type="button"
+					disabled={busy}
+					onclick={onCancel}
+					class="rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					Cancel
+				</button>
+			{:else}
+				<a
+					href="/cameras"
+					class="rounded-lg border border-zinc-700 bg-zinc-900 px-3.5 py-2 text-sm text-zinc-300 no-underline transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100"
+				>
+					Cancel
+				</a>
+			{/if}
 			<button
 				type="submit"
 				disabled={busy}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { GDriveStatus } from "$lib/storage";
+	import GoogleDriveConfigurationForm from "./GoogleDriveConfigurationForm.svelte";
 	import {
 		driveConnectionBadgeClass,
 		driveConnectionLabel,
@@ -12,10 +13,12 @@
 		connecting?: boolean;
 		disconnecting?: boolean;
 		archiving?: boolean;
+		configuring?: boolean;
 		serverError?: string | null;
 		onConnect: () => void | Promise<void>;
 		onDisconnect: () => void | Promise<void>;
 		onArchive: () => void | Promise<void>;
+		onConfigure: (values: import("$lib/storage").GDriveConfigurationRequest) => void | Promise<void>;
 	};
 
 	let {
@@ -24,13 +27,15 @@
 		connecting = false,
 		disconnecting = false,
 		archiving = false,
+		configuring = false,
 		serverError = null,
 		onConnect,
 		onDisconnect,
 		onArchive,
+		onConfigure,
 	}: Props = $props();
 
-	const busy = $derived(connecting || disconnecting || archiving);
+	const busy = $derived(connecting || disconnecting || archiving || configuring);
 	const connectedAtLabel = $derived(formatConnectedAt(status.connectedAt));
 </script>
 
@@ -42,8 +47,7 @@
 				{#if status.connectionError}
 					The saved connection needs attention before archiving can continue.
 				{:else if !status.configured}
-					Server credentials are not set. Configure NVR_GOOGLE_CLIENT_ID/SECRET/REDIRECT_URL
-					and NVR_SECRETS_KEY on the NVR host before connecting.
+					Save your Google OAuth web-client details below, then connect the Drive account.
 				{:else if status.connected}
 					Unarchived recordings upload to Drive daily at 00:00 UTC, or use Run archive
 					now.
@@ -137,7 +141,7 @@
 			</button>
 		{:else if !status.configured}
 			<p class="text-xs text-zinc-500">
-				Configure Google OAuth on the server, then refresh this page.
+				NVR_SECRETS_KEY must be set on the server to encrypt these credentials.
 			</p>
 		{:else if status.connected}
 			<button
@@ -167,4 +171,19 @@
 			</button>
 		{/if}
 	</div>
+
+	{#if !readonly && status.configured}
+		<details class="mt-5 rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-3">
+			<summary class="cursor-pointer text-sm font-medium text-zinc-300">
+				Change Google OAuth configuration
+			</summary>
+			<p class="mt-2 text-xs text-zinc-500">
+				Saving new credentials disconnects the current Google Drive account and starts a new
+				connection flow.
+			</p>
+			<GoogleDriveConfigurationForm submitting={busy} onSubmit={onConfigure} />
+		</details>
+	{:else if !readonly}
+		<GoogleDriveConfigurationForm submitting={busy} onSubmit={onConfigure} />
+	{/if}
 </div>

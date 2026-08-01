@@ -71,6 +71,12 @@ func TestGDriveMutationEndpointsRequireAdmin(t *testing.T) {
 		call   func(*Server, http.ResponseWriter, *http.Request)
 	}{
 		{
+			name:   "configuration",
+			method: http.MethodPut,
+			path:   "/api/v1/storage/gdrive/configuration",
+			call:   (*Server).PutGDriveConfiguration,
+		},
+		{
 			name:   "connect",
 			method: http.MethodPost,
 			path:   "/api/v1/storage/gdrive/connect",
@@ -102,6 +108,56 @@ func TestGDriveMutationEndpointsRequireAdmin(t *testing.T) {
 				t.Fatalf("got status %d, want %d: %s", response.Code, http.StatusForbidden, response.Body.String())
 			}
 		})
+	}
+}
+
+func TestPutGDriveConfigurationStoresEncryptedCredentials(t *testing.T) {
+	server := newGDriveAPITestServer(t)
+	request := requestAsRole(
+		http.MethodPut,
+		"/api/v1/storage/gdrive/configuration",
+		strings.NewReader(`{"clientId":"dashboard-client","clientSecret":"dashboard-secret","redirectUrl":"https://nvr.example.test/api/v1/storage/gdrive/callback"}`),
+		auth.RoleAdmin,
+	)
+	response := httptest.NewRecorder()
+
+	server.PutGDriveConfiguration(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("got status %d, want %d: %s", response.Code, http.StatusOK, response.Body.String())
+	}
+	if !strings.Contains(response.Body.String(), `"configured":true`) {
+		t.Fatalf("configuration response missing configured state: %s", response.Body.String())
+	}
+	stored, err := server.Queries.GetSetting(context.Background(), gdrive.KeyOAuthSecret)
+	if err != nil {
+		t.Fatalf("read stored secret: %v", err)
+	}
+	if strings.Contains(stored.Value, "dashboard-secret") {
+		t.Fatalf("OAuth client secret was stored in plaintext: %q", stored.Value)
+	}
+	if _, err := server.Queries.GetSetting(context.Background(), gdrive.KeyRefreshToken); err == nil {
+		t.Fatal("old Drive refresh token was not cleared")
+	}
+}
+
+func TestPutGDriveConfigurationRequiresClientSecret(t *testing.T) {
+	server := newGDriveAPITestServer(t)
+	request := requestAsRole(
+		http.MethodPut,
+		"/api/v1/storage/gdrive/configuration",
+		strings.NewReader(`{"clientId":"dashboard-client","redirectUrl":"https://nvr.example.test/api/v1/storage/gdrive/callback"}`),
+		auth.RoleAdmin,
+	)
+	response := httptest.NewRecorder()
+
+	server.PutGDriveConfiguration(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("got status %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
+	}
+	if !strings.Contains(response.Body.String(), `"code":"validation"`) {
+		t.Fatalf("unexpected validation response: %s", response.Body.String())
 	}
 }
 
@@ -212,6 +268,7 @@ func newGDriveAPITestServer(t *testing.T) *Server {
 		}
 	}
 	return &Server{
+		Queries: queries,
 		GDrive: gdrive.NewService(gdrive.Config{
 			ClientID:     "client-id",
 			ClientSecret: "client-secret",

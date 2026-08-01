@@ -3,10 +3,16 @@ export {
 	getGDriveStatus,
 	postGDriveArchive,
 	postGDriveConnect,
+	putGDriveConfiguration,
 	StorageApiError,
 } from "./api";
 export { storageKeys } from "./keys";
-export type { GDriveArchiveResult, GDriveConnectResponse, GDriveStatus } from "./types";
+export type {
+	GDriveArchiveResult,
+	GDriveConfigurationRequest,
+	GDriveConnectResponse,
+	GDriveStatus,
+} from "./types";
 export {
 	driveConnectionBadgeClass,
 	driveConnectionLabel,

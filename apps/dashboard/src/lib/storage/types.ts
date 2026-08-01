@@ -1,6 +1,7 @@
 export type {
 	GDriveArchiveRequest,
 	GDriveArchiveResponse,
+	GDriveConfigurationRequest,
 	GDriveConnectResponse,
 	GDriveStatus,
 } from "@nvr/api-client";
