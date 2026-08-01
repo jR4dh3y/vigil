@@ -55,14 +55,16 @@ const heroImg = document.querySelector<HTMLElement>("[data-hero-img]");
 const owlAnchor = document.querySelector<HTMLElement>("[data-hero-owl-anchor]");
 const heroCarrier = document.querySelector<HTMLElement>("[data-hero-carrier]");
 const carrierOwl = document.querySelector<HTMLElement>("[data-hero-carrier-owl]");
+const heroPaper = document.querySelector<HTMLElement>("[data-hero-paper]");
 const heroDvr = document.querySelector<HTMLElement>("[data-hero-dvr]");
 
-if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && heroDvr) {
+if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && heroPaper && heroDvr) {
 	const textLayer = heroText;
 	const imageLayer = heroImg;
 	const carrier = heroCarrier;
 	const anchor = owlAnchor;
 	const carrierMark = carrierOwl;
+	const paper = heroPaper;
 	const dvr = heroDvr;
 	let carrierStartX = 0;
 	let carrierStartY = 0;
@@ -94,6 +96,7 @@ if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && her
 		text.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
 		img.style.transform = `scale(${(1.12 - p * 0.12).toFixed(3)})`;
 		carrier.style.transform = `translate3d(${(carrierStartX * (1 - easedReveal)).toFixed(1)}px, ${(carrierStartY * (1 - easedReveal)).toFixed(1)}px, 0) rotate(${((1 - easedReveal) * 5).toFixed(2)}deg)`;
+		paper.style.opacity = easedReveal.toFixed(3);
 		dvr.style.opacity = easedReveal.toFixed(3);
 		dvr.style.transform = `scale(${(0.96 + easedReveal * 0.04).toFixed(3)})`;
 	}
@@ -102,6 +105,7 @@ if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && her
 
 	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 		carrier.style.transform = "none";
+		paper.style.opacity = "1";
 		dvr.style.opacity = "1";
 		dvr.style.transform = "none";
 	} else {
