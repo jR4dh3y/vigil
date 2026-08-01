@@ -1,0 +1,133 @@
+---
+import { Camera, CameraOff, Circle, HardDrive, Settings, Video, Zap } from "lucide-astro";
+
+type CameraState = "rec" | "online" | "motion" | "offline";
+
+interface CameraFeed {
+	name: string;
+	state: CameraState;
+	tone: string;
+}
+
+const cameras: CameraFeed[] = [
+	{
+		name: "Front door",
+		state: "rec",
+		tone: "bg-[radial-gradient(ellipse_at_35%_75%,#9c96ad_0%,#1e1e20_72%)]",
+	},
+	{
+		name: "Driveway",
+		state: "online",
+		tone: "bg-[radial-gradient(ellipse_at_70%_30%,#4a3b5f_0%,#1e1e20_72%)]",
+	},
+	{ name: "Backyard", state: "offline", tone: "bg-[#3a3a3d]" },
+	{
+		name: "Garage",
+		state: "motion",
+		tone: "bg-[radial-gradient(ellipse_at_60%_35%,#9c96ad_0%,#1e1e20_72%)]",
+	},
+];
+
+const statusStyles: Record<CameraState, string> = {
+	rec: "border-[#ff6e79]/30 bg-[#ff6e79]/15 text-[#f3eee3]",
+	online: "border-[#c3fb5b]/30 bg-[#c3fb5b]/15 text-[#f3eee3]",
+	motion: "border-[#ffb86c]/30 bg-[#ffb86c]/15 text-[#f3eee3]",
+	offline: "border-[#f3eee3]/15 bg-[#f3eee3]/10 text-[#f3eee3]/45",
+};
+
+const statusLabels: Record<CameraState, string> = {
+	rec: "REC",
+	online: "Online",
+	motion: "Motion",
+	offline: "Offline",
+};
+
+const coverage = [
+	{ left: 0, width: 10 },
+	{ left: 14, width: 13 },
+	{ left: 30, width: 9, event: true },
+	{ left: 44, width: 17 },
+	{ left: 67, width: 11, event: true },
+	{ left: 80, width: 20 },
+];
+---
+
+<div
+	role="img"
+	aria-label="Vigil DVR dashboard preview with four camera feeds and a recording timeline"
+	class="overflow-hidden border-2 border-[#1e1e20] bg-[#1e1e20] shadow-[12px_12px_0_rgba(30,30,32,0.2)]"
+>
+	<div class="flex">
+		<aside class="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-[#f3eee3]/15 py-3 sm:flex">
+			<span class="mb-2 flex size-7 items-center justify-center bg-[#c59edc] text-[#1e1e20]"><Camera class="size-3.5" /></span>
+			<span class="flex size-7 items-center justify-center bg-[#f3eee3]/10 text-[#f3eee3]"><Video class="size-3.5" /></span>
+			<span class="flex size-7 items-center justify-center text-[#f3eee3]/35"><Camera class="size-3.5" /></span>
+			<span class="flex size-7 items-center justify-center text-[#f3eee3]/35"><Zap class="size-3.5" /></span>
+			<span class="flex size-7 items-center justify-center text-[#f3eee3]/35"><Settings class="size-3.5" /></span>
+		</aside>
+
+		<div class="min-w-0 flex-1">
+			<div class="flex items-center justify-between border-b border-[#f3eee3]/15 px-3 py-2.5">
+				<span class="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#f3eee3] sm:text-xs">
+					<Circle class="size-2 fill-[#ffb86c] text-[#ffb86c]" />
+					Live / all cameras
+				</span>
+				<span class="flex items-center gap-2.5 text-[9px] uppercase text-[#f3eee3]/45 sm:text-[10px]">
+					<span>04 channels</span>
+					<span data-clock class="tabular-nums">--:--:--</span>
+				</span>
+			</div>
+
+			<div class="grid grid-cols-2 gap-px bg-[#f3eee3]/15">
+				{cameras.map((camera, index) => (
+					<div class="relative aspect-video bg-[#2a2a2c]">
+						{camera.state === "offline" ? (
+							<div class="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#3a3a3d]">
+								<CameraOff class="size-4 text-[#f3eee3]/30" />
+								<span class="text-[9px] uppercase text-[#f3eee3]/40">No signal</span>
+							</div>
+						) : (
+							<div class={`absolute inset-0 ${camera.tone}`} />
+						)}
+						<span class={`absolute right-2 top-2 inline-flex items-center gap-1 border px-1.5 py-0.5 text-[8px] font-medium uppercase backdrop-blur-sm ${statusStyles[camera.state]}`}>
+							<span class={`size-1 rounded-full ${camera.state === "rec" ? "bg-[#ff6e79] motion-safe:animate-pulse" : camera.state === "online" ? "bg-[#c3fb5b]" : camera.state === "motion" ? "bg-[#ffb86c]" : "bg-[#f3eee3]/30"}`} />
+							{statusLabels[camera.state]}
+						</span>
+						<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#1e1e20]/85 to-transparent px-2 py-1.5">
+							<p class="truncate text-[9px] font-medium uppercase tracking-[0.1em] text-[#f3eee3] drop-shadow">CH{index + 1} · {camera.name}</p>
+						</div>
+					</div>
+				))}
+			</div>
+
+			<div class="border-t border-[#f3eee3]/15 px-3 py-2.5">
+				<div class="mb-1.5 flex items-center justify-between text-[9px] uppercase text-[#f3eee3]/45 sm:text-[10px]">
+					<span>Playback — CH1 — last 24h</span>
+					<span class="hidden sm:inline">Drag to scrub</span>
+				</div>
+				<div class="relative h-7 w-full border border-[#f3eee3]/20 bg-[#1e1e20]/20">
+					<div class="absolute inset-1 overflow-hidden bg-[#f3eee3]/10">
+						{coverage.map((segment) => (
+							<div
+								class="absolute inset-y-0 bg-[#c59edc]"
+								style={`left: ${segment.left}%; width: ${segment.width}%`}
+							>
+								{segment.event && <span class="absolute inset-y-0 left-1/2 w-px bg-[#ffb86c]" />}
+							</div>
+						))}
+					</div>
+					<div class="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-[#ffb86c] shadow-[0_0_6px_rgba(255,184,108,0.6)]" style="left: 58%">
+						<span class="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#f3eee3] bg-[#ffb86c]" />
+					</div>
+				</div>
+				<div class="mt-1 flex justify-between text-[8px] text-[#f3eee3]/30 tabular-nums sm:text-[9px]">
+					<span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="flex items-center justify-between border-t border-[#f3eee3]/15 px-3 py-1.5 text-[8px] uppercase tracking-[0.14em] text-[#f3eee3]/35">
+		<span class="flex items-center gap-1.5"><HardDrive class="size-3" /> Own disk / online</span>
+		<span>VIGIL / 001</span>
+	</div>
+</div>

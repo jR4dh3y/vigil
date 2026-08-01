@@ -1,0 +1,24 @@
+---
+const stats = [
+	{ value: "WHEP", label: "Sub-second live", note: "HLS fallback everywhere else" },
+	{ value: "60s", label: "fMP4 segments", note: "Stream copy, no transcode" },
+	{ value: "1", label: "Go binary", note: "Dashboard and SQLite embedded" },
+	{ value: "0", label: "Cloud accounts", note: "Optional Drive archive only" },
+];
+---
+
+<section class="border-b border-[#1e1e20]/20 bg-[#c59edc]">
+	<div class="mx-auto grid max-w-[1440px] grid-cols-2 gap-x-6 gap-y-8 px-4 py-9 sm:px-7 lg:grid-cols-4">
+		{
+			stats.map((stat) => (
+				<div>
+				<div class="display-type text-4xl uppercase leading-none text-[#1e1e20]">
+						{stat.value}
+					</div>
+				<div class="mt-2 text-sm uppercase text-[#1e1e20]">{stat.label}</div>
+				<div class="mt-0.5 text-xs text-[#1e1e20]/60">{stat.note}</div>
+				</div>
+			))
+		}
+	</div>
+</section>

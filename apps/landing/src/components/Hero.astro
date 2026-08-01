@@ -1,0 +1,84 @@
+---
+import { ArrowDownRight, Copy } from "lucide-astro";
+import DvrPreview from "./DvrPreview.astro";
+import Header from "./Header.astro";
+import OwlMark from "./OwlMark.astro";
+
+const install =
+	"git clone https://github.com/jR4dh3y/vigil.git && cd vigil/deploy && docker compose up -d --build";
+---
+
+<main id="top">
+	<section class="sticky top-0 z-0 h-[100svh] overflow-hidden" data-hero>
+		<img
+			src="/assets/hero-night-full.webp"
+			alt="A warmly lit house beneath a star-filled night sky"
+			class="absolute inset-0 h-full w-full object-cover object-[16%_50%] will-change-transform sm:object-[36%_50%]"
+			width="1536"
+			height="710"
+			decoding="async"
+			data-hero-img
+		/>
+		<div class="absolute inset-x-0 top-0 flex h-[70%] flex-col overflow-hidden bg-[#f3eee3] will-change-transform" data-hero-text>
+			<Header />
+
+			<div class="mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-4 pb-10 sm:px-7 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
+				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#1e1e20]">
+					Watch<br />what<br /><span class="text-[#c59edc]">matters.</span>
+				</h1>
+				<div class="relative z-10 w-full max-w-xs lg:justify-self-end">
+					<span
+						class="mx-auto mb-[-3.5rem] block aspect-square w-[clamp(12rem,28vw,20rem)] sm:mb-[-4rem] sm:w-[clamp(14rem,22vw,22rem)]"
+						data-hero-owl-anchor
+						aria-hidden="true"
+					></span>
+					<p class="relative z-10 max-w-xs text-base leading-snug sm:text-lg">
+						Vigil records your RTSP/ONVIF cameras to your own hardware. Live view, playback,
+						alerts — one small Go server, no cloud-shaped middleman.
+					</p>
+					<a href="#install" class="group mt-6 inline-flex items-center gap-2 text-xs uppercase underline underline-offset-4">
+						Install Vigil
+						<ArrowDownRight class="size-4 transition-transform group-hover:translate-x-1 group-hover:translate-y-1" />
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="pointer-events-none absolute inset-0 z-20" data-hero-stage>
+			<div
+				class="absolute bottom-5 right-4 flex items-end will-change-transform sm:bottom-8 sm:right-7"
+				data-hero-carrier
+			>
+				<div
+					class="relative z-10 -mr-14 mb-0 w-[clamp(12rem,28vw,20rem)] shrink-0 sm:-mr-20 sm:w-[clamp(14rem,22vw,22rem)]"
+					data-hero-carrier-owl
+				>
+					<img
+						src="/assets/owl-paper-bg.png"
+						alt=""
+						aria-hidden="true"
+						class="pointer-events-none absolute left-1/2 top-1/2 z-0 aspect-square w-[118%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-0"
+						width="1254"
+						height="1254"
+						decoding="async"
+						data-hero-paper
+					/>
+					<OwlMark class="relative z-10 block w-full object-contain" decorative />
+				</div>
+				<div class="w-[min(88vw,620px)] opacity-0 will-change-transform" data-hero-dvr>
+					<DvrPreview />
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<div class="h-[70svh]" aria-hidden="true"></div>
+
+	<section id="install" class="relative z-20 mt-16 scroll-mt-8 border-y border-[#1e1e20]/20 bg-[#1e1e20] px-4 py-7 text-[#f3eee3] sm:mt-24 sm:px-7">
+		<div class="mx-auto grid max-w-[1440px] gap-5 lg:grid-cols-[0.35fr_1fr_auto] lg:items-center">
+			<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">02 / Install on your hardware</p>
+			<pre class="mono-type overflow-x-auto text-xs leading-relaxed sm:text-sm"><code><span class="text-[#ffb86c]">$</span> git clone github.com/jR4dh3y/vigil && cd vigil/deploy && docker compose up -d --build</code></pre>
+			<button type="button" data-copy={install} class="inline-flex w-fit cursor-pointer items-center gap-2 border border-[#f3eee3]/40 px-3 py-2 text-xs uppercase transition-colors hover:bg-[#f3eee3] hover:text-[#1e1e20]"><Copy class="size-3" /> Copy</button>
+		</div>
+	</section>
+</main>

@@ -1,0 +1,18 @@
+---
+interface Props {
+	class?: string;
+	decorative?: boolean;
+}
+
+const { class: className = "", decorative = false } = Astro.props;
+---
+
+<img
+	src="/assets/owl.png"
+	alt={decorative ? "" : "The Vigil owl mark"}
+	aria-hidden={decorative}
+	class={className}
+	width="1254"
+	height="1254"
+	decoding="async"
+/>

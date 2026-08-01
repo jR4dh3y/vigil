@@ -1,0 +1,74 @@
+---
+import { Database, FileVideo, FolderSearch, Timer } from "lucide-astro";
+
+const points = [
+	{
+		icon: FileVideo,
+		title: "Plain files, plain MP4",
+		body: "Every segment is a standard MP4 that opens in any player. No proprietary container, no export ritual when you need to hand footage to someone.",
+	},
+	{
+		icon: FolderSearch,
+		title: "Disk is the backup truth",
+		body: "The filesystem layout mirrors the database index. If the database ever dies, the recordings volume is re-indexed by scanning disk — not the other way around.",
+	},
+	{
+		icon: Database,
+		title: "SQLite, treated properly",
+		body: "WAL mode, one writer, busy_timeout. Metadata lives on fast storage; footage lives on the big slow disk where it belongs.",
+	},
+	{
+		icon: Timer,
+		title: "Forgets on schedule",
+		body: "Retention deletes expired segments, then rows, then empty directories. NVR_RETENTION_DAYS=7 out of the box; panic mode prunes oldest-first if the disk fills anyway.",
+	},
+];
+---
+
+<section id="storage" class="scroll-mt-8 border-t border-[#1e1e20]/20">
+	<div class="mx-auto max-w-[1440px] px-4 py-20 sm:px-7 sm:py-28">
+		<div class="grid gap-8 lg:grid-cols-[0.3fr_0.7fr]">
+			<p class="mono-type text-[10px] uppercase">05 / The promise</p>
+			<div>
+				<h2 class="display-type max-w-4xl text-[clamp(3.8rem,8vw,8rem)] uppercase leading-[0.78]">A file is<br /><span class="text-[#c59edc]">a file.</span></h2>
+				<p class="mt-8 max-w-xl text-lg leading-snug sm:text-2xl">No database you can't walk away from, no format only we can read. The disk layout is the product.</p>
+			</div>
+		</div>
+
+		<div class="mt-14 grid gap-10 lg:grid-cols-2">
+			<div class="min-w-0 space-y-6">
+				{
+					points.map((point) => (
+						<div class="flex gap-3.5">
+						<span class="flex size-9 shrink-0 items-center justify-center bg-[#c59edc] text-[#1e1e20]">
+								<point.icon class="size-4" />
+							</span>
+							<div>
+							<h3 class="text-sm font-semibold uppercase">{point.title}</h3>
+							<p class="mt-1.5 text-sm leading-relaxed text-[#1e1e20]/70">{point.body}</p>
+							</div>
+						</div>
+					))
+				}
+			</div>
+
+			<div class="paper-panel h-fit min-w-0 border border-[#1e1e20]/30">
+				<div class="border-b border-[#1e1e20]/30 px-3.5 py-2 text-xs uppercase text-[#1e1e20]/60">
+					On disk, literally
+				</div>
+				<pre
+					class="mono-type overflow-x-auto p-4 text-xs leading-relaxed text-[#1e1e20]/70"><code><span class="text-[#1e1e20]">recordings/</span>
+└── cam_7af62f6b<span class="text-[#1e1e20]/40">8d7d4cd5889fa7713be1faec</span>/
+    └── 2026-07-22/
+        ├── 15-14-20-785839.mp4
+        ├── 15-15-21-769688.mp4
+        ├── 15-16-21-779589.mp4
+        └── <span class="text-[#1e1e20]/40">… one file per minute, per camera</span>
+
+<span class="text-[#1e1e20]">data/</span>
+├── nvr.db
+└── nvr.db-wal <span class="text-[#1e1e20]/40"># metadata, WAL mode</span></code></pre>
+			</div>
+		</div>
+	</div>
+</section>
