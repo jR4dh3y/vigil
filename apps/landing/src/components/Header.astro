@@ -1,19 +1,9 @@
 ---
-import OwlMark from "./OwlMark.astro";
-
-interface Props {
-	class?: string;
-}
-
-const { class: className = "" } = Astro.props;
 const githubUrl = "https://github.com/jR4dh3y/vigil";
 ---
 
-<header class={`flex w-full items-center justify-between ${className}`}>
-	<a href="/" class="group flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em]">
-		<OwlMark class="size-8 object-contain transition-transform duration-300 group-hover:-rotate-6" />
-		<span>Vigil</span>
-	</a>
+<header class="mx-auto flex w-full max-w-[1440px] items-center justify-between px-4 pt-5 sm:px-7 sm:pt-7">
+	<a href="/" class="text-sm font-semibold uppercase tracking-[0.18em]">Vigil</a>
 	<nav class="flex items-center gap-4 text-[11px] uppercase sm:gap-5" aria-label="Primary navigation">
 		<a href="/docs/" class="underline-offset-4 hover:underline">Docs</a>
 		<a href={githubUrl} target="_blank" rel="noreferrer" class="underline-offset-4 hover:underline">GitHub</a>

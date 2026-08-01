@@ -2,10 +2,15 @@
 
 :root {
 	--paper: #f3eee3;
-	--ink: #10130f;
-	--olive: #7c8e75;
-	--clay: #c88969;
-	--line: rgba(16, 19, 15, 0.22);
+	--ink: #1e1e20;
+	--accent: #c59edc;
+	--lime: #c3fb5b;
+	--orange: #ffb86c;
+	--coral: #ff6e79;
+	--muted: #9c96ad;
+	--deep-purple: #4a3b5f;
+	--surface: #2a2a2c;
+	--line: rgba(30, 30, 32, 0.22);
 }
 
 html {
@@ -16,8 +21,8 @@ body {
 	min-width: 320px;
 	background-color: var(--paper);
 	background-image:
-		linear-gradient(rgba(16, 19, 15, 0.025) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(16, 19, 15, 0.025) 1px, transparent 1px);
+		linear-gradient(rgba(30, 30, 32, 0.025) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(30, 30, 32, 0.025) 1px, transparent 1px);
 	background-size: 24px 24px;
 }
 
@@ -43,10 +48,10 @@ a {
 
 .paper-panel {
 	background-color: rgba(243, 238, 227, 0.72);
-	box-shadow: 8px 8px 0 rgba(16, 19, 15, 0.07);
+	box-shadow: 8px 8px 0 rgba(30, 30, 32, 0.07);
 }
 
 ::selection {
-	background: var(--olive);
+	background: var(--accent);
 	color: var(--paper);
 }

@@ -34,10 +34,10 @@ const planes = [
 	<div class="grid gap-8 lg:grid-cols-[0.3fr_0.7fr]">
 		<div>
 			<p class="mono-type text-[10px] uppercase">03 / How it works</p>
-			<span class="mt-5 block h-24 w-px bg-[#10130f] lg:h-40"></span>
+			<span class="mt-5 block h-24 w-px bg-[#1e1e20] lg:h-40"></span>
 		</div>
 		<div>
-			<h2 class="display-type max-w-4xl text-[clamp(3.8rem,8vw,8rem)] uppercase leading-[0.78]">Small parts.<br /><span class="text-[#7c8e75]">Clear job.</span></h2>
+			<h2 class="display-type max-w-4xl text-[clamp(3.8rem,8vw,8rem)] uppercase leading-[0.78]">Small parts.<br /><span class="text-[#c59edc]">Clear job.</span></h2>
 			<p class="mt-8 max-w-xl text-lg leading-snug sm:text-2xl">Two boring programs with a clean split: MediaMTX moves video, the Go server decides who may watch what and remembers where every minute lives.</p>
 		</div>
 	</div>
@@ -46,17 +46,17 @@ const planes = [
 		{
 			hops.map((hop, i) => (
 				<>
-					<div class="paper-panel flex-1 border border-[#10130f]/30 p-4">
+					<div class="paper-panel flex-1 border border-[#1e1e20]/30 p-4">
 						<div class="flex items-center gap-2.5">
-							<span class="flex size-8 shrink-0 items-center justify-center bg-[#7c8e75] text-[#10130f]">
+							<span class="flex size-8 shrink-0 items-center justify-center bg-[#c59edc] text-[#1e1e20]">
 								<hop.icon class="size-4" />
 							</span>
 							<div class="text-sm font-medium uppercase">{hop.node}</div>
 						</div>
-						<div class="mt-2 text-xs uppercase text-[#10130f]/60">{hop.sub}</div>
+						<div class="mt-2 text-xs uppercase text-[#1e1e20]/60">{hop.sub}</div>
 					</div>
 					{i < hops.length - 1 && (
-					<div class="flex items-center justify-center gap-1 text-[#10130f]/60 md:flex-col md:gap-0.5">
+					<div class="flex items-center justify-center gap-1 text-[#1e1e20]/60 md:flex-col md:gap-0.5">
 							<ChevronRight class="size-4 rotate-90 md:rotate-0" />
 							<span class="mono-type text-[10px] whitespace-nowrap">
 								{hop.edge}
@@ -71,12 +71,12 @@ const planes = [
 	<div class="mt-8 grid gap-4 md:grid-cols-2">
 		{
 			planes.map((plane) => (
-				<div class="border-t-2 border-[#10130f] pt-4">
+				<div class="border-t-2 border-[#1e1e20] pt-4">
 					<div class="flex items-center gap-2.5">
-						<plane.icon class="size-4 text-emerald-400" />
+						<plane.icon class="size-4 text-[#c3fb5b]" />
 						<h3 class="text-sm font-medium uppercase">{plane.title}</h3>
 					</div>
-					<p class="mt-2.5 text-sm leading-relaxed text-[#10130f]/70">{plane.body}</p>
+					<p class="mt-2.5 text-sm leading-relaxed text-[#1e1e20]/70">{plane.body}</p>
 				</div>
 			))
 		}

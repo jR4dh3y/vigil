@@ -19,13 +19,12 @@ const install =
 			decoding="async"
 			data-hero-img
 		/>
-
 		<div class="absolute inset-x-0 top-0 flex h-[70%] flex-col overflow-hidden bg-[#f3eee3] will-change-transform" data-hero-text>
-			<Header class="mx-auto max-w-[1440px] px-4 pt-5 sm:px-7 sm:pt-7" />
+			<Header />
 
 			<div class="mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-4 pb-10 sm:px-7 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
-				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#10130f]">
-					Watch<br />what<br /><span class="text-[#7c8e75]">matters.</span>
+				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#1e1e20]">
+					Watch<br />what<br /><span class="text-[#c59edc]">matters.</span>
 				</h1>
 				<div class="relative z-10 w-full max-w-xs lg:justify-self-end">
 					<span
@@ -75,11 +74,11 @@ const install =
 
 	<div class="h-[70svh]" aria-hidden="true"></div>
 
-	<section id="install" class="relative z-20 mt-16 scroll-mt-8 border-y border-[#10130f]/20 bg-[#10130f] px-4 py-7 text-[#f3eee3] sm:mt-24 sm:px-7">
+	<section id="install" class="relative z-20 mt-16 scroll-mt-8 border-y border-[#1e1e20]/20 bg-[#1e1e20] px-4 py-7 text-[#f3eee3] sm:mt-24 sm:px-7">
 		<div class="mx-auto grid max-w-[1440px] gap-5 lg:grid-cols-[0.35fr_1fr_auto] lg:items-center">
-			<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">02 / Put it on the box</p>
-			<pre class="mono-type overflow-x-auto text-xs leading-relaxed sm:text-sm"><code><span class="text-[#c88969]">$</span> git clone github.com/jR4dh3y/vigil && cd vigil/deploy && docker compose up -d --build</code></pre>
-			<button type="button" data-copy={install} class="inline-flex w-fit cursor-pointer items-center gap-2 border border-[#f3eee3]/40 px-3 py-2 text-xs uppercase transition-colors hover:bg-[#f3eee3] hover:text-[#10130f]"><Copy class="size-3" /> Copy</button>
+			<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">02 / Install on your hardware</p>
+			<pre class="mono-type overflow-x-auto text-xs leading-relaxed sm:text-sm"><code><span class="text-[#ffb86c]">$</span> git clone github.com/jR4dh3y/vigil && cd vigil/deploy && docker compose up -d --build</code></pre>
+			<button type="button" data-copy={install} class="inline-flex w-fit cursor-pointer items-center gap-2 border border-[#f3eee3]/40 px-3 py-2 text-xs uppercase transition-colors hover:bg-[#f3eee3] hover:text-[#1e1e20]"><Copy class="size-3" /> Copy</button>
 		</div>
 	</section>
 </main>
