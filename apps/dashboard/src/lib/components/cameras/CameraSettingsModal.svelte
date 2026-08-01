@@ -35,6 +35,14 @@
 	}: Props = $props();
 	const busy = $derived(submitting || probing || deleting);
 
+	let dialogElement: HTMLDivElement | undefined = $state();
+
+	$effect(() => {
+		if (open && dialogElement) {
+			dialogElement.focus();
+		}
+	});
+
 	function handleClose() {
 		if (!busy) {
 			onClose();
@@ -64,6 +72,7 @@
 			aria-label="Close camera settings"
 		></button>
 		<div
+			bind:this={dialogElement}
 			class="relative z-10 flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl sm:max-h-[calc(100vh-5rem)]"
 			role="dialog"
 			tabindex="-1"

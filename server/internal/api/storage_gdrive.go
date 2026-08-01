@@ -77,13 +77,9 @@ func (s *Server) PutGDriveConfiguration(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
 		return
 	}
-	if body.ClientSecret == nil {
-		writeError(w, http.StatusBadRequest, "clientSecret is required", "validation")
-		return
-	}
 	if err := s.GDrive.Configure(r.Context(), gdrive.Config{
 		ClientID:     body.ClientId,
-		ClientSecret: *body.ClientSecret,
+		ClientSecret: body.ClientSecret,
 		RedirectURL:  body.RedirectUrl,
 	}); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error(), "validation")

@@ -164,7 +164,12 @@
 			<button
 				type="button"
 				class="inline-flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-100"
-				onclick={() => (settingsOpen = true)}
+				onclick={() => {
+					serverError = null;
+					probeResult = null;
+					probeError = null;
+					settingsOpen = true;
+				}}
 				aria-label="Open camera settings"
 			>
 				<Settings2 class="size-3.5" />
