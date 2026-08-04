@@ -1,22 +1,89 @@
 ---
+import HeroPoint from "./HeroPoint.astro";
+
+/* Each point is a paper tag cut from the lifted page, hanging from the top
+   edge on a vine. Vine lengths alternate short/long so neighbouring tags
+   never collide while they sway. */
 const points = [
-	"Watch on any screen you own.",
-	"Runs on hardware you control.",
-	"No recurring charges.",
-	"Open source.",
-	"Your recordings stay on your hardware.",
-	"Use Google Drive for backups.",
+	{
+		text: "Watch on any screen you own.",
+		len: "2.6rem",
+		lenSm: "3rem",
+		lenLg: "4.5rem",
+		tilt: -2.4,
+		cropX: 25,
+		cropY: 25,
+		dur: 6.4,
+		delay: -1.2,
+	},
+	{
+		text: "Runs on hardware you control.",
+		len: "7.4rem",
+		lenSm: "8rem",
+		lenLg: "11rem",
+		tilt: 1.8,
+		cropX: 50,
+		cropY: 25,
+		dur: 7.6,
+		delay: -3.1,
+	},
+	{
+		text: "No recurring charges.",
+		len: "3.4rem",
+		lenSm: "4rem",
+		lenLg: "6rem",
+		tilt: -1.2,
+		cropX: 75,
+		cropY: 25,
+		dur: 5.8,
+		delay: -0.6,
+	},
+	{
+		text: "Open source.",
+		len: "8.2rem",
+		lenSm: "9rem",
+		lenLg: "12.5rem",
+		tilt: 2.6,
+		cropX: 25,
+		cropY: 50,
+		dur: 7,
+		delay: -4.4,
+	},
+	{
+		text: "Your recordings stay on your hardware.",
+		len: "2.4rem",
+		lenSm: "3.5rem",
+		lenLg: "5rem",
+		tilt: -2,
+		cropX: 50,
+		cropY: 50,
+		dur: 6.8,
+		delay: -2.3,
+	},
+	{
+		text: "Use Google Drive for backups.",
+		len: "6.8rem",
+		lenSm: "7.5rem",
+		lenLg: "10rem",
+		tilt: 1.4,
+		cropX: 75,
+		cropY: 50,
+		dur: 7.9,
+		delay: -5.2,
+	},
 ];
 ---
 
 <ul
-	class="pointer-events-none absolute inset-x-0 top-[17%] mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-x-10 gap-y-2 px-4 text-sm leading-snug text-[#f3eee3]/80 sm:grid-cols-2 sm:px-7 sm:text-base lg:max-w-[980px] lg:grid-cols-3 lg:text-lg"
+	class="points pointer-events-none absolute inset-x-0 top-0 mx-auto flex w-full max-w-[1280px] items-start px-4 sm:px-8"
 	aria-label="Vigil capabilities"
 >
-	{points.map((point) => (
-		<li class="flex items-start gap-2">
-			<span aria-hidden="true" class="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#f3eee3]/70"></span>
-			<span>{point}</span>
-		</li>
-	))}
+	{points.map((point, i) => <HeroPoint {...point} flip={i % 2 === 1} />)}
 </ul>
+
+<style>
+	.points {
+		--vine-strand: rgba(195, 251, 91, 0.55);
+		--vine-leaf: rgba(195, 251, 91, 0.32);
+	}
+</style>
