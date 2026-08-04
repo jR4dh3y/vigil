@@ -49,7 +49,7 @@ When you run the server for the first time, there are no users. The system asks 
 
 Open the dashboard in a browser. You will see the setup form. Create an administrator account. Then log in.
 
-See `setup-and-authentication.md` for the details of first-start setup.
+See [setup-and-authentication](./setup-and-authentication.md) for the details of first-start setup.
 
 ## 3. Verify The Server
 
@@ -88,7 +88,7 @@ To run Vigil with Docker:
 cd deploy && docker compose up --build
 ```
 
-See `operations.md` for the details of the Docker setup.
+See [operations](./operations.md) for the details of the Docker setup.
 
 ## Code Generation
 
@@ -104,7 +104,7 @@ To regenerate the Go server:
 bun run gen:server
 ```
 
-See `development.md` for the details of code generation.
+See [development](./development.md) for the details of code generation.
 
 ## Verify The Setup
 
@@ -115,11 +115,11 @@ bun run lint          # Biome format and lint
 bun run check-types   # TypeScript type checks
 ```
 
-The Go backend has its own build and test commands inside `server/`. See `development.md` for the details.
+The Go backend has its own build and test commands inside `server/`. See [development](./development.md) for the details.
 
 ## Next Steps
 
-- Read `architecture.md` for the system design.
-- Read `backend.md` for the Go server.
-- Read `api.md` for the REST API.
-- Read `operations.md` for the deployment options.
+- Read [architecture](./architecture.md) for the system design.
+- Read [backend](./backend.md) for the Go server.
+- Read [api](./api.md) for the REST API.
+- Read [operations](./operations.md) for the deployment options.

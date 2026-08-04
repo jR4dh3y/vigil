@@ -64,4 +64,4 @@ http://localhost:8080/api/v1/storage/gdrive/callback
 
 The example file is in `deploy/nvr.example.env`. Copy it and set your values. The file documents the active variables and the commented production options.
 
-See `operations.md` for the Docker environment and the deployment model.
+See [operations](./operations.md) for the Docker environment and the deployment model.

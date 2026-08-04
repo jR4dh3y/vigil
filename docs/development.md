@@ -186,7 +186,7 @@ The `.bin/` directory holds the local MediaMTX binary. It is ignored by Git.
 
 ## Documentation Style
 
-Write all documentation in Simplified Technical English (STE). The rules are in `ste100-style-guide.md`. Refer to the repository `AGENTS.md` for the project conventions.
+Write all documentation in Simplified Technical English (STE). Refer to the repository `AGENTS.md` for the project conventions.
 
 ## The Quality Workflow
 

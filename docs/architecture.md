@@ -152,4 +152,4 @@ The backend packages are:
 - `internal/store`: the SQLite data layer.
 - `internal/ui`: the embedded dashboard.
 
-Refer to `backend.md` for the details of each package.
+Refer to [backend](./backend.md) for the details of each package.

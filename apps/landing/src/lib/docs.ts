@@ -23,13 +23,21 @@ export type DocPage = DocNavItem & {
 const docsDirectory = resolveDocsDirectory();
 
 const docMeta: Record<string, Omit<DocNavItem, "slug">> = {
-	"getting-started": {
-		title: "Getting Started",
+	quickstart: {
+		title: "Quickstart",
 		description: "How to run Vigil.",
 	},
 	architecture: {
 		title: "Architecture",
 		description: "The system design and data flows.",
+	},
+	configuration: {
+		title: "Configuration",
+		description: "Environment variables and defaults.",
+	},
+	"setup-and-authentication": {
+		title: "Setup And Authentication",
+		description: "First-start bootstrap, sessions, and roles.",
 	},
 	backend: {
 		title: "Backend",
@@ -55,32 +63,29 @@ const docMeta: Record<string, Omit<DocNavItem, "slug">> = {
 		title: "Landing",
 		description: "The marketing website.",
 	},
-	deployment: {
-		title: "Deployment",
+	operations: {
+		title: "Operations",
 		description: "Docker, MediaMTX, and environment variables.",
 	},
-	tooling: {
-		title: "Tooling",
+	development: {
+		title: "Development",
 		description: "Build, code generation, and linting.",
-	},
-	"ste100-style-guide": {
-		title: "Style Guide",
-		description: "The Simplified Technical English rules.",
 	},
 };
 
 const navOrder = [
-	"getting-started",
+	"quickstart",
 	"architecture",
+	"configuration",
+	"setup-and-authentication",
 	"backend",
 	"api",
 	"database",
 	"dashboard",
 	"mobile",
 	"landing",
-	"deployment",
-	"tooling",
-	"ste100-style-guide",
+	"operations",
+	"development",
 ];
 
 marked.setOptions({

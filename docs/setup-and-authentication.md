@@ -25,7 +25,7 @@ A session uses an opaque token. The session functions are in `server/internal/au
 
 A session token is 32 random bytes. The backend stores only the SHA-256 hash of the token. The session TTL is 30 days.
 
-The session is stored in the `sessions` table. Refer to `database.md` for the schema.
+The session is stored in the `sessions` table. Refer to [database](./database.md) for the schema.
 
 ## Session Transport
 

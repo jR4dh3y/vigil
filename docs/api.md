@@ -178,4 +178,4 @@ The TypeScript client is in `packages/api-client`. The `gen` script runs `openap
 
 The client wraps `openapi-fetch`. The `createApiClient` function creates a client for a base URL. It defaults credentials to `include`.
 
-Refer to `development.md` for the code generation commands.
+Refer to [development](./development.md) for the code generation commands.

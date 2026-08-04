@@ -18,7 +18,6 @@ This documentation describes the completed codebase as implemented in this repos
 - [Landing](./landing.md): the Astro marketing website.
 - [Operations](./operations.md): Docker, MediaMTX, archive, and security.
 - [Development](./development.md): repository layout, build, code generation, and linting.
-- [Style Guide](./ste100-style-guide.md): the Simplified Technical English rules.
 
 ## Quick Start
 

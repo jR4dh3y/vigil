@@ -85,7 +85,7 @@ The recorded files are stored in this layout:
 recordings/<camera_id>/<YYYY-MM-DD>/<HH-MM-SS-microseconds>.mp4
 ```
 
-The recordings directory is runtime data. It is ignored by Git. Refer to `database.md` for the index and the recovery model.
+The recordings directory is runtime data. It is ignored by Git. Refer to [database](./database.md) for the index and the recovery model.
 
 ## The Archive Behavior
 
@@ -97,7 +97,7 @@ The archive retries are idempotent. A failed upload does not corrupt the state. 
 
 The retention job prunes the old index rows. The default retention period is 7 days. You can change it with the `NVR_RETENTION_DAYS` variable or in the dashboard settings.
 
-The retention job does not delete the media files. It deletes the index rows. See `database.md` for the details.
+The retention job does not delete the media files. It deletes the index rows. See [database](./database.md) for the details.
 
 ## The Local Media Tools
 
