@@ -59,6 +59,36 @@ const carrierOriginal = carrierOwl?.querySelector<HTMLElement>('[data-hero-owl-s
 const carrierPointing = carrierOwl?.querySelector<HTMLElement>('[data-hero-owl-state="pointing"]');
 const heroPaper = document.querySelector<HTMLElement>("[data-hero-paper]");
 const heroDvr = document.querySelector<HTMLElement>("[data-hero-dvr]");
+const heroPoints = document.querySelector<HTMLElement>("[data-hero-points]");
+const heroPointItems = Array.from(
+	heroPoints?.querySelectorAll<HTMLElement>("[data-hero-point]") ?? [],
+);
+const hangingOwl = document.querySelector<HTMLElement>("[data-hanging-owl]");
+const installSection = document.querySelector<HTMLElement>("#install");
+
+function clamp(value: number): number {
+	return Math.min(1, Math.max(0, value));
+}
+
+function updateHangingOwlVisibility() {
+	if (!hangingOwl || !installSection) return;
+	const installIsReached = installSection.getBoundingClientRect().top <= window.innerHeight;
+	hangingOwl.dataset.visible = String(installIsReached);
+}
+
+if (hangingOwl && installSection) {
+	updateHangingOwlVisibility();
+	window.addEventListener("scroll", updateHangingOwlVisibility, { passive: true });
+	window.addEventListener("resize", updateHangingOwlVisibility);
+}
+
+function updateHeroPoints(progress: number) {
+	for (const point of heroPointItems) {
+		const stagger = Number.parseFloat(point.dataset.dropStagger ?? "0");
+		const itemProgress = clamp((progress - stagger) / Math.max(0.01, 1 - stagger));
+		point.style.setProperty("--drop-offset", `${((itemProgress - 1) * 100).toFixed(1)}%`);
+	}
+}
 
 if (
 	hero &&
@@ -84,10 +114,6 @@ if (
 	let carrierStartX = 0;
 	let carrierStartY = 0;
 
-	function clamp(value: number): number {
-		return Math.min(1, Math.max(0, value));
-	}
-
 	function measureCarrierStart() {
 		const previousTextTransform = textLayer.style.transform;
 		const previousCarrierTransform = carrier.style.transform;
@@ -112,6 +138,7 @@ if (
 		const easedReveal = 1 - (1 - reveal) ** 2;
 		text.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
 		img.style.transform = `scale(${(1.12 - p * 0.12).toFixed(3)})`;
+		updateHeroPoints(1 - (1 - p) ** 2);
 		carrier.style.transform = `translate3d(${(carrierStartX * (1 - easedReveal)).toFixed(1)}px, ${(carrierStartY * (1 - easedReveal)).toFixed(1)}px, 0) rotate(${((1 - easedReveal) * 5).toFixed(2)}deg)`;
 		originalOwl.style.opacity = (1 - easedReveal).toFixed(3);
 		pointingOwl.style.opacity = easedReveal.toFixed(3);
@@ -129,6 +156,7 @@ if (
 		paper.style.opacity = "1";
 		dvr.style.opacity = "1";
 		dvr.style.transform = "none";
+		updateHeroPoints(1);
 	} else {
 		updateHero(textLayer, imageLayer);
 		let ticking = false;

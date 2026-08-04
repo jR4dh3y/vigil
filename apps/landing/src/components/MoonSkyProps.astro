@@ -1,0 +1,37 @@
+<div class="moon-sky-props pointer-events-none absolute left-[-4%] top-[3%] z-20 w-[min(72vw,920px)]" aria-hidden="true">
+	<img
+		src="/assets/moon-sky-props.png"
+		alt=""
+		class="block w-full object-contain"
+		width="1672"
+		height="941"
+		decoding="async"
+	/>
+</div>
+
+<style>
+	.moon-sky-props {
+		filter: drop-shadow(0 0 2px rgba(243, 238, 227, 0.72)) drop-shadow(0 5px 9px rgba(4, 10, 24, 0.22));
+		opacity: 0.72;
+	}
+
+	@media (min-width: 640px) and (max-width: 1439px) {
+		.moon-sky-props {
+			left: -5%;
+			top: -2%;
+			width: min(78vw, 860px);
+		}
+	}
+
+	@media (max-width: 639px) {
+		.moon-sky-props {
+			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.moon-sky-props {
+			filter: drop-shadow(0 0 2px rgba(243, 238, 227, 0.72));
+		}
+	}
+</style>

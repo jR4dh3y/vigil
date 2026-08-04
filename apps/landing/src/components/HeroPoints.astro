@@ -1,5 +1,7 @@
 ---
+import HangingOwl from "./HangingOwl.astro";
 import HeroPoint from "./HeroPoint.astro";
+import MoonSkyProps from "./MoonSkyProps.astro";
 
 /* Each point is a paper tag cut from the lifted page, hanging from the top
    edge on a vine. Vine lengths alternate short/long so neighbouring tags
@@ -10,6 +12,7 @@ const points = [
 		len: "2.6rem",
 		lenSm: "3rem",
 		lenLg: "4.5rem",
+		lenShort: "2rem",
 		tilt: -2.4,
 		cropX: 25,
 		cropY: 25,
@@ -17,10 +20,11 @@ const points = [
 		delay: -1.2,
 	},
 	{
-		text: "Runs on hardware you control.",
+		text: "Runs on your hardware.",
 		len: "7.4rem",
 		lenSm: "8rem",
 		lenLg: "11rem",
+		lenShort: "3.5rem",
 		tilt: 1.8,
 		cropX: 50,
 		cropY: 25,
@@ -32,6 +36,7 @@ const points = [
 		len: "3.4rem",
 		lenSm: "4rem",
 		lenLg: "6rem",
+		lenShort: "2.6rem",
 		tilt: -1.2,
 		cropX: 75,
 		cropY: 25,
@@ -43,6 +48,7 @@ const points = [
 		len: "8.2rem",
 		lenSm: "9rem",
 		lenLg: "12.5rem",
+		lenShort: "4rem",
 		tilt: 2.6,
 		cropX: 25,
 		cropY: 50,
@@ -54,6 +60,7 @@ const points = [
 		len: "2.4rem",
 		lenSm: "3.5rem",
 		lenLg: "5rem",
+		lenShort: "2.2rem",
 		tilt: -2,
 		cropX: 50,
 		cropY: 50,
@@ -65,6 +72,7 @@ const points = [
 		len: "6.8rem",
 		lenSm: "7.5rem",
 		lenLg: "10rem",
+		lenShort: "3.3rem",
 		tilt: 1.4,
 		cropX: 75,
 		cropY: 50,
@@ -74,12 +82,18 @@ const points = [
 ];
 ---
 
-<ul
-	class="points pointer-events-none absolute inset-x-0 top-0 mx-auto flex w-full max-w-[1280px] items-start px-4 sm:px-8"
-	aria-label="Vigil capabilities"
->
-	{points.map((point, i) => <HeroPoint {...point} flip={i % 2 === 1} />)}
-</ul>
+<div class="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+	<MoonSkyProps />
+	<HangingOwl />
+
+	<ul
+		class="points absolute right-0 top-0 z-30 flex w-full items-start px-4 sm:max-w-[76%] sm:px-8 xl:max-w-[940px]"
+		aria-label="Vigil capabilities"
+		data-hero-points
+	>
+		{points.map((point, i) => <HeroPoint {...point} flip={i % 2 === 1} stagger={i * 0.14} />)}
+	</ul>
+</div>
 
 <style>
 	.points {
