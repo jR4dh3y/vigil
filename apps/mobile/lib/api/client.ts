@@ -1,4 +1,5 @@
 import { createApiClient, type Middleware } from "@nvr/api-client";
+import { fetch as expoFetch } from "expo/fetch";
 import { getApiBaseUrl } from "@/lib/api/config";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/lib/api/session";
 
@@ -54,7 +55,7 @@ export function getApiClient(): ReturnType<typeof createApiClient> {
 		return cachedClient;
 	}
 
-	const client = createApiClient(baseUrl, { credentials: "include" });
+	const client = createApiClient(baseUrl, { credentials: "include", fetch: expoFetch });
 	client.use(sessionMiddleware);
 	cachedBaseUrl = baseUrl;
 	cachedClient = client;

@@ -1,0 +1,22 @@
+---
+const points = [
+	"Watch on any screen you own.",
+	"Runs on hardware you control.",
+	"No recurring charges.",
+	"Open source.",
+	"Your recordings stay on your hardware.",
+	"Use Google Drive for backups.",
+];
+---
+
+<ul
+	class="pointer-events-none absolute inset-x-0 top-[17%] mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-x-10 gap-y-2 px-4 text-sm leading-snug text-[#f3eee3]/80 sm:grid-cols-2 sm:px-7 sm:text-base lg:max-w-[980px] lg:grid-cols-3 lg:text-lg"
+	aria-label="Vigil capabilities"
+>
+	{points.map((point) => (
+		<li class="flex items-start gap-2">
+			<span aria-hidden="true" class="mt-[0.55em] size-1.5 shrink-0 rounded-full bg-[#f3eee3]/70"></span>
+			<span>{point}</span>
+		</li>
+	))}
+</ul>

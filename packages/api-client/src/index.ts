@@ -42,12 +42,15 @@ export type GDriveArchiveResponse = components["schemas"]["GDriveArchiveResponse
 export type CreateApiClientOptions = {
 	/** Defaults to `"include"` so cookie sessions work cross-origin when needed. */
 	credentials?: RequestCredentials;
+	/** Optional platform-specific fetch implementation. */
+	fetch?: (input: Request) => Promise<Response>;
 };
 
 export function createApiClient(baseUrl: string, options?: CreateApiClientOptions): ApiClient {
 	return createClient<paths>({
 		baseUrl,
 		credentials: options?.credentials ?? "include",
+		fetch: options?.fetch,
 	});
 }
 

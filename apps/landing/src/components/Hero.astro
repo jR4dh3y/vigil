@@ -2,6 +2,7 @@
 import { ArrowDownRight, Copy } from "lucide-astro";
 import DvrPreview from "./DvrPreview.astro";
 import Header from "./Header.astro";
+import HeroPoints from "./HeroPoints.astro";
 import OwlMark from "./OwlMark.astro";
 
 const install =
@@ -19,6 +20,7 @@ const install =
 			decoding="async"
 			data-hero-img
 		/>
+		<HeroPoints />
 		<div class="absolute inset-x-0 top-0 flex h-[70%] flex-col overflow-hidden bg-[#f3eee3] will-change-transform" data-hero-text>
 			<Header />
 
