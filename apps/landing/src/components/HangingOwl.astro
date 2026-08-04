@@ -1,0 +1,44 @@
+<div class="hanging-owl pointer-events-none absolute left-[2%] top-0 z-30 w-[clamp(9rem,18vw,16rem)]" aria-hidden="true">
+	<img
+		src="/assets/owl-moon-branch.png"
+		class="block w-full object-contain"
+		width="1254"
+		height="1254"
+		decoding="async"
+	/>
+</div>
+
+<style>
+	.hanging-owl {
+		transform-origin: 50% 0;
+		filter: drop-shadow(0 0 3.5px rgba(243, 238, 227, 0.98)) drop-shadow(0 6px 8px rgba(4, 10, 24, 0.25));
+		animation: hanging-owl-sway 8s ease-in-out infinite alternate;
+	}
+
+	@media (max-width: 639px) {
+		.hanging-owl {
+			left: 1%;
+			width: clamp(7rem, 28vw, 10rem);
+		}
+	}
+	@media (min-width: 640px) and (max-width: 1439px) {
+			left: 13%;
+			width: clamp(9rem, 15vw, 12rem);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.hanging-owl {
+			animation: none;
+		}
+	}
+
+	@keyframes hanging-owl-sway {
+		from {
+			transform: rotate(-1.5deg);
+		}
+		to {
+			transform: rotate(1.5deg);
+		}
+	}
+</style>
