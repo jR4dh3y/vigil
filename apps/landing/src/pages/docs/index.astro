@@ -1,11 +1,12 @@
 ---
+import { ArrowRight } from "lucide-astro";
 import Header from "../../components/Header.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="Vigil — Docs">
 	<div class="min-h-screen bg-[#f3eee3]">
-		<Header />
+		<Header sticky />
 		<main class="mx-auto grid min-h-[calc(100svh-73px)] max-w-[1440px] place-items-center px-4 py-12 sm:px-7">
 			<section class="grid max-w-xl justify-items-center gap-7 text-center">
 				<img
@@ -18,6 +19,13 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 				/>
 				<div>
 					<h1 class="display-type mt-3 text-5xl uppercase leading-[0.82] sm:text-7xl">Still in development.</h1>
+					<a
+						href="/docs/getting-started/"
+						class="mt-8 inline-flex items-center gap-2 border-2 border-[#1e1e20] px-4 py-3 text-sm font-bold uppercase transition-colors hover:bg-[#1e1e20] hover:text-[#f3eee3]"
+					>
+						I love to beta test anyway
+						<ArrowRight class="size-4" />
+					</a>
 				</div>
 			</section>
 		</main>

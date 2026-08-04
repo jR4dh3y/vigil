@@ -1,0 +1,61 @@
+---
+import OwlMark from "../components/OwlMark.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+	title="Privacy policy — Vigil"
+	description="Vigil is self-hosted: camera recordings stay on your hardware. What the software and this website do with data."
+>
+	<main class="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-7 sm:py-16">
+		<a href="/" class="inline-flex items-center gap-3">
+			<OwlMark class="size-10 object-contain" />
+			<span class="display-type text-2xl uppercase">Vigil</span>
+		</a>
+
+		<h1 class="display-type mt-12 text-6xl uppercase leading-[0.8] sm:text-8xl">Privacy policy</h1>
+		<p class="mono-type mt-4 text-[10px] uppercase">Self-hosted NVR · last updated 2026-08-04</p>
+
+		<div class="mt-12 max-w-2xl space-y-10 text-base leading-relaxed sm:text-lg">
+			<section>
+				<h2 class="mono-type mb-3 text-[10px] uppercase">The software</h2>
+				<p>
+					Vigil is self-hosted. Camera streams and recordings stay on your server, on your disk.
+					Vigil does not send your footage anywhere by default.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="mono-type mb-3 text-[10px] uppercase">Google Drive backups</h2>
+				<p>
+					If you connect Google Drive in the settings, pending recordings are uploaded to your
+					own Drive account. The connection secret is encrypted at rest on your server, and you
+					can disconnect at any time.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="mono-type mb-3 text-[10px] uppercase">This website</h2>
+				<p>This site is static. It sets no cookies, runs no analytics, and collects no personal data.</p>
+			</section>
+
+			<section>
+				<h2 class="mono-type mb-3 text-[10px] uppercase">Contact</h2>
+				<p>
+					Questions? Email{" "}
+					<a href="mailto:radheykalra901@gmail.com" class="underline">radheykalra901@gmail.com</a>, or
+					open an issue at{" "}
+					<a
+						href="https://github.com/jR4dh3y/vigil"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="underline"
+					>
+						github.com/jR4dh3y/vigil
+					</a>
+					.
+				</p>
+			</section>
+		</div>
+	</main>
+</BaseLayout>

@@ -1,0 +1,74 @@
+---
+const faqs = [
+	{
+		q: "Which cameras work with the server?",
+		a: "The server uses RTSP and ONVIF. Most IP cameras and DVRs support these protocols.",
+	},
+	{
+		q: "Where does the server store recordings?",
+		a: "The server stores recordings on its local disk. The server does not send video to the cloud.",
+	},
+	{
+		q: "How do I watch cameras from another network?",
+		a: "Use a VPN or a tunnel to your server. The server does not need an open port.",
+	},
+	{
+		q: "What is the cost?",
+		a: "The code is open source. You pay for the hardware that runs the server.",
+	},
+];
+---
+
+<section class="px-4 pb-6 pt-7 sm:px-7">
+	<div class="mx-auto grid max-w-[1440px] gap-6 lg:grid-cols-[auto_1fr] lg:items-start">
+		<div class="flex items-center gap-6 lg:flex-col lg:items-start lg:gap-4">
+			<div class="relative -rotate-3 w-[clamp(8rem,11vw,10rem)]">
+				<img
+					src="/assets/owl-paper-bg.png"
+					alt=""
+					aria-hidden="true"
+					class="block w-full object-contain"
+					width="1254"
+					height="1254"
+					decoding="async"
+				/>
+				<img
+					src="/assets/owl-question.png"
+					alt=""
+					aria-hidden="true"
+					class="absolute inset-0 m-auto h-[58%] w-[58%] object-contain"
+					width="1254"
+					height="1254"
+					decoding="async"
+				/>
+			</div>
+			<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">FAQ</p>
+		</div>
+
+		<div class="border-t border-[#f3eee3]/20">
+			{faqs.map(({ q, a }) => (
+				<details data-faq-item class="border-b border-[#f3eee3]/20">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-3 [&::-webkit-details-marker]:hidden">
+						<span class="text-sm">{q}</span>
+						<span class="mono-type text-base leading-none text-[#f3eee3]/60" aria-hidden="true">+</span>
+					</summary>
+					<p class="pb-3 text-sm leading-relaxed text-[#f3eee3]/75">{a}</p>
+				</details>
+			))}
+		</div>
+	</div>
+</section>
+
+<script>
+	const faqItems = Array.from(document.querySelectorAll<HTMLDetailsElement>("[data-faq-item]"));
+	for (const item of faqItems) {
+		item.addEventListener("toggle", () => {
+			if (!item.open) return;
+			for (const other of faqItems) {
+				if (other !== item) {
+					other.open = false;
+				}
+			}
+		});
+	}
+</script>

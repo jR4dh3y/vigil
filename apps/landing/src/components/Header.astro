@@ -1,11 +1,39 @@
 ---
+interface Props {
+	sticky?: boolean;
+}
+
 const githubUrl = "https://github.com/jR4dh3y/vigil";
+const { sticky = false } = Astro.props;
+const isDocs = Astro.url.pathname.startsWith("/docs");
 ---
 
-<header class="mx-auto flex w-full max-w-[1440px] items-center justify-between px-4 pt-5 sm:px-7 sm:pt-7">
-	<a href="/" class="text-sm font-semibold uppercase tracking-[0.18em]">Vigil</a>
-	<nav class="flex items-center gap-4 text-[11px] uppercase sm:gap-5" aria-label="Primary navigation">
-		<a href="/docs/" class="underline-offset-4 hover:underline">Docs</a>
-		<a href={githubUrl} target="_blank" rel="noreferrer" class="underline-offset-4 hover:underline">GitHub</a>
-	</nav>
-</header>
+{
+	sticky ? (
+		<header class="sticky top-0 z-50 border-b border-[#1e1e20]/20 bg-[#f3eee3]">
+			<div class="mx-auto flex w-full max-w-[1440px] items-center justify-between px-4 pt-5 sm:px-7 sm:pt-7">
+				<a href="/" class="text-sm font-semibold uppercase tracking-[0.18em]">Vigil</a>
+				<nav class="flex items-center gap-4 text-[11px] uppercase sm:gap-5" aria-label="Primary navigation">
+					{isDocs ? (
+						<a href="/" class="underline-offset-4 hover:underline">Back</a>
+					) : (
+						<a href="/docs/" class="underline-offset-4 hover:underline">Docs</a>
+					)}
+					<a href={githubUrl} target="_blank" rel="noreferrer" class="underline-offset-4 hover:underline">GitHub</a>
+				</nav>
+			</div>
+		</header>
+	) : (
+		<header class="mx-auto flex w-full max-w-[1440px] items-center justify-between px-4 pt-5 sm:px-7 sm:pt-7">
+			<a href="/" class="text-sm font-semibold uppercase tracking-[0.18em]">Vigil</a>
+			<nav class="flex items-center gap-4 text-[11px] uppercase sm:gap-5" aria-label="Primary navigation">
+				{isDocs ? (
+					<a href="/" class="underline-offset-4 hover:underline">Back</a>
+				) : (
+					<a href="/docs/" class="underline-offset-4 hover:underline">Docs</a>
+				)}
+				<a href={githubUrl} target="_blank" rel="noreferrer" class="underline-offset-4 hover:underline">GitHub</a>
+			</nav>
+		</header>
+	)
+}

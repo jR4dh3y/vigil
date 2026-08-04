@@ -1,0 +1,62 @@
+---
+const parts = [
+	{
+		name: "Server",
+		text: "Runs on your hardware. Connects to your DVR and cameras. Records video to local disk.",
+		link: { label: "Install", href: "/docs" },
+	},
+	{
+		name: "Web client",
+		text: "Use the dashboard in a browser. Use the hosted instance, or run the server on your own hardware.",
+	},
+	{
+		name: "Android app",
+		text: "Watch your cameras from your phone.",
+		link: { label: "Download", href: "/docs" },
+	},
+];
+---
+
+<section class="px-4 pt-7 sm:px-7">
+	<div class="mx-auto grid max-w-[1440px] items-center gap-6 lg:grid-cols-[1fr_auto] lg:gap-10">
+		<div class="grid gap-3">
+			{parts.map(({ name, text, link }) => (
+				<div class="flex flex-col gap-1 border border-[#f3eee3]/20 px-4 py-3">
+					<div class="flex items-baseline justify-between gap-4">
+						<h2 class="display-type text-xl uppercase leading-none">{name}</h2>
+						{link && (
+							<a
+								href={link.href}
+								class="mono-type text-[10px] uppercase underline underline-offset-4 transition-colors hover:text-[#f3eee3]"
+							>
+								{link.label}
+							</a>
+						)}
+					</div>
+					<p class="text-sm leading-relaxed text-[#f3eee3]/75">{text}</p>
+				</div>
+			))}
+		</div>
+
+		<div class="relative -rotate-3 w-[clamp(9rem,14vw,12rem)]">
+			<img
+				src="/assets/owl-paper-bg.png"
+				alt=""
+				aria-hidden="true"
+				class="block w-full object-contain"
+				width="1254"
+				height="1254"
+				decoding="async"
+			/>
+			<img
+				src="/assets/owl-working.png"
+				alt=""
+				aria-hidden="true"
+				class="absolute inset-0 m-auto h-[58%] w-[58%] object-contain"
+				width="1254"
+				height="1254"
+				decoding="async"
+			/>
+		</div>
+	</div>
+</section>
