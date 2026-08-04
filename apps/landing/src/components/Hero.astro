@@ -24,7 +24,7 @@ const install =
 
 			<div class="mx-auto grid w-full max-w-[1440px] flex-1 content-center items-center gap-8 px-4 pb-10 sm:px-7 lg:grid-cols-[1.3fr_0.7fr] lg:items-end">
 				<h1 class="display-type text-[clamp(4rem,10.5vw,11rem)] uppercase leading-[0.76] text-[#1e1e20]">
-					Watch<br />what<br /><span class="text-[#c59edc]">matters.</span>
+					Leave<br />Vendor<br /><span class="text-[#c59edc]">Lockin.</span>
 				</h1>
 				<div class="relative z-10 w-full max-w-xs lg:justify-self-end">
 					<span
@@ -63,7 +63,18 @@ const install =
 						decoding="async"
 						data-hero-paper
 					/>
-					<OwlMark class="relative z-10 block w-full object-contain" decorative />
+					<OwlMark
+						class="relative z-10 block w-full object-contain"
+						heroState="original"
+						decorative
+					/>
+					<OwlMark
+						src="/assets/owl-pointer-right.png"
+						alt="Vigil owl pointing to the camera dashboard"
+						class="absolute inset-0 z-20 block h-full w-full object-contain opacity-0"
+						heroState="pointing"
+						decorative
+					/>
 				</div>
 				<div class="w-[min(88vw,620px)] opacity-0 will-change-transform" data-hero-dvr>
 					<DvrPreview />

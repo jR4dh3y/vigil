@@ -55,15 +55,30 @@ const heroImg = document.querySelector<HTMLElement>("[data-hero-img]");
 const owlAnchor = document.querySelector<HTMLElement>("[data-hero-owl-anchor]");
 const heroCarrier = document.querySelector<HTMLElement>("[data-hero-carrier]");
 const carrierOwl = document.querySelector<HTMLElement>("[data-hero-carrier-owl]");
+const carrierOriginal = carrierOwl?.querySelector<HTMLElement>('[data-hero-owl-state="original"]');
+const carrierPointing = carrierOwl?.querySelector<HTMLElement>('[data-hero-owl-state="pointing"]');
 const heroPaper = document.querySelector<HTMLElement>("[data-hero-paper]");
 const heroDvr = document.querySelector<HTMLElement>("[data-hero-dvr]");
 
-if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && heroPaper && heroDvr) {
+if (
+	hero &&
+	heroText &&
+	heroImg &&
+	owlAnchor &&
+	heroCarrier &&
+	carrierOwl &&
+	carrierOriginal &&
+	carrierPointing &&
+	heroPaper &&
+	heroDvr
+) {
 	const textLayer = heroText;
 	const imageLayer = heroImg;
 	const carrier = heroCarrier;
 	const anchor = owlAnchor;
 	const carrierMark = carrierOwl;
+	const originalOwl = carrierOriginal;
+	const pointingOwl = carrierPointing;
 	const paper = heroPaper;
 	const dvr = heroDvr;
 	let carrierStartX = 0;
@@ -91,11 +106,15 @@ if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && her
 	function updateHero(text: HTMLElement, img: HTMLElement) {
 		const textH = text.offsetHeight;
 		const p = clamp(window.scrollY / Math.max(1, textH));
-		const reveal = clamp((window.scrollY - textH * 0.12) / Math.max(1, textH * 0.88));
-		const easedReveal = 1 - (1 - reveal) ** 3;
+		// Start the carrier on the very first scroll frame so the text cannot
+		// slide underneath a stationary owl before the app reveal begins.
+		const reveal = clamp(window.scrollY / Math.max(1, textH * 0.72));
+		const easedReveal = 1 - (1 - reveal) ** 2;
 		text.style.transform = `translate3d(0, ${-window.scrollY}px, 0)`;
 		img.style.transform = `scale(${(1.12 - p * 0.12).toFixed(3)})`;
 		carrier.style.transform = `translate3d(${(carrierStartX * (1 - easedReveal)).toFixed(1)}px, ${(carrierStartY * (1 - easedReveal)).toFixed(1)}px, 0) rotate(${((1 - easedReveal) * 5).toFixed(2)}deg)`;
+		originalOwl.style.opacity = (1 - easedReveal).toFixed(3);
+		pointingOwl.style.opacity = easedReveal.toFixed(3);
 		paper.style.opacity = easedReveal.toFixed(3);
 		dvr.style.opacity = easedReveal.toFixed(3);
 		dvr.style.transform = `scale(${(0.96 + easedReveal * 0.04).toFixed(3)})`;
@@ -105,6 +124,8 @@ if (hero && heroText && heroImg && owlAnchor && heroCarrier && carrierOwl && her
 
 	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 		carrier.style.transform = "none";
+		originalOwl.style.opacity = "0";
+		pointingOwl.style.opacity = "1";
 		paper.style.opacity = "1";
 		dvr.style.opacity = "1";
 		dvr.style.transform = "none";

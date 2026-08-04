@@ -2,15 +2,25 @@
 interface Props {
 	class?: string;
 	decorative?: boolean;
+	src?: string;
+	alt?: string;
+	heroState?: "original" | "pointing";
 }
 
-const { class: className = "", decorative = false } = Astro.props;
+const {
+	class: className = "",
+	decorative = false,
+	src = "/assets/owl.png",
+	alt = "The Vigil owl mark",
+	heroState,
+} = Astro.props;
 ---
 
 <img
-	src="/assets/owl.png"
-	alt={decorative ? "" : "The Vigil owl mark"}
+	src={src}
+	alt={decorative ? "" : alt}
 	aria-hidden={decorative}
+	data-hero-owl-state={heroState}
 	class={className}
 	width="1254"
 	height="1254"
