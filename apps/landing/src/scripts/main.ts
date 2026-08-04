@@ -85,7 +85,7 @@ if (hangingOwl && installSection) {
 function updateHeroPoints(progress: number) {
 	// Leave a small lift at the end so long tags stay in the picture band above
 	// the install/footer panel when it settles over the lower 75% of the viewport.
-	const finalLift = 14;
+	const finalLift = 7;
 	for (const point of heroPointItems) {
 		const stagger = Number.parseFloat(point.dataset.dropStagger ?? "0");
 		const itemProgress = clamp((progress - stagger) / Math.max(0.01, 1 - stagger));

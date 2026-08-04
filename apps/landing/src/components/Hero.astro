@@ -1,6 +1,7 @@
 ---
 import { ArrowDownRight, Copy } from "lucide-astro";
 import DvrPreview from "./DvrPreview.astro";
+import EndSectionDetails from "./EndSectionDetails.astro";
 import Header from "./Header.astro";
 import HeroPoints from "./HeroPoints.astro";
 import OwlMark from "./OwlMark.astro";
@@ -87,15 +88,19 @@ const install =
 
 	<div class="h-[70svh]" aria-hidden="true"></div>
 
-	<div class="relative z-20 flex min-h-[75svh] flex-col bg-[#1e1e20] text-[#f3eee3]">
-		<section id="install" class="scroll-mt-8 border-y border-[#1e1e20]/20 px-4 py-7 sm:px-7">
+	<section id="install" class="relative z-20 flex min-h-[75svh] flex-col bg-[#1e1e20] text-[#f3eee3]">
+		<div class="px-4 py-7 sm:px-7">
 			<div class="mx-auto grid max-w-[1440px] gap-5 lg:grid-cols-[0.35fr_1fr_auto] lg:items-center">
 				<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">02 / Install on your hardware</p>
 				<pre class="mono-type overflow-x-auto text-xs leading-relaxed sm:text-sm"><code><span class="text-[#ffb86c]">$</span> git clone github.com/jR4dh3y/vigil && cd vigil/deploy && docker compose up -d --build</code></pre>
 				<button type="button" data-copy={install} class="inline-flex w-fit cursor-pointer items-center gap-2 border border-[#f3eee3]/40 px-3 py-2 text-xs uppercase transition-colors hover:bg-[#f3eee3] hover:text-[#1e1e20]"><Copy class="size-3" /> Copy</button>
 			</div>
-		</section>
+		</div>
 
-		<slot />
-	</div>
+		<EndSectionDetails />
+
+		<div class="flex flex-1 flex-col justify-end">
+			<slot />
+		</div>
+	</section>
 </main>
