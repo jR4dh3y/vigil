@@ -7,23 +7,36 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 	title="Privacy policy — Vigil"
 	description="Vigil is self-hosted: camera recordings stay on your hardware. What the software and this website do with data."
 >
-	<main class="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-7 sm:py-16">
-		<a href="/" class="inline-flex items-center gap-3">
-			<OwlMark class="size-10 object-contain" />
-			<span class="display-type text-2xl uppercase">Vigil</span>
-		</a>
+	<main class="relative min-h-[calc(100vh-4rem)] w-full overflow-hidden">
+		<div class="pointer-events-none absolute right-0 top-0 z-0 hidden md:block" aria-hidden="true">
+			<img
+				src="/assets/treebranch-props.png"
+				alt=""
+				aria-hidden="true"
+				class="block w-[clamp(36rem,80vw,80rem)] max-w-none -scale-x-100 select-none object-contain opacity-90"
+				width="1672"
+				height="941"
+				decoding="async"
+			/>
+		</div>
 
-		<h1 class="display-type mt-12 text-6xl uppercase leading-[0.8] sm:text-8xl">Privacy policy</h1>
-		<p class="mono-type mt-4 text-[10px] uppercase">Self-hosted NVR · last updated 2026-08-04</p>
+		<div class="relative z-10 mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-7 sm:py-16">
+			<a href="/" class="inline-flex items-center gap-3">
+				<OwlMark class="size-10 object-contain" />
+				<span class="display-type text-2xl uppercase">Vigil</span>
+			</a>
 
-		<div class="mt-12 max-w-2xl space-y-10 text-base leading-relaxed sm:text-lg">
-			<section>
-				<h2 class="mono-type mb-3 text-[10px] uppercase">The software</h2>
-				<p>
-					Vigil is self-hosted. Camera streams and recordings stay on your server, on your disk.
-					Vigil does not send your footage anywhere by default.
-				</p>
-			</section>
+			<h1 class="display-type mt-12 text-6xl uppercase leading-[0.8] sm:text-8xl">Privacy policy</h1>
+			<p class="mono-type mt-4 text-[10px] uppercase">Self-hosted NVR · last updated 2026-08-04</p>
+
+			<div class="mt-12 max-w-2xl space-y-10 text-base leading-relaxed sm:text-lg">
+				<section>
+					<h2 class="mono-type mb-3 text-[10px] uppercase">The software</h2>
+					<p>
+						Vigil is self-hosted. Camera streams and recordings stay on your server, on your disk.
+						Vigil does not send your footage anywhere by default.
+					</p>
+				</section>
 
 			<section>
 				<h2 class="mono-type mb-3 text-[10px] uppercase">Google Drive backups</h2>
@@ -56,6 +69,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 					.
 				</p>
 			</section>
+			</div>
 		</div>
 	</main>
 </BaseLayout>
