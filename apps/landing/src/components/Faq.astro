@@ -19,10 +19,10 @@ const faqs = [
 ];
 ---
 
-<section class="px-4 pb-6 pt-7 sm:px-7">
-	<div class="mx-auto grid max-w-[1440px] gap-6 lg:grid-cols-[auto_1fr] lg:items-start">
+<section class="px-4 pb-6 pt-7 sm:px-7 lg:flex-1 lg:min-h-0">
+	<div class="mx-auto grid max-w-[1440px] gap-6 lg:h-full lg:grid-cols-[auto_1fr] lg:items-stretch">
 		<div class="flex items-center gap-6 lg:flex-col lg:items-start lg:gap-4">
-			<div class="relative -rotate-3 w-[clamp(8rem,11vw,10rem)]">
+			<div class="relative -rotate-3 w-[clamp(9rem,14vw,12rem)]">
 				<img
 					src="/assets/owl-paper-bg.png"
 					alt=""
@@ -42,17 +42,16 @@ const faqs = [
 					decoding="async"
 				/>
 			</div>
-			<p class="mono-type text-[10px] uppercase text-[#f3eee3]/60">FAQ</p>
 		</div>
 
-		<div class="border-t border-[#f3eee3]/20">
+		<div class="flex flex-col border-t border-[#f3eee3]/20 lg:h-full">
 			{faqs.map(({ q, a }) => (
-				<details data-faq-item class="border-b border-[#f3eee3]/20">
-					<summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-3 [&::-webkit-details-marker]:hidden">
-						<span class="text-sm">{q}</span>
+				<details data-faq-item class="border-b border-[#f3eee3]/20 lg:min-h-[5rem]">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-base [&::-webkit-details-marker]:hidden sm:py-5 sm:text-lg">
+						<span>{q}</span>
 						<span class="mono-type text-base leading-none text-[#f3eee3]/60" aria-hidden="true">+</span>
 					</summary>
-					<p class="pb-3 text-sm leading-relaxed text-[#f3eee3]/75">{a}</p>
+					<p class="pb-4 text-base leading-relaxed text-[#f3eee3]/75 sm:pb-5">{a}</p>
 				</details>
 			))}
 		</div>

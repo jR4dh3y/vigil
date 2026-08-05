@@ -18,25 +18,23 @@ const parts = [
 ---
 
 <section class="px-4 pt-7 sm:px-7">
-	<div class="mx-auto grid max-w-[1440px] items-center gap-6 lg:grid-cols-[1fr_auto] lg:gap-10">
-		<div class="grid gap-3">
-			{parts.map(({ name, text, link }) => (
-				<div class="flex flex-col gap-1 border border-[#f3eee3]/20 px-4 py-3">
-					<div class="flex items-baseline justify-between gap-4">
-						<h2 class="display-type text-xl uppercase leading-none">{name}</h2>
-						{link && (
-							<a
-								href={link.href}
-								class="mono-type text-[10px] uppercase underline underline-offset-4 transition-colors hover:text-[#f3eee3]"
-							>
-								{link.label}
-							</a>
-						)}
-					</div>
-					<p class="text-sm leading-relaxed text-[#f3eee3]/75">{text}</p>
+	<div class="mx-auto grid max-w-[1440px] items-start gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:gap-10">
+		{parts.map(({ name, text, link }) => (
+			<article>
+				<div class="flex items-baseline justify-between gap-4">
+					<h2 class="display-type text-xl uppercase leading-none">{name}</h2>
+					{link && (
+						<a
+							href={link.href}
+							class="mono-type text-[10px] uppercase underline underline-offset-4 transition-colors hover:text-[#f3eee3]"
+						>
+							{link.label}
+						</a>
+					)}
 				</div>
-			))}
-		</div>
+				<p class="mt-2 text-sm leading-relaxed text-[#f3eee3]/75 sm:text-base">{text}</p>
+			</article>
+		))}
 
 		<div class="relative -rotate-3 w-[clamp(9rem,14vw,12rem)]">
 			<img
