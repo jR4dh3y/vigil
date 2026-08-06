@@ -57,7 +57,9 @@ vendor/
 
 # Runtime data / media (never commit)
 data/
-recordings/
+/recordings/
+server/recordings/
+tools/recordings/
 *.db
 *.db-wal
 *.db-shm
