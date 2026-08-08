@@ -22,7 +22,9 @@ The dev server runs on port `5173`. It proxies:
 - `/mtx-hls` to MediaMTX HLS on `:8888`.
 - `/mtx-webrtc` to MediaMTX WebRTC on `:8889`.
 
-The API base URL is `VITE_API_BASE`. The default is `/api/v1`.
+The API base URL is resolved at runtime in `src/lib/connection/`. In embedded
+mode it is the relative `/api/v1`. When a remote server is configured it is the
+absolute HTTPS base URL of that recorder.
 
 ## The routes
 
@@ -52,6 +54,40 @@ The `AuthGate` component guards the routes. It queries `GET /auth/status`. It re
 - If the user is authenticated, it shows the app shell.
 
 The shell has a sidebar with four sections: Live, Cameras, Events, and Settings. The Settings section has a Users tab for admins.
+
+## Embedded vs hosted connection
+
+The dashboard has two connection modes, selected at runtime in
+`src/lib/connection/`:
+
+- **Embedded (same-origin).** When the dashboard is served by the Go binary
+  with the embedded UI, it uses the relative `/api/v1` base and HttpOnly
+  cookies (`credentials: "include"`). This is the default. There is no remote
+  server configuration and no bearer token.
+- **Hosted (remote).** When the dashboard is hosted separately (for example on
+  Vercel), it connects to a recorder over HTTPS and authenticates with a bearer
+  session token. Remote requests use `credentials: "omit"` so the dashboard's
+  cookies are never sent to the recorder.
+
+The connection gate (`ServerGate`) probes same-origin `/api/v1/health` first. It
+accepts the embedded mode only when the response matches the Vigil JSON contract
+`{"status":"ok"}`. Otherwise it shows the login/setup shell with a server URL
+field.
+
+### Connection UI and deep links
+
+The login/setup shell displays the active remote server and lets you change it.
+Typing a server address runs it through the same normalization, HTTPS policy,
+health validation, and persistence path as any other input.
+
+The dashboard also accepts a `server` query parameter as a deep link. The
+slim/headless recorder's connection page emits a link like
+`https://hosted-dashboard.example/?server=https://recorder.example.com`. The
+parameter prefills the server field and is validated exactly like manual input —
+it never bypasses normalization, the HTTPS policy, or the health check. The
+saved server and session token persist in the browser's `localStorage` (keys
+`nvr_remote_server` and `nvr_session`), degrading to in-memory state when storage
+is unavailable.
 
 ## The live grid
 
@@ -126,6 +162,34 @@ The dashboard does not use a WebSocket. It uses:
 - HLS over HTTP for playback.
 - WebRTC over HTTP signaling for live view.
 - Polling every 15 seconds for events.
+
+## Hosted-dashboard transport requirements
+
+When the dashboard runs hosted (remote mode), the recorder must be reachable
+from the browser over an HTTPS tunnel. Concretely:
+
+- `NVR_PUBLIC_URL` on the recorder must be the HTTPS origin the browser reaches.
+- The recorder's API, HLS, and WebRTC WHEP signaling URLs must all be HTTPS and
+  reachable from the browser. Because the dashboard is served over HTTPS, the
+  browser rejects plain-HTTP recorder addresses and mixed-content media URLs.
+- The hosted dashboard and the recorder are cross-origin, so the recorder must
+  allow the dashboard's origin under its CORS policy (it is added automatically
+  from `NVR_HOSTED_DASHBOARD_URL`).
+
+### Token transport and storage tradeoff
+
+In hosted mode the dashboard authenticates with a bearer session token that the
+recorder issues in the `X-Session-Token` response header. The token is stored in
+the browser's `localStorage` and sent as `Authorization: Bearer` on remote
+requests. This contrasts with the embedded mode, which uses an HttpOnly cookie
+that JavaScript cannot read.
+
+The tradeoff: a `localStorage` token is readable by any script running on the
+dashboard origin, so it is only as safe as that origin. Keep the hosted
+dashboard to trusted, HTTPS-served origins and a strict Content-Security-Policy
+(`connect-src` must allow the recorder origins). The embedded UI retains the
+stronger HttpOnly-cookie model and is the recommended default when the dashboard
+and server are served together.
 
 ## Styling
 

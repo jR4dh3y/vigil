@@ -80,3 +80,7 @@ tools/recordings/
 !server/internal/ui/dist/**
 tools/mediamtx/*.crt
 tools/mediamtx/*.key
+
+
+# Local deepwork state
+.slim/deepwork/

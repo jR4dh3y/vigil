@@ -1,6 +1,6 @@
 import { type AuthStatus, isPublicRoute } from "./types";
 
-export type AuthRedirect = { kind: "none" } | { kind: "goto"; to: string };
+export type AuthRedirect = { kind: "none" } | { kind: "goto"; to: "/" | "/login" | "/setup" };
 
 /**
  * Decide where the SPA should navigate based on auth status and current path.

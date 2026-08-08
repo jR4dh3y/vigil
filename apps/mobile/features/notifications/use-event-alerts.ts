@@ -72,7 +72,7 @@ export function useEventAlerts(enabled: boolean): number {
 						: new Set<string>();
 				const allNewEvents: Event[] = [];
 				const api = getApiClient();
-				let before: string | undefined = undefined;
+				let before: string | undefined;
 				const limit = 100;
 
 				while (allNewEvents.length < 1000) {

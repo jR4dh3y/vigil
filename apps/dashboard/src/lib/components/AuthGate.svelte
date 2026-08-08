@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 	import { createMutation, createQuery, useQueryClient } from "@tanstack/svelte-query";
 	import type { Snippet } from "svelte";
@@ -10,6 +11,7 @@
 		logout as logoutRequest,
 	} from "$lib/auth";
 	import { resolveAuthRedirect } from "$lib/auth/guard";
+	import { changeServer, connection } from "$lib/connection";
 	import AppShell from "./AppShell.svelte";
 	import Spinner from "./Spinner.svelte";
 
@@ -31,7 +33,7 @@
 		mutationFn: logoutRequest,
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: authKeys.all });
-			await goto("/login");
+			await goto(resolve("/login"));
 		},
 	}));
 
@@ -48,12 +50,17 @@
 		}
 		const redirect = resolveAuthRedirect(status, pathname);
 		if (redirect.kind === "goto") {
-			void goto(redirect.to, { replaceState: true });
+			void goto(resolve(redirect.to), { replaceState: true });
 		}
 	});
 
 	function handleLogout() {
 		logoutMutation.mutate();
+	}
+
+	function handleChangeServer() {
+		changeServer();
+		queryClient.clear();
 	}
 </script>
 
@@ -71,13 +78,24 @@
 				? statusQuery.error.message
 				: "Unknown error while loading auth status."}
 		</p>
-		<button
-			type="button"
-			class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
-			onclick={() => statusQuery.refetch()}
-		>
-			Retry
-		</button>
+		<div class="flex gap-3">
+			<button
+				type="button"
+				class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
+				onclick={() => statusQuery.refetch()}
+			>
+				Retry
+			</button>
+			{#if connection.mode === "remote"}
+				<button
+					type="button"
+					class="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-800"
+					onclick={handleChangeServer}
+				>
+					Change server
+				</button>
+			{/if}
+		</div>
 	</div>
 {:else if showShell && user}
 	<AppShell

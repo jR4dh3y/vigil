@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 	import {
 		AuthApiError,
@@ -8,6 +9,7 @@
 		type SetupFormValues,
 	} from "$lib/auth";
 	import AuthCard from "$lib/components/AuthCard.svelte";
+	import RemoteServerBadge from "$lib/components/RemoteServerBadge.svelte";
 	import SetupForm from "$lib/components/forms/SetupForm.svelte";
 
 	const queryClient = useQueryClient();
@@ -19,7 +21,7 @@
 		onSuccess: async () => {
 			serverError = null;
 			await queryClient.invalidateQueries({ queryKey: authKeys.all });
-			await goto("/");
+			await goto(resolve("/"));
 		},
 		onError: (error: unknown) => {
 			if (error instanceof AuthApiError) {
@@ -44,6 +46,7 @@
 	title="Initial setup"
 	description="Create the first admin account for this NVR instance. This is only available when no users exist yet."
 >
+	<RemoteServerBadge />
 	<SetupForm
 		submitting={setupMutation.isPending}
 		serverError={serverError}

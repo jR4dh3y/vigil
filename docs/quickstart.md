@@ -59,7 +59,8 @@ To verify that the server runs, open this URL in a browser:
 http://localhost:8080/api/v1/health
 ```
 
-The response is a JSON object with a `status` and a `version`.
+The response is a JSON object with a `status` field, for example
+`{"status":"ok"}`.
 
 To verify that MediaMTX runs, open its API:
 
@@ -80,12 +81,61 @@ cd server && go build -o bin/nvrd ./cmd/nvrd
 
 The dashboard is built first. Then the built files are copied into the Go binary. The single binary serves the API and the dashboard on `:8080`.
 
-## 5. Run With Docker
+### Headless (hosted dashboard) binary
+
+If you run the dashboard as a separate hosted service and point the recorder at
+it, build the slim/headless binary. It omits the embedded dashboard and serves
+a connection page that deep-links to the hosted dashboard:
+
+```bash
+cd server && make build-slim        # produces bin/nvrd-slim
+```
+
+The hosted dashboard, the recorder's public HTTPS URL, and the allowed CORS
+origins are configured at first run with `nvrd setup`. See
+[setup-and-authentication](./setup-and-authentication.md).
+
+## 5. Bootstrap With `nvrd setup` (CLI)
+
+`nvrd setup` creates the first administrator and persists the public and hosted
+dashboard URLs. The password is never shown on the command line. Interactive:
+
+```bash
+./bin/nvrd setup \
+  --public-url https://recorder.example.com \
+  --hosted-url https://nvr.example.com/dashboard
+```
+
+It prompts for the admin username and password (hidden input). Non-interactive
+(first-start automation):
+
+```bash
+cd server && go run ./cmd/nvrd setup \
+  --username admin \
+  --password-stdin \
+  --public-url https://recorder.example.com \
+  --hosted-url https://nvr.example.com/dashboard \
+  --non-interactive <<< 'a-strong-password'
+```
+
+`--password-stdin` reads the password from standard input instead of a terminal
+prompt, so it never appears in `argv`. Once an admin exists, `nvrd setup` rejects
+credential-bearing reruns and only allows URL-only updates. See
+[setup-and-authentication](./setup-and-authentication.md) for all flags, the env
+first-start bootstrap, and the validation rules.
+
+## 6. Run With Docker
 
 To run Vigil with Docker:
 
 ```bash
 cd deploy && docker compose up --build
+```
+
+For the headless/hosted-dashboard image (no embedded UI):
+
+```bash
+cd deploy && docker build --target runtime-slim -t nvr-slim ..
 ```
 
 See [operations](./operations.md) for the details of the Docker setup.

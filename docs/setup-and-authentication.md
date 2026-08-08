@@ -15,6 +15,84 @@ The flow is:
 
 The setup endpoint rejects a request with `409` when a user already exists. The password must be at least eight characters.
 
+## `nvrd setup` (CLI)
+
+The server binary also exposes an explicit `nvrd setup` command. It creates the
+first admin and persists the public and hosted dashboard URLs; it never starts
+the HTTP server and never waits for a terminal. URLs are stored in the database
+`settings` table, and the password is never persisted or shown on the command
+line.
+
+```
+Usage: nvrd setup [flags]
+
+Flags:
+  --username <name>       Admin username (default: $NVR_ADMIN_USERNAME)
+  --password-stdin        Read the admin password from standard input instead
+                          of prompting on the terminal
+  --public-url <url>      Public URL of this server (default: $NVR_PUBLIC_URL)
+  --hosted-url <url>      Hosted dashboard URL used to reach this server
+                          (default: $NVR_HOSTED_DASHBOARD_URL)
+  --non-interactive       Fail instead of prompting when required values are
+                          missing
+  -h, --help              Show this help
+```
+
+### Interactive
+
+Run `nvrd setup` with the URL flags. It prompts for the admin username and the
+password on a hidden terminal line:
+
+```bash
+./bin/nvrd setup \
+  --public-url https://recorder.example.com \
+  --hosted-url https://nvr.example.com/dashboard
+```
+
+### Non-interactive
+
+For first-start automation, pass the password over standard input so it never
+appears in `argv`:
+
+```bash
+./bin/nvrd setup \
+  --username admin \
+  --password-stdin \
+  --public-url https://recorder.example.com \
+  --hosted-url https://nvr.example.com/dashboard \
+  --non-interactive <<< 'a-strong-password'
+```
+
+The password source is resolved in this order: `--password-stdin`, then the
+`NVR_ADMIN_PASSWORD` environment variable, then a hidden terminal prompt. There
+is no `--password` flag and the password is never read from a file. In
+non-interactive mode a missing password is an error.
+
+### URL-only reruns
+
+Once an admin exists, `nvrd setup` rejects any rerun that carries credential
+input (a username, a password source, or `--password-stdin`). It allows URL-only
+updates, which persist the public and hosted dashboard URLs without touching
+users:
+
+```bash
+./bin/nvrd setup --public-url https://recorder.example.com
+```
+
+### Env first-start bootstrap
+
+The server also supports first-start automation without a CLI: when the pair
+`NVR_ADMIN_USERNAME` and `NVR_ADMIN_PASSWORD` is set and the database has no
+users, startup creates the first admin. This is idempotent first-start config
+only — once any user exists, these values are ignored. Partial or invalid
+bootstrap configuration (an empty username, or a password under eight runes) is
+a startup error while setup is required.
+
+The password from env bootstrap is argon2id-hashed and never persisted or
+returned in plaintext. After the first admin is created, remove
+`NVR_ADMIN_PASSWORD` from the environment so it is not resident in the process
+or the deployment config.
+
 ## Passwords
 
 The backend hashes passwords with Argon2id. The functions are in `server/internal/auth/password.go`. They use the `argon2id` defaults.

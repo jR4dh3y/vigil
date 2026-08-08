@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
 	import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 	import {
 		AuthApiError,
@@ -8,6 +9,7 @@
 		type LoginFormValues,
 	} from "$lib/auth";
 	import AuthCard from "$lib/components/AuthCard.svelte";
+	import RemoteServerBadge from "$lib/components/RemoteServerBadge.svelte";
 	import LoginForm from "$lib/components/forms/LoginForm.svelte";
 
 	const queryClient = useQueryClient();
@@ -19,7 +21,7 @@
 		onSuccess: async () => {
 			serverError = null;
 			await queryClient.invalidateQueries({ queryKey: authKeys.all });
-			await goto("/");
+			await goto(resolve("/"));
 		},
 		onError: (error: unknown) => {
 			if (error instanceof AuthApiError) {
@@ -41,6 +43,7 @@
 </svelte:head>
 
 <AuthCard title="Sign in" description="Access your NVR dashboard with your account credentials.">
+	<RemoteServerBadge />
 	<LoginForm
 		submitting={loginMutation.isPending}
 		serverError={serverError}

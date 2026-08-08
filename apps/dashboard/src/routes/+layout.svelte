@@ -2,6 +2,7 @@
 	import { QueryClientProvider } from "@tanstack/svelte-query";
 	import favicon from "$lib/assets/favicon.svg";
 	import AuthGate from "$lib/components/AuthGate.svelte";
+	import ServerGate from "$lib/components/ServerGate.svelte";
 	import { createQueryClient } from "$lib/query";
 	import "../app.css";
 
@@ -16,7 +17,9 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<AuthGate>
-		{@render children()}
-	</AuthGate>
+	<ServerGate>
+		<AuthGate>
+			{@render children()}
+		</AuthGate>
+	</ServerGate>
 </QueryClientProvider>

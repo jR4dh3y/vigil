@@ -1,5 +1,5 @@
 import type { Event } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 import type { ListEventsParams } from "./types";
 
 export class EventApiError extends Error {
@@ -35,6 +35,7 @@ function throwEventError(body: unknown, status: number, fallback: string): never
 
 /** GET /events */
 export async function listEvents(params: ListEventsParams = {}): Promise<Event[]> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/events", {
 		params: {
 			query: {
@@ -54,6 +55,7 @@ export async function listEvents(params: ListEventsParams = {}): Promise<Event[]
 
 /** POST /events/{id}/acknowledge */
 export async function acknowledgeEvent(id: string): Promise<Event> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/events/{id}/acknowledge", {
 		params: { path: { id } },
 	});

@@ -5,7 +5,7 @@ import type {
 	ProbeResult,
 	UpdateCameraRequest,
 } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class CameraApiError extends Error {
 	readonly status: number;
@@ -40,6 +40,7 @@ function throwCameraError(body: unknown, status: number, fallback: string): neve
 
 /** GET /cameras */
 export async function listCameras(): Promise<Camera[]> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/cameras");
 	if (data) {
 		return data.cameras;
@@ -49,6 +50,7 @@ export async function listCameras(): Promise<Camera[]> {
 
 /** GET /cameras/{id} */
 export async function getCamera(id: string): Promise<Camera> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/cameras/{id}", {
 		params: { path: { id } },
 	});
@@ -60,6 +62,7 @@ export async function getCamera(id: string): Promise<Camera> {
 
 /** POST /cameras */
 export async function createCamera(body: CreateCameraRequest): Promise<Camera> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/cameras", { body });
 	if (data) {
 		return data;
@@ -69,6 +72,7 @@ export async function createCamera(body: CreateCameraRequest): Promise<Camera> {
 
 /** PATCH /cameras/{id} */
 export async function updateCamera(id: string, body: UpdateCameraRequest): Promise<Camera> {
+	const api = getApiClient();
 	const { data, error, response } = await api.PATCH("/cameras/{id}", {
 		params: { path: { id } },
 		body,
@@ -81,6 +85,7 @@ export async function updateCamera(id: string, body: UpdateCameraRequest): Promi
 
 /** DELETE /cameras/{id} */
 export async function deleteCamera(id: string): Promise<void> {
+	const api = getApiClient();
 	const { error, response } = await api.DELETE("/cameras/{id}", {
 		params: { path: { id } },
 	});
@@ -92,6 +97,7 @@ export async function deleteCamera(id: string): Promise<void> {
 
 /** POST /cameras/probe */
 export async function probeCamera(body: ProbeCameraRequest): Promise<ProbeResult> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/cameras/probe", { body });
 	if (data) {
 		return data;
@@ -101,6 +107,7 @@ export async function probeCamera(body: ProbeCameraRequest): Promise<ProbeResult
 
 /** GET /cameras/{id}/snapshot — JPEG blob. */
 export async function getCameraSnapshot(id: string): Promise<Blob> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/cameras/{id}/snapshot", {
 		params: { path: { id } },
 		parseAs: "blob",

@@ -1,3 +1,5 @@
+//go:build !slim
+
 package ui
 
 import (
@@ -15,7 +17,8 @@ import (
 var Dist embed.FS
 
 // Handler serves the embedded SPA. Unknown non-file paths fall back to index.html.
-func Handler() http.Handler {
+// The Config is unused in the full build: the SPA is same-origin.
+func Handler(cfg Config) http.Handler {
 	sub, err := fs.Sub(Dist, "dist")
 	if err != nil {
 		panic("ui: embed dist: " + err.Error())

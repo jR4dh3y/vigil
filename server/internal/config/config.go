@@ -36,6 +36,16 @@ type Config struct {
 	GoogleClientID     string // NVR_GOOGLE_CLIENT_ID
 	GoogleClientSecret string // NVR_GOOGLE_CLIENT_SECRET
 	GoogleRedirectURL  string // NVR_GOOGLE_REDIRECT_URL
+
+	// PublicURL is the externally reachable URL of this server (NVR_PUBLIC_URL).
+	// When non-empty it overrides the persisted publicUrl setting.
+	PublicURL string
+	// HostedDashboardURL is the hosted dashboard that manages this server
+	// (NVR_HOSTED_DASHBOARD_URL). When non-empty it overrides the persisted one.
+	HostedDashboardURL string
+	// CORSOrigins are extra exact HTTPS origins allowed cross-origin
+	// (NVR_CORS_ORIGINS, comma-separated).
+	CORSOrigins []string
 }
 
 func Load() (*Config, error) {
@@ -55,8 +65,21 @@ func Load() (*Config, error) {
 		GoogleClientID:      env("NVR_GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:  env("NVR_GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:   env("NVR_GOOGLE_REDIRECT_URL", ""),
+		PublicURL:           env("NVR_PUBLIC_URL", ""),
+		HostedDashboardURL:  env("NVR_HOSTED_DASHBOARD_URL", ""),
+		CORSOrigins:         splitList(env("NVR_CORS_ORIGINS", "")),
 	}
 	return cfg, nil
+}
+
+func splitList(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, ",") {
+		if v := strings.TrimSpace(part); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // EnsureDirs creates DataDir and RecordingsDir if they do not exist.

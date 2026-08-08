@@ -5,7 +5,7 @@ import type {
 	GDriveConnectResponse,
 	GDriveStatus,
 } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class StorageApiError extends Error {
 	readonly status: number;
@@ -23,6 +23,7 @@ export class StorageApiError extends Error {
 export async function putGDriveConfiguration(
 	body: GDriveConfigurationRequest,
 ): Promise<GDriveStatus> {
+	const api = getApiClient();
 	const { data, error, response } = await api.PUT("/storage/gdrive/configuration", { body });
 	if (data) {
 		return data;
@@ -51,6 +52,7 @@ function throwStorageError(body: unknown, status: number, fallback: string): nev
 
 /** GET /storage/gdrive/status */
 export async function getGDriveStatus(): Promise<GDriveStatus> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/storage/gdrive/status");
 	if (data) {
 		return data;
@@ -60,6 +62,7 @@ export async function getGDriveStatus(): Promise<GDriveStatus> {
 
 /** POST /storage/gdrive/connect — returns OAuth authorization URL. */
 export async function postGDriveConnect(): Promise<GDriveConnectResponse> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/storage/gdrive/connect");
 	if (data) {
 		return data;
@@ -69,6 +72,7 @@ export async function postGDriveConnect(): Promise<GDriveConnectResponse> {
 
 /** DELETE /storage/gdrive/disconnect — admin only. */
 export async function deleteGDriveDisconnect(): Promise<void> {
+	const api = getApiClient();
 	const { error, response } = await api.DELETE("/storage/gdrive/disconnect");
 	if (response.ok || response.status === 204) {
 		return;
@@ -80,6 +84,7 @@ export async function deleteGDriveDisconnect(): Promise<void> {
 export async function postGDriveArchive(
 	body?: GDriveArchiveRequest,
 ): Promise<GDriveArchiveResponse> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/storage/gdrive/archive", {
 		body: body ?? { limit: 50 },
 	});

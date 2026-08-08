@@ -1,5 +1,5 @@
 import type { CreateUserRequest, UserPublic } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class UserApiError extends Error {
 	readonly status: number;
@@ -34,6 +34,7 @@ function throwUserError(body: unknown, status: number, fallback: string): never 
 
 /** GET /users — admin only. */
 export async function listUsers(): Promise<UserPublic[]> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/users");
 	if (data) {
 		return data.users;
@@ -43,6 +44,7 @@ export async function listUsers(): Promise<UserPublic[]> {
 
 /** POST /users — admin only. */
 export async function createUser(body: CreateUserRequest): Promise<UserPublic> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/users", { body });
 	if (data) {
 		return data;
@@ -52,6 +54,7 @@ export async function createUser(body: CreateUserRequest): Promise<UserPublic> {
 
 /** DELETE /users/{id} — admin only. */
 export async function deleteUser(id: string): Promise<void> {
+	const api = getApiClient();
 	const { error, response } = await api.DELETE("/users/{id}", {
 		params: { path: { id } },
 	});

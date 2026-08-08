@@ -6,11 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/nvr/nvr/server/internal/auth"
-	"github.com/nvr/nvr/server/internal/store"
 )
 
 // GetHealth returns service health.
@@ -51,38 +48,16 @@ func (s *Server) PostAuthSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := strings.TrimSpace(body.Username)
-	if username == "" || utf8.RuneCountInString(body.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "username required and password must be at least 8 characters", "validation")
+	user, err := auth.CreateFirstAdmin(r.Context(), s.Queries, body.Username, body.Password)
+	switch {
+	case errors.Is(err, auth.ErrInvalidAdminCredentials):
+		writeError(w, http.StatusBadRequest, err.Error(), "validation")
 		return
-	}
-
-	count, err := s.Queries.CountUsers(r.Context())
-	if err != nil {
-		slog.Error("count users", "err", err)
-		writeError(w, http.StatusInternalServerError, "internal error", "internal")
-		return
-	}
-	if count > 0 {
+	case errors.Is(err, auth.ErrSetupComplete):
 		writeError(w, http.StatusConflict, "setup already completed", "setup_complete")
 		return
-	}
-
-	hash, err := auth.HashPassword(body.Password)
-	if err != nil {
-		slog.Error("hash password", "err", err)
-		writeError(w, http.StatusInternalServerError, "internal error", "internal")
-		return
-	}
-
-	user, err := s.Queries.CreateUser(r.Context(), store.CreateUserParams{
-		ID:           uuid.NewString(),
-		Username:     username,
-		PasswordHash: hash,
-		Role:         auth.RoleAdmin,
-	})
-	if err != nil {
-		slog.Error("create user", "err", err)
+	case err != nil:
+		slog.Error("create first admin", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal error", "internal")
 		return
 	}

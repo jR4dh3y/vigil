@@ -69,9 +69,9 @@ func (s *Server) GetSystemStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := SystemStatus{
-		Version: s.Version,
-		Commit:  s.Commit,
-		Disk:    info,
+		Version:       s.Version,
+		Commit:        s.Commit,
+		Disk:          info,
 		RetentionDays: retention,
 	}
 	status.Health.Status = healthStatus

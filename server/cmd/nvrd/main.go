@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,6 +18,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/nvr/nvr/server/internal/api"
 	"github.com/nvr/nvr/server/internal/auth"
+	"github.com/nvr/nvr/server/internal/bootstrap"
 	"github.com/nvr/nvr/server/internal/camera"
 	"github.com/nvr/nvr/server/internal/config"
 	"github.com/nvr/nvr/server/internal/event"
@@ -29,6 +31,19 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "setup":
+			// The setup command never starts the server and never blocks on a TTY.
+			os.Exit(runSetup(os.Args[2:]))
+		case "serve", "server":
+			// Explicit server command; fall through to normal startup.
+		default:
+			fmt.Fprintf(os.Stderr, "nvrd: unknown command %q\n", os.Args[1])
+			os.Exit(2)
+		}
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -60,6 +75,39 @@ func main() {
 	}
 
 	queries := store.New(db)
+
+	// First-run admin bootstrap from paired env vars (inert once a user exists).
+	if err := bootstrapEnvAdmin(ctx, queries); err != nil {
+		slog.Error("admin bootstrap", "err", err)
+		os.Exit(1)
+	}
+
+	// Resolve env-over-DB precedence for public and hosted dashboard URLs.
+	dbPublicURL, _ := loadSettingFromDB(queries, bootstrap.SettingPublicURL)
+	dbHostedURL, _ := loadSettingFromDB(queries, bootstrap.SettingHostedDashboardURL)
+	publicURL := bootstrap.ResolveURL(cfg.PublicURL, dbPublicURL)
+	hostedURL := bootstrap.ResolveURL(cfg.HostedDashboardURL, dbHostedURL)
+
+	// Validate configured URLs; empty means "not configured".
+	for name, val := range map[string]string{
+		"NVR_PUBLIC_URL":           publicURL,
+		"NVR_HOSTED_DASHBOARD_URL": hostedURL,
+	} {
+		if val == "" {
+			continue
+		}
+		if err := bootstrap.ValidateURL(val); err != nil {
+			slog.Error("invalid URL config", "var", name, "err", err)
+			os.Exit(1)
+		}
+	}
+
+	corsOrigins, err := bootstrap.CORSOrigins(cfg.CORSOrigins, hostedURL)
+	if err != nil {
+		slog.Error("CORS origins", "err", err)
+		os.Exit(1)
+	}
+
 	authSvc := auth.NewService(queries)
 	cameraSvc := camera.NewService(db, cfg.SecretsKey)
 
@@ -135,7 +183,7 @@ func main() {
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
 	r.Use(chimw.Recoverer)
-	r.Use(api.CORSMiddleware)
+	r.Use(api.CORSMiddleware(corsOrigins))
 	r.Use(api.SessionMiddleware(authSvc))
 
 	// MediaMTX external auth hook (not public OpenAPI; bind via authHTTPAddress).
@@ -149,8 +197,11 @@ func main() {
 	// OpenAPI routes under /api/v1
 	api.HandlerFromMuxWithBaseURL(apiServer, r, "/api/v1")
 
-	// Static SPA for everything else
-	r.NotFound(ui.Handler().ServeHTTP)
+	// Static SPA (full) or connection page (slim) for everything else
+	r.NotFound(ui.Handler(ui.Config{
+		PublicURL:          publicURL,
+		HostedDashboardURL: hostedURL,
+	}).ServeHTTP)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -207,6 +258,36 @@ func loadSettingFromDB(q *store.Queries, key string) (string, bool) {
 		return "", false
 	}
 	return row.Value, true
+}
+
+// bootstrapEnvAdmin applies paired NVR_ADMIN_USERNAME/NVR_ADMIN_PASSWORD only
+// when the database has no users. Partial or invalid configuration is fatal only
+// while setup is required; once any user exists the env values are ignored.
+func bootstrapEnvAdmin(ctx context.Context, q *store.Queries) error {
+	username, hasUsername := os.LookupEnv("NVR_ADMIN_USERNAME")
+	password, hasPassword := os.LookupEnv("NVR_ADMIN_PASSWORD")
+	if !hasUsername && !hasPassword {
+		return nil
+	}
+
+	count, err := q.CountUsers(ctx)
+	if err != nil {
+		return fmt.Errorf("count users: %w", err)
+	}
+	if count > 0 {
+		// Setup already complete; env bootstrap is inert.
+		return nil
+	}
+
+	// Setup is required: partial or invalid configuration is a startup error.
+	if username == "" || password == "" {
+		return errors.New("NVR_ADMIN_USERNAME and NVR_ADMIN_PASSWORD must both be set for first-run bootstrap")
+	}
+	if _, err := auth.CreateFirstAdmin(ctx, q, username, password); err != nil {
+		return fmt.Errorf("first-run bootstrap: %w", err)
+	}
+	slog.Info("created first admin from environment")
+	return nil
 }
 
 func parseEnvBool(val string, fallback bool) bool {

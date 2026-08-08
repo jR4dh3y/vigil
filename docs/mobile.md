@@ -8,7 +8,16 @@ The mobile app is the check-on-my-house client for Vigil. It provides live view,
 
 The app is built with Expo SDK 57. It uses Expo Router for navigation. It uses TanStack Query for server state. It uses Zustand for local state.
 
-The app connects to a Vigil recorder over the network. The user enters the recorder URL. The app stores the URL and the session token on the device.
+The app connects to a Vigil recorder over the network. The user enters the
+recorder URL. The app stores the URL and the session token on the device.
+
+The mobile app uses the same server-address/Bearer-session pattern as the hosted
+dashboard, but it is intended for **LAN or Tailscale** use rather than public
+internet exposure: the user points it at a recorder on the local network or a
+Tailscale device, and both the recorder URL and the session token are stored in
+the OS-provided SecureStore rather than browser storage. Keep the recorder on
+the trusted LAN/Tailscale network; do not expose it directly to the public
+internet without an HTTPS tunnel.
 
 ## Build and configuration
 
@@ -27,6 +36,14 @@ The app uses these Expo plugins:
 - `expo-build-properties` with Android cleartext traffic enabled.
 
 The cleartext setting allows HTTP connections to local recorders.
+
+The recorder URL and the session token are stored with `expo-secure-store` (keys
+`vigil_recorder_url` and `nvr_session`), not in plain browser storage. This is
+intentionally scoped to LAN/Tailscale: the app talks to a recorder you control
+on your local network. It is not a public-internet client, and the Android
+cleartext relaxation and limited iOS local-networking exception are not
+guarantees of safe exposure beyond the trusted network. For internet access,
+run the recorder behind an HTTPS tunnel and point the app at that HTTPS URL.
 
 ## The environment variables
 

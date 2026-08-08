@@ -1,5 +1,5 @@
 import type { LiveStream } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class LiveApiError extends Error {
 	readonly status: number;
@@ -34,6 +34,7 @@ function throwLiveError(body: unknown, status: number, fallback: string): never 
 
 /** POST /cameras/{id}/live — WHEP + HLS URLs and a short-lived stream token. */
 export async function requestLive(cameraId: string): Promise<LiveStream> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/cameras/{id}/live", {
 		params: { path: { id: cameraId } },
 	});

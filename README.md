@@ -20,6 +20,25 @@ vigil/
 - **Alerts & System:** Camera state/disk monitoring, retention pruning, event logs.
 - **Offsite Archive:** Optional encrypted Google Drive connection with nightly and on-demand uploads.
 
+## Deployment artifacts
+
+Vigil ships two server artifacts with different trust boundaries:
+
+- **Full (default)** — the Go binary embeds the SvelteKit dashboard. One
+  process serves the API and the UI on the same origin, so the browser
+  authenticates with HttpOnly cookies. This is the recommended default and
+  what `make build`, `docker build`, and `docker compose up` produce.
+- **Slim / headless** — the binary omits the embedded dashboard and instead
+  serves a small connection page that deep-links to a separately hosted
+  dashboard with a `?server=` parameter. Build it with `make build-slim` inside
+  `server/` or `docker build --target runtime-slim` in `deploy/`. The hosted
+  dashboard and the recorder are different origins, so auth uses a bearer
+  session token rather than cookies, and the recorder must be reachable over an
+  HTTPS tunnel.
+
+See [`docs/operations.md`](docs/operations.md) and
+[`docs/dashboard.md`](docs/dashboard.md) for the hosted-dashboard setup.
+
 ## Google Drive Archive
 
 Set `NVR_SECRETS_KEY` on the server, then enter the Google OAuth web-client ID,
@@ -52,6 +71,8 @@ cd server && go build -o bin/nvrd ./cmd/nvrd
 ### Docker
 ```bash
 cd deploy && docker compose up --build
+# Or, for the headless/hosted-dashboard image (no embedded UI):
+docker build --target runtime-slim -f deploy/Dockerfile -t nvr-slim ..
 ```
 
 ## Codegen & Check

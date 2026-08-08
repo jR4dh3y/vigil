@@ -1,5 +1,5 @@
 import type { PlaybackSession, RecordingList } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class RecordingApiError extends Error {
 	readonly status: number;
@@ -40,6 +40,7 @@ export async function listRecordings(
 	from: string,
 	to: string,
 ): Promise<RecordingList> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/cameras/{id}/recordings", {
 		params: {
 			path: { id: cameraId },
@@ -58,6 +59,7 @@ export async function requestPlayback(
 	start: string,
 	durationSec: number = DEFAULT_PLAYBACK_DURATION_SEC,
 ): Promise<PlaybackSession> {
+	const api = getApiClient();
 	const { data, error, response } = await api.POST("/cameras/{id}/playback", {
 		params: { path: { id: cameraId } },
 		body: { start, durationSec },

@@ -25,7 +25,7 @@ export async function acknowledgeEvent(id: string): Promise<Event> {
 }
 
 export async function getEvent(id: string): Promise<Event> {
-	let before: string | undefined = undefined;
+	let before: string | undefined;
 	const limit = 200;
 	const maxPages = 50;
 	let pagesChecked = 0;

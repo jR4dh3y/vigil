@@ -1,5 +1,5 @@
 import type { DiskInfo, PatchSettingsRequest, Settings, SystemStatus } from "@nvr/api-client";
-import { api } from "$lib/api";
+import { getApiClient } from "$lib/connection";
 
 export class SystemApiError extends Error {
 	readonly status: number;
@@ -34,6 +34,7 @@ function throwSystemError(body: unknown, status: number, fallback: string): neve
 
 /** GET /system/status */
 export async function getSystemStatus(): Promise<SystemStatus> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/system/status");
 	if (data) {
 		return data;
@@ -43,6 +44,7 @@ export async function getSystemStatus(): Promise<SystemStatus> {
 
 /** GET /system/disk */
 export async function getSystemDisk(): Promise<DiskInfo> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/system/disk");
 	if (data) {
 		return data;
@@ -52,6 +54,7 @@ export async function getSystemDisk(): Promise<DiskInfo> {
 
 /** GET /settings */
 export async function getSettings(): Promise<Settings> {
+	const api = getApiClient();
 	const { data, error, response } = await api.GET("/settings");
 	if (data) {
 		return data;
@@ -61,6 +64,7 @@ export async function getSettings(): Promise<Settings> {
 
 /** PATCH /settings — admin only. */
 export async function patchSettings(body: PatchSettingsRequest): Promise<Settings> {
+	const api = getApiClient();
 	const { data, error, response } = await api.PATCH("/settings", { body });
 	if (data) {
 		return data;
