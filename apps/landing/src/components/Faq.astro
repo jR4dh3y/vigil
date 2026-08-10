@@ -1,76 +1,237 @@
 ---
+
 const faqs = [
 	{
 		q: "Which cameras work with the server?",
-		a: "The server uses RTSP and ONVIF. Most IP cameras and DVRs support these protocols.",
+		a: "Vigil works with cameras and DVRs that provide RTSP or ONVIF streams. During setup, it probes each stream and reports its reachability, codec, and resolution. It also warns when a camera uses H.265 so you can check playback compatibility before recording.",
 	},
 	{
 		q: "Where does the server store recordings?",
-		a: "The server stores recordings on its local disk. The server does not send video to the cloud.",
+		a: "Video stays in the recordings directory on your server, while camera, event, and recording metadata stays in a local SQLite database. You can choose the recordings directory and change the default seven-day retention period. For an optional off-site copy, Vigil can archive recordings to Google Drive in the background.",
 	},
 	{
 		q: "How do I watch cameras from another network?",
-		a: "Use a VPN or a tunnel to your server. The server does not need an open port.",
+		a: "Connect through Tailscale, another trusted VPN, or an HTTPS tunnel instead of exposing the recorder directly to the public internet. Enter your recorder address in the hosted dashboard or mobile app, then sign in with your Vigil account. Live view, events, and playback continue to come from your own server.",
 	},
 	{
 		q: "What is the cost?",
-		a: "The code is open source. You pay for the hardware that runs the server.",
+		a: "Vigil is open-source software with no subscription or per-camera fee. You provide the computer, storage, cameras, and network connection that run it. Your ongoing cost depends on that hardware, its power use, and any optional storage service you choose.",
 	},
 ];
 ---
 
-<section id="faq" class="px-4 pb-8 pt-8 sm:px-7 sm:pb-10 sm:pt-10 lg:flex-1 lg:min-h-0">
-	<div class="mx-auto grid max-w-[1440px] gap-8 lg:h-full lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start lg:gap-10">
-		<div class="relative -rotate-3 w-[clamp(9rem,14vw,12rem)] lg:mt-1">
-			<img
-				src="/assets/owl-paper-bg.png"
-				alt=""
-				aria-hidden="true"
-				class="block w-full object-contain"
-				width="1254"
-				height="1254"
-				decoding="async"
-			/>
-			<img
-				src="/assets/owl-question.png"
-				alt=""
-				aria-hidden="true"
-				class="absolute inset-0 m-auto h-[58%] w-[58%] -translate-x-[2%] translate-y-[2.5%] object-contain"
-				width="1254"
-				height="1254"
-				decoding="async"
-			/>
+<section id="faq" class="min-h-0 px-4 py-4 sm:px-7 lg:flex lg:flex-1 lg:py-4">
+	<div class="mx-auto grid h-full w-full max-w-[1440px] items-center gap-3 lg:min-h-0 lg:grid-cols-[minmax(0,1.18fr)_minmax(20rem,0.82fr)] lg:gap-3">
+		<div
+			class="relative flex min-h-[22rem] min-w-0 flex-col overflow-hidden rounded-[1.5rem] border border-[#1e1e20]/20 bg-[#f8edd6] text-[#1e1e20]"
+			data-faq-panel
+			data-state="closed"
+		>
+			<div class="flex min-h-0 flex-1 flex-col justify-between p-2 sm:p-3" data-faq-list>
+				{faqs.map(({ q, a }, index) => (
+					<article data-faq-item class="flex min-h-0 flex-col border-b border-[#1e1e20]/15 last:border-b-0">
+						<button
+							type="button"
+							class="flex w-full items-start justify-between gap-5 px-4 py-4 text-left transition-colors duration-200 hover:bg-[#1e1e20]/[0.045] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#4a3b5f] sm:px-5 sm:py-5"
+							data-faq-trigger
+							aria-controls={`faq-answer-${index}`}
+							aria-expanded="false"
+						>
+							<span class="display-type text-xl font-normal uppercase leading-[1.2] tracking-[-0.01em] sm:text-2xl">{q}</span>
+							<span
+								class="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#1e1e20]/[0.07] text-lg leading-none text-[#1e1e20]/70 transition-[transform,color,background-color] duration-200 ease-out"
+								data-faq-icon
+								aria-hidden="true"
+							>
+								+
+							</span>
+						</button>
+						<div id={`faq-answer-${index}`} class="px-4 pb-5 sm:px-5 sm:pb-6" data-faq-answer hidden>
+							<p class="max-w-2xl text-base leading-relaxed text-[#1e1e20]/70 sm:text-lg">{a}</p>
+							<a href="/docs" class="mt-5 inline-flex w-fit text-xs uppercase text-[#4a3b5f] underline underline-offset-4 transition-colors hover:text-[#1e1e20]">
+								Read the documentation
+							</a>
+						</div>
+					</article>
+				))}
+			</div>
 		</div>
 
-		<div class="border-l border-[#c59edc]/40 pl-5 sm:pl-8">
-			{faqs.map(({ q, a }) => (
-				<details data-faq-item class="group py-4 first:pt-0 last:pb-0">
-					<summary class="flex cursor-pointer list-none items-start justify-between gap-6 [&::-webkit-details-marker]:hidden">
-						<span class="display-type max-w-2xl text-xl uppercase leading-[0.92] sm:text-2xl">{q}</span>
-						<span
-							class="mono-type mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#c59edc]/10 text-base leading-none text-[#c59edc] transition-transform duration-200 group-open:rotate-45"
-							aria-hidden="true"
-						>
-							+
-						</span>
-					</summary>
-					<p class="mt-3 max-w-2xl pr-8 text-base leading-relaxed text-[#f3eee3]/70">{a}</p>
-				</details>
-			))}
-		</div>
+		<figure class="relative mx-auto flex min-h-[18rem] w-full max-w-[32rem] items-center justify-start gap-0 lg:h-full lg:max-w-[28rem]">
+			<div class="relative aspect-square h-[18rem] shrink-0 sm:h-[20rem]">
+				<img
+					src="/assets/owl-paper-bg.png"
+					alt=""
+					aria-hidden="true"
+					class="absolute inset-0 h-full w-full object-contain"
+					width="1254"
+					height="1254"
+					decoding="async"
+				/>
+				<img
+					src="/assets/owl-question.png"
+					alt="Vigil owl with a question"
+					class="relative z-10 h-full w-full object-contain p-[21%]"
+					width="1254"
+					height="1254"
+					decoding="async"
+				/>
+			</div>
+			<span
+				class="display-type -ml-1 flex shrink-0 flex-col items-center text-[clamp(3.75rem,5vw,5.25rem)] font-medium uppercase leading-[0.72] tracking-[-0.085em] text-[#f3eee3]"
+				aria-label="FAQ"
+			>
+				<span aria-hidden="true">F</span>
+				<span aria-hidden="true" class="text-[#c59edc]">A</span>
+				<span aria-hidden="true">Q</span>
+			</span>
+			<figcaption class="sr-only">Questions about Vigil</figcaption>
+		</figure>
 	</div>
 </section>
 
 <script>
-	const faqItems = Array.from(document.querySelectorAll<HTMLDetailsElement>("[data-faq-item]"));
-	for (const item of faqItems) {
-		item.addEventListener("toggle", () => {
-			if (!item.open) return;
-			for (const other of faqItems) {
-				if (other !== item) {
-					other.open = false;
-				}
+	import { animate } from "motion";
+
+	const panel = document.querySelector<HTMLElement>("[data-faq-panel]");
+	const faqItems = Array.from(document.querySelectorAll<HTMLElement>("[data-faq-item]"));
+
+	if (panel && faqItems.length > 0) {
+		const faqPanel = panel;
+		const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const enterTransition = { duration: 0.22, ease: "easeOut" as const };
+		const exitTransition = { duration: 0.16, ease: "easeIn" as const };
+		let activeIndex: number | null = null;
+		let transition = Promise.resolve();
+
+		function resetMotion(element: HTMLElement) {
+			element.style.removeProperty("opacity");
+			element.style.removeProperty("transform");
+		}
+
+		function setExpanded(index: number | null) {
+			for (const [itemIndex, item] of faqItems.entries()) {
+				const trigger = item.querySelector<HTMLButtonElement>("[data-faq-trigger]");
+				const icon = item.querySelector<HTMLElement>("[data-faq-icon]");
+				trigger?.setAttribute("aria-expanded", String(itemIndex === index));
+				icon?.toggleAttribute("data-active", itemIndex === index);
 			}
-		});
+		}
+
+		async function hideAnswer(answer: HTMLElement | null) {
+			if (!answer || answer.hidden) return;
+
+			if (!reducedMotion) {
+				await animate(answer, { opacity: [1, 0], y: [0, -6] }, exitTransition);
+			}
+
+			answer.hidden = true;
+			resetMotion(answer);
+		}
+
+		async function closeFaq() {
+			if (activeIndex === null) return;
+
+			const activeItem = faqItems[activeIndex];
+			await hideAnswer(activeItem.querySelector<HTMLElement>("[data-faq-answer]"));
+
+			for (const item of faqItems) {
+				item.hidden = false;
+				item.removeAttribute("data-active");
+				resetMotion(item);
+			}
+
+			faqPanel.dataset.state = "closed";
+			activeIndex = null;
+			setExpanded(null);
+		}
+
+		async function openFaq(index: number) {
+			if (activeIndex === index) {
+				await closeFaq();
+				return;
+			}
+
+			if (activeIndex !== null) {
+				await closeFaq();
+			}
+
+			const activeItem = faqItems[index];
+			const answer = activeItem.querySelector<HTMLElement>("[data-faq-answer]");
+			if (!answer) return;
+
+			activeIndex = index;
+			faqPanel.dataset.state = "open";
+			activeItem.dataset.active = "true";
+			answer.hidden = false;
+			setExpanded(index);
+
+			for (const [itemIndex, item] of faqItems.entries()) {
+				if (itemIndex === index) continue;
+				item.hidden = true;
+				resetMotion(item);
+			}
+
+			if (reducedMotion) return;
+			await animate(answer, { opacity: [0, 1], y: [8, 0] }, enterTransition);
+			resetMotion(answer);
+		}
+
+		for (const [index, item] of faqItems.entries()) {
+			item.querySelector<HTMLButtonElement>("[data-faq-trigger]")?.addEventListener("click", () => {
+				transition = transition.then(() => openFaq(index));
+			});
+		}
 	}
 </script>
+<style>
+	[data-faq-panel][data-state="open"] [data-faq-list] {
+		justify-content: flex-start;
+	}
+
+	[data-faq-panel][data-state="open"] [data-faq-item][data-active] {
+		flex: 1;
+		border-bottom: 0;
+	}
+
+	[data-faq-panel][data-state="open"] [data-faq-item][data-active] [data-faq-answer] {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	[data-faq-icon][data-active] {
+		background-color: var(--ink);
+		color: var(--paper);
+		transform: rotate(45deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		[data-faq-panel] *,
+		[data-faq-panel] *::before,
+		[data-faq-panel] *::after {
+			transition-duration: 0.01ms !important;
+		}
+	}
+	[data-faq-panel] {
+		isolation: isolate;
+		background-color: #f8edd6;
+	}
+
+	[data-faq-panel]::before {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background: url("/assets/owl-paper-bg.png") center / cover no-repeat;
+		content: "";
+		opacity: 0.16;
+		mix-blend-mode: multiply;
+		pointer-events: none;
+	}
+
+	[data-faq-panel] > * {
+		position: relative;
+		z-index: 1;
+	}
+</style>

@@ -3,44 +3,27 @@ const parts = [
 	{
 		name: "Server",
 		text: "Runs on your hardware. Connects to your DVR and cameras. Records video to local disk.",
-		link: { label: "Install", href: "/docs" },
+		link: { label: "Install", href: "/docs/quickstart" },
 	},
 	{
 		name: "Web client",
-		text: "Use the dashboard in a browser. Use the hosted instance, or run the server on your own hardware.",
+		text: "Use the dashboard in a browser, through the hosted instance or from your own server.",
+		link: { label: "Open guide", href: "/docs/dashboard" },
 	},
 	{
 		name: "Android app",
-		text: "Watch your cameras from your phone.",
-		link: { label: "Download", href: "/docs" },
+		text: "Watch your cameras and recordings from your phone.",
+		link: { label: "Download", href: "/docs/mobile" },
 	},
 ];
 ---
 
-<section class="px-4 pt-7 sm:px-7">
-	<div class="mx-auto grid max-w-[1440px] items-start gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:gap-10">
-		{parts.map(({ name, text, link }) => (
-			<article>
-				<div class="flex items-baseline justify-between gap-4">
-					<h2 class="display-type text-xl uppercase leading-none">{name}</h2>
-					{link && (
-						<a
-							href={link.href}
-							class="mono-type text-[10px] uppercase underline underline-offset-4 transition-colors hover:text-[#f3eee3]"
-						>
-							{link.label}
-						</a>
-					)}
-				</div>
-				<p class="mt-2 text-sm leading-relaxed text-[#f3eee3]/75 sm:text-base">{text}</p>
-			</article>
-		))}
-
-		<div class="relative -rotate-3 w-[clamp(9rem,14vw,12rem)]">
+<section class="shrink-0 px-4 sm:px-7 lg:h-[35%] lg:px-7">
+	<div class="mx-auto grid h-full max-w-[1440px] items-center gap-8 border-b border-white/15 py-5 sm:grid-cols-2 lg:grid-cols-[minmax(10rem,0.7fr)_repeat(3,minmax(0,1fr))] lg:gap-10 lg:py-4">
+		<div class="relative mx-auto w-[clamp(9rem,14vw,11rem)] -rotate-3 lg:mx-0" aria-hidden="true">
 			<img
 				src="/assets/owl-paper-bg.png"
 				alt=""
-				aria-hidden="true"
 				class="block w-full object-contain"
 				width="1254"
 				height="1254"
@@ -49,12 +32,21 @@ const parts = [
 			<img
 				src="/assets/owl-working.png"
 				alt=""
-				aria-hidden="true"
 				class="absolute inset-0 m-auto h-[58%] w-[58%] translate-y-[1%] scale-[1.06] object-contain"
 				width="1254"
 				height="1254"
 				decoding="async"
 			/>
 		</div>
+
+		{parts.map(({ name, text, link }) => (
+			<article class="flex flex-col justify-center">
+				<h2 class="display-type text-2xl uppercase leading-none">{name}</h2>
+				<p class="mt-3 max-w-sm text-base leading-relaxed text-[#f3eee3]/70">{text}</p>
+				<a href={link.href} class="mt-4 w-fit text-xs uppercase underline underline-offset-4 transition-colors hover:text-[#c59edc]">
+					{link.label}
+				</a>
+			</article>
+		))}
 	</div>
 </section>
