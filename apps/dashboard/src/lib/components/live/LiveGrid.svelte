@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ChevronLeft, ChevronRight, LayoutGrid } from "lucide-svelte";
-	import type { LiveCamera } from "$lib/live";
+	import { calculateCameraGridLayout, type LiveCamera } from "$lib/live";
 	import PageActions from "$lib/components/PageActions.svelte";
 	import LiveTile from "./LiveTile.svelte";
 
@@ -14,13 +14,23 @@
 
 	/** Index into `cameras` when focused; null shows the grid. */
 	let focusedIndex = $state<number | null>(null);
+	let gridWidth = $state(0);
+	let gridHeight = $state(0);
 
+	const visibleCameraCount = $derived(Math.min(cameras.length, GRID_SIZE));
 	const slots = $derived(
-		Array.from({ length: GRID_SIZE }, (_, index) => ({
+		Array.from({ length: visibleCameraCount }, (_, index) => ({
 			channel: index + 1,
 			camera: cameras[index] ?? null,
 		})),
 	);
+	const gridLayout = $derived(
+		calculateCameraGridLayout(visibleCameraCount, gridWidth, gridHeight),
+	);
+	const gridColumns = $derived(
+		`repeat(${gridLayout.columns}, minmax(0, 1fr))`,
+	);
+	const gridRows = $derived(`repeat(${gridLayout.rows}, minmax(0, 1fr))`);
 
 	const focused = $derived.by(() => {
 		if (focusedIndex === null) {
@@ -155,7 +165,13 @@
 		{/key}
 	</div>
 {:else}
-	<div class="grid h-full w-full grid-cols-3 grid-rows-3 gap-px bg-zinc-900">
+	<div
+		bind:clientWidth={gridWidth}
+		bind:clientHeight={gridHeight}
+		class="grid h-full min-h-0 w-full min-w-0 gap-px overflow-hidden bg-zinc-900"
+		style:grid-template-columns={gridColumns}
+		style:grid-template-rows={gridRows}
+	>
 		{#each slots as slot (slot.channel)}
 			{#if slot.camera}
 				{@const camera = slot.camera}

@@ -3,6 +3,8 @@ export const recordingKeys = {
 	lists: () => [...recordingKeys.all, "list"] as const,
 	list: (cameraId: string, from: string, to: string) =>
 		[...recordingKeys.lists(), cameraId, from, to] as const,
+	listMany: (cameraIds: readonly string[], from: string, to: string) =>
+		[...recordingKeys.lists(), "multi", cameraIds.join(","), from, to] as const,
 	playback: () => [...recordingKeys.all, "playback"] as const,
 	playbackSession: (cameraId: string, start: string) =>
 		[...recordingKeys.playback(), cameraId, start] as const,

@@ -1,67 +1,101 @@
 <script lang="ts">
-	import type { CoverageBar } from "$lib/recordings";
 	import {
 		formatTimelineLabel,
 		fractionAtTime,
 		timeAtFraction,
 	} from "$lib/recordings";
+	import type { CoverageBar } from "$lib/recordings";
 
-	type TimelineEvent = {
-		at: string;
-		label?: string;
+	/** Camera coverage sources that are merged into one shared scrub bar. */
+	export type CameraCoverageTrack = {
+		id: string;
+		channel: number;
+		name: string;
+		coverage: CoverageBar[];
 	};
 
 	type Props = {
-		coverage: CoverageBar[];
+		tracks: CameraCoverageTrack[];
 		from: Date;
 		to: Date;
 		selectedTime: Date | null;
-		/** Reserved for future event markers; currently unused. */
-		events?: TimelineEvent[];
 		disabled?: boolean;
-		/** Called while dragging / previewing a scrub position. */
-		onPreview?: (time: Date) => void;
 		/** Called when the user commits a seek (click or drag end). */
 		onSeek: (time: Date) => void;
 		class?: string;
 	};
 
 	let {
-		coverage,
+		tracks,
 		from,
 		to,
 		selectedTime,
-		// Reserved for future event markers on the timeline.
-		events: _events = [],
 		disabled = false,
-		onPreview,
 		onSeek,
 		class: className = "",
 	}: Props = $props();
 
+	type CoverageRange = {
+		startMs: number;
+		endMs: number;
+		start: string;
+		end: string;
+	};
+
+	type BarRect = {
+		left: number;
+		width: number;
+		start: string;
+		end: string;
+	};
+
 	let trackEl = $state<HTMLDivElement | null>(null);
 	let dragging = $state(false);
+	let previewTime = $state<Date | null>(null);
 
 	const rangeMs = $derived(Math.max(1, to.getTime() - from.getTime()));
+	const displayTime = $derived(dragging ? previewTime : selectedTime);
 	const selectedFraction = $derived(
-		selectedTime ? fractionAtTime(from, to, selectedTime) : null,
+		displayTime ? fractionAtTime(from, to, displayTime) : null,
 	);
 
-	const bars = $derived(
-		coverage
-			.map((bar) => {
-				const start = Date.parse(bar.start);
-				const end = Date.parse(bar.end);
-				if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+	/** Merge every camera's recording windows into one shared coverage track. */
+	const bars = $derived.by(() => {
+		const ranges = tracks
+			.flatMap((track) => track.coverage)
+			.map((bar): CoverageRange | null => {
+				const startMs = Date.parse(bar.start);
+				const endMs = Date.parse(bar.end);
+				if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
 					return null;
 				}
-				const left = fractionAtTime(from, to, new Date(start));
-				const right = fractionAtTime(from, to, new Date(end));
-				const width = Math.max(right - left, 0.001);
-				return { left, width, start: bar.start, end: bar.end };
+				return { startMs, endMs, start: bar.start, end: bar.end };
 			})
-			.filter((b): b is { left: number; width: number; start: string; end: string } => b !== null),
-	);
+			.filter((range): range is CoverageRange => range !== null)
+			.sort((left, right) => left.startMs - right.startMs);
+
+		const merged: CoverageRange[] = [];
+		for (const range of ranges) {
+			const previous = merged[merged.length - 1];
+			if (previous && range.startMs <= previous.endMs) {
+				previous.endMs = Math.max(previous.endMs, range.endMs);
+				previous.end = previous.endMs === range.endMs ? range.end : previous.end;
+			} else {
+				merged.push({ ...range });
+			}
+		}
+
+		return merged.map((range): BarRect => {
+			const left = fractionAtTime(from, to, new Date(range.startMs));
+			const right = fractionAtTime(from, to, new Date(range.endMs));
+			return {
+				left,
+				width: Math.max(right - left, 0.001),
+				start: range.start,
+				end: range.end,
+			};
+		});
+	});
 
 	const tickCount = $derived(
 		rangeMs <= 2 * 60 * 60 * 1000 ? 5 : rangeMs <= 2 * 24 * 60 * 60 * 1000 ? 6 : 7,
@@ -94,7 +128,7 @@
 		}
 		const time = timeFromPointer(clientX);
 		if (time) {
-			onPreview?.(time);
+			previewTime = time;
 		}
 		return time;
 	}
@@ -115,20 +149,31 @@
 		previewFromPointer(event.clientX);
 	}
 
+	function releasePointer(event: PointerEvent) {
+		try {
+			(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+		} catch {
+			// Pointer capture may already be released by the browser.
+		}
+	}
+
 	function onPointerUp(event: PointerEvent) {
 		if (!dragging) {
 			return;
 		}
+		const time = disabled ? null : timeFromPointer(event.clientX);
 		dragging = false;
-		const time = previewFromPointer(event.clientX);
+		previewTime = null;
 		if (time) {
 			onSeek(time);
 		}
-		try {
-			(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
-		} catch {
-			// already released
-		}
+		releasePointer(event);
+	}
+
+	function onPointerCancel(event: PointerEvent) {
+		dragging = false;
+		previewTime = null;
+		releasePointer(event);
 	}
 
 	function onKeyDown(event: KeyboardEvent) {
@@ -156,29 +201,29 @@
 <div class="flex flex-col gap-2 {className}">
 	<div
 		bind:this={trackEl}
-		class="relative h-12 w-full touch-none select-none rounded-lg border border-zinc-800 bg-zinc-950 outline-none
+		class="relative h-9 select-none touch-none rounded-md border border-zinc-800 bg-zinc-950 outline-none
+			focus-visible:ring-2 focus-visible:ring-emerald-500
 			{disabled ? 'cursor-not-allowed opacity-60' : 'cursor-crosshair'}"
 		role="slider"
 		tabindex={disabled ? -1 : 0}
-		aria-label="Recording timeline"
+		aria-label="Recording scrub bar for all cameras"
 		aria-valuemin={from.getTime()}
 		aria-valuemax={to.getTime()}
-		aria-valuenow={selectedTime?.getTime() ?? undefined}
+		aria-valuenow={displayTime?.getTime() ?? undefined}
 		aria-disabled={disabled}
 		onpointerdown={onPointerDown}
 		onpointermove={onPointerMove}
 		onpointerup={onPointerUp}
-		onpointercancel={onPointerUp}
+		onpointercancel={onPointerCancel}
 		onkeydown={onKeyDown}
 	>
-		<!-- Track fill -->
-		<div class="absolute inset-1 overflow-hidden rounded-md bg-zinc-900/90">
+		<div class="absolute inset-1 overflow-hidden rounded-sm bg-zinc-900/90">
 			{#each bars as bar (bar.start + bar.end)}
 				<div
-					class="absolute top-0 bottom-0 rounded-sm bg-emerald-500/70"
+					class="absolute top-0 bottom-0 bg-violet-400/70"
 					style:left="{bar.left * 100}%"
 					style:width="{bar.width * 100}%"
-					title="Coverage"
+					title="Recording coverage"
 				></div>
 			{/each}
 		</div>
@@ -189,7 +234,7 @@
 				style:left="{selectedFraction * 100}%"
 			>
 				<div
-					class="absolute top-1/2 left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-emerald-400"
+					class="absolute top-1/2 left-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-amber-300"
 				></div>
 			</div>
 		{/if}

@@ -9,6 +9,7 @@
 		loading?: boolean;
 		error?: string | null;
 		class?: string;
+		videoClass?: string;
 		onError?: (error: Error) => void;
 		onPlaying?: () => void;
 	};
@@ -18,6 +19,7 @@
 		loading = false,
 		error = null,
 		class: className = "",
+		videoClass = "object-contain",
 		onError,
 		onPlaying,
 	}: Props = $props();
@@ -61,6 +63,7 @@
 			<HlsPlayer
 				hlsUrl={session.playbackUrl}
 				token={session.token}
+				class={videoClass}
 				controls
 				onError={handleError}
 				onPlaying={handlePlaying}

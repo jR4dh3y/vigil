@@ -5,21 +5,30 @@
 	type Props = {
 		value: RangePreset;
 		disabled?: boolean;
+		orientation?: "horizontal" | "vertical";
 		onChange: (preset: RangePreset) => void;
 	};
 
-	let { value, disabled = false, onChange }: Props = $props();
+	let {
+		value,
+		disabled = false,
+		orientation = "horizontal",
+		onChange,
+	}: Props = $props();
+
+	const directionClass = $derived(orientation === "vertical" ? "flex-col" : "flex-row");
+	const buttonLayoutClass = $derived(orientation === "vertical" ? "w-full justify-center" : "");
 </script>
 
 <div
-	class="inline-flex rounded-lg border border-zinc-800 bg-zinc-900/60 p-0.5"
+	class="inline-flex {directionClass} rounded-lg border border-zinc-800 bg-zinc-900/60 p-0.5"
 	role="group"
 	aria-label="Time range"
 >
 	{#each RANGE_PRESETS as preset (preset)}
 		<button
 			type="button"
-			class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors
+			class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors {buttonLayoutClass}
 				{value === preset
 				? 'bg-zinc-800 text-zinc-100'
 				: 'text-zinc-500 hover:text-zinc-300'}
