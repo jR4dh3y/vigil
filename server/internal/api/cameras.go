@@ -102,7 +102,8 @@ func (s *Server) CreateCamera(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, mapCamera(c))
 }
 
-// DiscoverCameras scans the local network for ONVIF cameras without credentials.
+// DiscoverCameras scans the local network and returns cameras that accept the
+// transient credentials supplied with this request.
 func (s *Server) DiscoverCameras(w http.ResponseWriter, r *http.Request) {
 	if !requireOperator(w, r) {
 		return
@@ -112,7 +113,20 @@ func (s *Server) DiscoverCameras(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := s.Camera.Discover(r.Context())
+	var body DiscoverCamerasRequest
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
+		return
+	}
+	if strings.TrimSpace(body.Username) == "" || body.Password == nil || *body.Password == "" {
+		writeError(w, http.StatusBadRequest, "camera username and password are required", "validation")
+		return
+	}
+
+	list, err := s.Camera.Discover(r.Context(), camera.DiscoveryInput{
+		Username: strings.TrimSpace(body.Username),
+		Password: *body.Password,
+	})
 	if err != nil {
 		slog.Error("discover cameras", "err", err)
 		writeError(w, http.StatusInternalServerError, "camera discovery failed", "internal")
@@ -385,10 +399,12 @@ func (s *Server) syncMediaPath(ctx context.Context, c camera.Camera) {
 
 func mapDiscoveredCamera(c camera.DiscoveredCamera) DiscoveredCamera {
 	return DiscoveredCamera{
-		Id:    c.ID,
-		Name:  c.Name,
-		Host:  c.Host,
-		Xaddr: c.XAddr,
+		Id:            c.ID,
+		Name:          c.Name,
+		Host:          c.Host,
+		Xaddr:         c.XAddr,
+		LiveRtspUrl:   c.LiveRTSPURL,
+		RecordRtspUrl: c.RecordRTSPURL,
 	}
 }
 

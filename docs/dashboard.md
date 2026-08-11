@@ -12,15 +12,14 @@ The dashboard is built with Svelte 5 runes mode. It uses Tailwind CSS 4. It uses
 
 ## Camera discovery
 
-The add-camera flow starts with a server-side ONVIF WS-Discovery scan of the
-NVR host's local network. Discovery finds devices without credentials and does
-not persist anything. After a camera is selected, the user enters its username
-and password; the NVR then authenticates to the camera's ONVIF media service
-and pre-fills the RTSP stream URLs.
+The add-camera flow asks for the camera or NVR username and password before
+scanning. The server first checks ONVIF devices and then scans local IPv4
+networks for Dahua-compatible RTSP channels such as
+`/cam/realmonitor?channel=1&subtype=0`. Credentials are used transiently to
+validate each result and are not returned in discovered URLs.
 
-Discovery is limited to ONVIF-compatible cameras visible from the NVR host's
-network interfaces. If a camera does not expose stream profiles through ONVIF,
-the user can continue with manual RTSP stream URLs.
+If a device does not respond to ONVIF or the Dahua RTSP channel pattern, the
+user can continue with manual RTSP stream URLs.
 
 ## Build and configuration
 

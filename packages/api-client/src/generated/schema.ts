@@ -163,14 +163,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Discover ONVIF cameras
-         * @description Scans the NVR host's local network for ONVIF network video transmitters.
-         *     Discovery does not require camera credentials and does not persist results.
-         */
-        get: operations["discoverCameras"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Discover authenticated RTSP and ONVIF cameras
+         * @description Scans the NVR host's local network for ONVIF network video transmitters
+         *     and Dahua-compatible RTSP channels. The supplied camera or NVR
+         *     credentials are used transiently to authenticate each discovered device.
+         *     Discovery does not persist credentials or results.
+         */
+        post: operations["discoverCameras"];
         delete?: never;
         options?: never;
         head?: never;
@@ -674,20 +676,36 @@ export interface components {
             recordRtspUrl?: string;
         };
         DiscoveredCamera: {
-            /** @description Stable ONVIF endpoint identifier for this discovery result */
+            /** @description Stable identifier for this discovery result */
             id: string;
-            /** @description Camera name reported by its ONVIF scopes */
+            /** @description Camera name or discovered NVR channel */
             name: string;
-            /** @description Host and optional port reported by the ONVIF service URL */
+            /** @description Host and optional port reported by the device */
             host: string;
             /**
              * Format: uri
-             * @description ONVIF device service URL
+             * @description ONVIF device service URL or discovered RTSP URL
              */
             xaddr: string;
+            /**
+             * Format: uri
+             * @description Authenticated RTSP URL without embedded credentials
+             */
+            liveRtspUrl: string;
+            /**
+             * Format: uri
+             * @description Authenticated record RTSP URL without embedded credentials
+             */
+            recordRtspUrl: string;
         };
         DiscoverResult: {
             cameras: components["schemas"]["DiscoveredCamera"][];
+        };
+        DiscoverCamerasRequest: {
+            /** @description Camera or NVR username or account ID */
+            username: string;
+            /** @description Camera or NVR password; used only for this discovery request */
+            password: string;
         };
         DiscoverCameraStreamsRequest: {
             /**
@@ -1175,7 +1193,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoverCamerasRequest"];
+            };
+        };
         responses: {
             /** @description Discovered cameras */
             200: {
@@ -1184,6 +1206,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscoverResult"];
+                };
+            };
+            /** @description Camera credentials are missing */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description Unauthenticated */

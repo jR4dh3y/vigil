@@ -3,6 +3,7 @@ import type {
 	CreateCameraRequest,
 	DiscoverCameraStreamsRequest,
 	DiscoverCameraStreamsResult,
+	DiscoverCamerasRequest,
 	DiscoverResult,
 	ProbeCameraRequest,
 	ProbeResult,
@@ -41,10 +42,12 @@ function throwCameraError(body: unknown, status: number, fallback: string): neve
 	throw new CameraApiError(message, status, code);
 }
 
-/** GET /cameras/discover */
-export async function discoverCameras(): Promise<DiscoverResult["cameras"]> {
+/** POST /cameras/discover */
+export async function discoverCameras(
+	body: DiscoverCamerasRequest,
+): Promise<DiscoverResult["cameras"]> {
 	const api = getApiClient();
-	const { data, error, response } = await api.GET("/cameras/discover");
+	const { data, error, response } = await api.POST("/cameras/discover", { body });
 	if (data) {
 		return data.cameras;
 	}

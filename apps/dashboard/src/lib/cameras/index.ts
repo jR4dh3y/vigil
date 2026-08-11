@@ -26,6 +26,7 @@ export type {
 	CreateCameraRequest,
 	DiscoverCameraStreamsRequest,
 	DiscoverCameraStreamsResult,
+	DiscoverCamerasRequest,
 	DiscoveredCamera,
 	DiscoverResult,
 	ProbeCameraRequest,

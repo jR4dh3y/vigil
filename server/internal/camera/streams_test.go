@@ -54,6 +54,14 @@ func TestDiscoverStreamsUsesCredentialsAndReturnsRTSPURLs(t *testing.T) {
 	}
 }
 
+func TestStripRTSPCredentials(t *testing.T) {
+	got := stripRTSPCredentials("rtsp://admin:secret@192.168.1.240:554/cam/realmonitor?channel=1&subtype=0")
+	want := "rtsp://192.168.1.240:554/cam/realmonitor?channel=1&subtype=0"
+	if got != want {
+		t.Fatalf("credentialless RTSP URL: got %q, want %q", got, want)
+	}
+}
+
 func TestOnvifDeviceHost(t *testing.T) {
 	for _, test := range []struct {
 		name string

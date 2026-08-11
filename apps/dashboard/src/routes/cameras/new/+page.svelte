@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from "svelte";
 	import { resolve } from "$app/paths";
 	import { goto } from "$app/navigation";
 	import { createMutation, useQueryClient } from "@tanstack/svelte-query";
@@ -7,6 +6,7 @@
 		CreateCameraRequest,
 		DiscoverCameraStreamsRequest,
 		DiscoverCameraStreamsResult,
+		DiscoverCamerasRequest,
 		DiscoveredCamera,
 		ProbeCameraRequest,
 		ProbeResult,
@@ -33,12 +33,16 @@
 	let discoveryError = $state<string | null>(null);
 	let streamDiscoveryError = $state<string | null>(null);
 	let discoveredCameras = $state<DiscoveredCamera[]>([]);
+	let hasScanned = $state(false);
 	let selectedCamera = $state<DiscoveredCamera | null>(null);
 	let streamResult = $state<DiscoverCameraStreamsResult | null>(null);
 	let credentialUsername = $state("");
 	let credentialPassword = $state("");
 	let configureCamera = $state(false);
 	let credentialsReady = $state(false);
+	let bulkAdding = $state(false);
+	let bulkAddError = $state<string | null>(null);
+	let bulkAddProgress = $state<{ completed: number; total: number } | null>(null);
 
 	const createCameraMutation = createMutation(() => ({
 		mutationFn: (body: CreateCameraRequest) => createCamera(body),
@@ -73,21 +77,20 @@
 	}));
 
 	const discoveryMutation = createMutation(() => ({
-		mutationFn: discoverCameras,
+		mutationFn: (body: DiscoverCamerasRequest) => discoverCameras(body),
 	}));
 
 	const streamDiscoveryMutation = createMutation(() => ({
 		mutationFn: (body: DiscoverCameraStreamsRequest) => discoverCameraStreams(body),
 	}));
 
-	onMount(() => {
-		void handleDiscover();
-	});
-
-	async function handleDiscover() {
+	async function handleDiscover(username: string, password: string) {
+		credentialUsername = username;
+		credentialPassword = password;
 		discoveryError = null;
+		bulkAddError = null;
 		try {
-			discoveredCameras = await discoveryMutation.mutateAsync();
+			discoveredCameras = await discoveryMutation.mutateAsync({ username, password });
 		} catch (error: unknown) {
 			discoveredCameras = [];
 			discoveryError =
@@ -96,20 +99,95 @@
 					: error instanceof Error
 						? error.message
 						: "Camera discovery failed";
+		} finally {
+			hasScanned = true;
 		}
 	}
 
-	function handleSelect(camera: DiscoveredCamera) {
+	async function handleAddSelected(cameras: DiscoveredCamera[]) {
+		if (bulkAdding || cameras.length === 0) {
+			return;
+		}
+		if (!credentialUsername.trim() || !credentialPassword) {
+			const message = "Enter the NVR username and password before adding cameras.";
+			bulkAddError = message;
+			throw new Error(message);
+		}
+
+		bulkAdding = true;
+		bulkAddError = null;
+		bulkAddProgress = { completed: 0, total: cameras.length };
+		let added = 0;
+		const failures: string[] = [];
+
+		try {
+			for (const [index, camera] of cameras.entries()) {
+				try {
+					const streams = camera.liveRtspUrl
+						? {
+								liveRtspUrl: camera.liveRtspUrl,
+								recordRtspUrl: camera.recordRtspUrl ?? camera.liveRtspUrl,
+							}
+						: await discoverCameraStreams({
+								xaddr: camera.xaddr,
+								username: credentialUsername,
+								password: credentialPassword,
+							});
+
+					await createCamera({
+						name: camera.name,
+						host: camera.host,
+						driver: "generic-rtsp",
+						enabled: true,
+						username: credentialUsername,
+						password: credentialPassword,
+						liveRtspUrl: streams.liveRtspUrl,
+						recordRtspUrl: streams.recordRtspUrl,
+					});
+					added += 1;
+				} catch (error: unknown) {
+					const message =
+						error instanceof CameraApiError
+							? error.message
+							: error instanceof Error
+								? error.message
+								: "failed to add camera";
+					failures.push(`${camera.name}: ${message}`);
+				}
+				bulkAddProgress = { completed: index + 1, total: cameras.length };
+			}
+		} finally {
+			bulkAdding = false;
+		}
+
+		if (failures.length > 0) {
+			const message = `Added ${added} of ${cameras.length} cameras. ${failures.slice(0, 3).join("; ")}`;
+			bulkAddError = message;
+			throw new Error(message);
+		}
+
+		await queryClient.invalidateQueries({ queryKey: cameraKeys.all });
+		await goto(resolve("/cameras"));
+	}
+
+	async function handleSelect(camera: DiscoveredCamera) {
 		selectedCamera = camera;
 		configureCamera = true;
 		credentialsReady = false;
 		streamResult = null;
 		streamDiscoveryError = null;
-		credentialUsername = "";
-		credentialPassword = "";
 		serverError = null;
 		probeError = null;
 		probeResult = null;
+		if (camera.liveRtspUrl) {
+			streamResult = {
+				liveRtspUrl: camera.liveRtspUrl,
+				recordRtspUrl: camera.recordRtspUrl ?? camera.liveRtspUrl,
+			};
+			credentialsReady = true;
+			return;
+		}
+		await handleDiscoverStreams(credentialUsername, credentialPassword);
 	}
 
 	function handleManual() {
@@ -168,6 +246,8 @@
 		serverError = null;
 		probeError = null;
 		probeResult = null;
+		bulkAddError = null;
+		bulkAddProgress = null;
 	}
 
 	function handleSubmit(values: CreateCameraFormValues) {
@@ -191,10 +271,14 @@
 			<CameraDiscoveryPanel
 				cameras={discoveredCameras}
 				scanning={discoveryMutation.isPending}
-				error={discoveryError}
+				{hasScanned}
+				error={discoveryError ?? bulkAddError}
 				onScan={handleDiscover}
 				onSelect={handleSelect}
+				onAddSelected={handleAddSelected}
 				onManual={handleManual}
+				addingSelected={bulkAdding}
+				addProgress={bulkAddProgress}
 			/>
 		{:else}
 			<div class="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800 pb-4">
@@ -224,6 +308,8 @@
 			{#if selectedCamera && !credentialsReady}
 				<CameraCredentialsPanel
 					camera={selectedCamera}
+					initialUsername={credentialUsername}
+					initialPassword={credentialPassword}
 					detecting={streamDiscoveryMutation.isPending}
 					error={streamDiscoveryError}
 					onDetect={handleDiscoverStreams}

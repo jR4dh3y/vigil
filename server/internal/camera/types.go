@@ -32,13 +32,22 @@ type Camera struct {
 	UpdatedAt      time.Time
 }
 
-// DiscoveredCamera is an ONVIF device found on the local network.
+// DiscoveredCamera is an authenticated camera found on the local network.
 // It contains no credentials and is not persisted until the user creates it.
 type DiscoveredCamera struct {
-	ID    string
-	Name  string
-	Host  string
-	XAddr string
+	ID            string
+	Name          string
+	Host          string
+	XAddr         string
+	LiveRTSPURL   string
+	RecordRTSPURL string
+}
+
+// DiscoveryInput contains credentials used transiently to authenticate cameras
+// found during RTSP/ONVIF network discovery. It is never persisted.
+type DiscoveryInput struct {
+	Username string
+	Password string
 }
 
 // StreamDiscoveryInput contains the selected ONVIF endpoint and credentials.

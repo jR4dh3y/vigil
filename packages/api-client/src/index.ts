@@ -13,6 +13,7 @@ export type ApiErrorBody = components["schemas"]["Error"];
 export type Camera = components["schemas"]["Camera"];
 export type StreamProfile = components["schemas"]["StreamProfile"];
 export type CreateCameraRequest = components["schemas"]["CreateCameraRequest"];
+export type DiscoverCamerasRequest = components["schemas"]["DiscoverCamerasRequest"];
 export type DiscoverCameraStreamsRequest = components["schemas"]["DiscoverCameraStreamsRequest"];
 export type DiscoverCameraStreamsResult = components["schemas"]["DiscoverCameraStreamsResult"];
 export type DiscoveredCamera = components["schemas"]["DiscoveredCamera"];

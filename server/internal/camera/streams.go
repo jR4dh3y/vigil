@@ -65,6 +65,7 @@ func (s *Service) DiscoverStreams(ctx context.Context, in StreamDiscoveryInput) 
 		if stream == "" {
 			continue
 		}
+		stream = stripRTSPCredentials(stream)
 		if _, exists := seen[stream]; exists {
 			continue
 		}
@@ -83,6 +84,15 @@ func (s *Service) DiscoverStreams(ctx context.Context, in StreamDiscoveryInput) 
 		result.RecordRTSPURL = streams[1]
 	}
 	return result, nil
+}
+
+func stripRTSPCredentials(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return raw
+	}
+	parsed.User = nil
+	return parsed.String()
 }
 
 func getONVIFProfiles(device *onvifroot.Device) ([]onviftypes.Profile, error) {

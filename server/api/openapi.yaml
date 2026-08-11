@@ -205,15 +205,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
   /cameras/discover:
-    get:
+    post:
       operationId: discoverCameras
       tags: [cameras]
-      summary: Discover ONVIF cameras
+      summary: Discover authenticated RTSP and ONVIF cameras
       description: |
-        Scans the NVR host's local network for ONVIF network video transmitters.
-        Discovery does not require camera credentials and does not persist results.
+        Scans the NVR host's local network for ONVIF network video transmitters
+        and Dahua-compatible RTSP channels. The supplied camera or NVR
+        credentials are used transiently to authenticate each discovered device.
+        Discovery does not persist credentials or results.
       security:
         - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoverCamerasRequest"
       responses:
         "200":
           description: Discovered cameras
@@ -223,6 +231,12 @@ paths:
                 $ref: "#/components/schemas/DiscoverResult"
         "401":
           description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Camera credentials are missing
           content:
             application/json:
               schema:
@@ -1238,21 +1252,29 @@ components:
           description: Record stream RTSP URL
     DiscoveredCamera:
       type: object
-      required: [id, name, host, xaddr]
+      required: [id, name, host, xaddr, liveRtspUrl, recordRtspUrl]
       properties:
         id:
           type: string
-          description: Stable ONVIF endpoint identifier for this discovery result
+          description: Stable identifier for this discovery result
         name:
           type: string
-          description: Camera name reported by its ONVIF scopes
+          description: Camera name or discovered NVR channel
         host:
           type: string
-          description: Host and optional port reported by the ONVIF service URL
+          description: Host and optional port reported by the device
         xaddr:
           type: string
           format: uri
-          description: ONVIF device service URL
+          description: ONVIF device service URL or discovered RTSP URL
+        liveRtspUrl:
+          type: string
+          format: uri
+          description: Authenticated RTSP URL without embedded credentials
+        recordRtspUrl:
+          type: string
+          format: uri
+          description: Authenticated record RTSP URL without embedded credentials
     DiscoverResult:
       type: object
       required: [cameras]
@@ -1261,6 +1283,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiscoveredCamera"
+    DiscoverCamerasRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Camera or NVR username or account ID
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+          description: Camera or NVR password; used only for this discovery request
     DiscoverCameraStreamsRequest:
       type: object
       required: [xaddr, username, password]

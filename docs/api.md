@@ -61,7 +61,8 @@ The authorization rules are:
 |---|---|---|
 | GET | `/cameras` | List the cameras. |
 | POST | `/cameras` | Create a camera. |
-| GET | `/cameras/discover` | Discover ONVIF cameras on the local network. |
+| POST | `/cameras/discover` | Discover and authenticate RTSP/ONVIF cameras using transient credentials. |
+| POST | `/cameras/discover/streams` | Detect RTSP streams for a selected ONVIF camera. |
 | POST | `/cameras/probe` | Probe a camera stream. |
 | GET | `/cameras/{id}` | Get a camera. |
 | PATCH | `/cameras/{id}` | Update a camera. |
