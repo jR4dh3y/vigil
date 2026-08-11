@@ -274,7 +274,7 @@ type GDriveConfigurationRequest struct {
 	ClientId string `json:"clientId"`
 
 	// ClientSecret OAuth web client secret; encrypted at rest and never returned
-	ClientSecret string `json:"clientSecret"`
+	ClientSecret *string `json:"clientSecret,omitempty"`
 
 	// RedirectUrl Authorized OAuth redirect URI configured in Google Cloud Console
 	RedirectUrl string `json:"redirectUrl"`
