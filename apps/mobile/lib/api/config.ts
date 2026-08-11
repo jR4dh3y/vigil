@@ -74,3 +74,10 @@ export function resolveMediaUrl(path: string, token?: string): string {
 	}
 	return url.toString();
 }
+
+/** Remove the rotating token to get a stable stream endpoint identity. */
+export function streamEndpoint(uri: string): string {
+	const url = new URL(uri, `${new URL(activeApiBaseUrl).origin}/`);
+	url.searchParams.delete("token");
+	return url.toString();
+}

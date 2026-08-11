@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { withStreamToken } from "$lib/live";
+	import { untrack } from "svelte";
+	import { streamEndpoint, withStreamToken } from "$lib/live";
 
 	type Props = {
 		whepUrl: string;
@@ -18,6 +19,7 @@
 	}: Props = $props();
 
 	let videoEl = $state<HTMLVideoElement | null>(null);
+	const endpoint = $derived(streamEndpoint(whepUrl));
 
 	function waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
 		if (pc.iceGatheringState === "complete") {
@@ -40,7 +42,7 @@
 	}
 
 	$effect(() => {
-		const url = withStreamToken(whepUrl, token);
+		const url = withStreamToken(endpoint, untrack(() => token));
 		const el = videoEl;
 		if (!el) {
 			return;

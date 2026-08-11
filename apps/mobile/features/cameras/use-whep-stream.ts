@@ -1,9 +1,10 @@
 import { fetch } from "expo/fetch";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useEffectEvent, useState } from "react";
 import type {
 	RTCPeerConnection as RTCPeerConnectionType,
 	RTCVideoViewProps,
 } from "react-native-webrtc";
+import { streamEndpoint } from "@/lib/api/config";
 
 type WhepStreamState = {
 	streamUrl: string | null;
@@ -19,8 +20,12 @@ const initialState: WhepStreamState = {
 
 export function useWhepStream(uri: string): WhepStreamState {
 	const [state, setState] = useState<WhepStreamState>(initialState);
+	const endpoint = streamEndpoint(uri);
+	const getConnectionUri = useEffectEvent(() => uri);
 
 	useEffect(() => {
+		void endpoint;
+		const connectionUri = getConnectionUri();
 		let cancelled = false;
 		let peer: RTCPeerConnectionType | null = null;
 		let resourceUrl: string | null = null;
@@ -70,7 +75,7 @@ export function useWhepStream(uri: string): WhepStreamState {
 					return;
 				}
 
-				const response = await fetch(uri, {
+				const response = await fetch(connectionUri, {
 					method: "POST",
 					headers: {
 						Accept: "application/sdp",
@@ -88,8 +93,8 @@ export function useWhepStream(uri: string): WhepStreamState {
 
 				const location = response.headers.get("Location");
 				if (location) {
-					const resolvedUrl = new URL(location, uri);
-					const baseUri = new URL(uri);
+					const resolvedUrl = new URL(location, connectionUri);
+					const baseUri = new URL(connectionUri);
 					for (const [key, value] of baseUri.searchParams) {
 						if (!resolvedUrl.searchParams.has(key)) {
 							resolvedUrl.searchParams.set(key, value);
@@ -122,7 +127,7 @@ export function useWhepStream(uri: string): WhepStreamState {
 				void fetch(cleanupUrl, { method: "DELETE" }).catch(() => undefined);
 			}
 		};
-	}, [uri]);
+	}, [endpoint]);
 
 	return state;
 }

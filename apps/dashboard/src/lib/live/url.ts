@@ -1,28 +1,43 @@
-/**
- * Append `token` as a query param when the URL does not already include one.
- * Preserves relative URLs as relative paths.
- */
-export function withStreamToken(url: string, token: string): string {
-	if (!token || url.includes("token=")) {
-		return url;
-	}
-
+function parseStreamUrl(url: string): { parsed: URL; isAbsolute: boolean } | null {
 	const isAbsolute = /^https?:\/\//i.test(url);
 	const base = typeof window !== "undefined" ? window.location.origin : "http://localhost";
 
 	try {
-		const parsed = new URL(url, base);
-		if (!parsed.searchParams.has("token")) {
-			parsed.searchParams.set("token", token);
-		}
-		if (isAbsolute) {
-			return parsed.toString();
-		}
-		return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+		return { parsed: new URL(url, base), isAbsolute };
 	} catch {
+		return null;
+	}
+}
+
+/** Set the current stream token while preserving relative URLs as relative paths. */
+export function withStreamToken(url: string, token: string): string {
+	if (!token) {
+		return url;
+	}
+
+	const result = parseStreamUrl(url);
+	if (!result) {
 		const sep = url.includes("?") ? "&" : "?";
 		return `${url}${sep}token=${encodeURIComponent(token)}`;
 	}
+
+	result.parsed.searchParams.set("token", token);
+	return result.isAbsolute
+		? result.parsed.toString()
+		: `${result.parsed.pathname}${result.parsed.search}${result.parsed.hash}`;
+}
+
+/** Remove the rotating token to get a stable stream endpoint identity. */
+export function streamEndpoint(url: string): string {
+	const result = parseStreamUrl(url);
+	if (!result) {
+		return url;
+	}
+
+	result.parsed.searchParams.delete("token");
+	return result.isAbsolute
+		? result.parsed.toString()
+		: `${result.parsed.pathname}${result.parsed.search}${result.parsed.hash}`;
 }
 
 /** Milliseconds until `expiresAt`, or null if unparsable. */

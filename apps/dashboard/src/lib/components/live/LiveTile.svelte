@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from "svelte";
 	import { createQuery } from "@tanstack/svelte-query";
 	import { AlertCircle } from "lucide-svelte";
 	import {
@@ -36,13 +37,24 @@
 		placeholderData: (prev) => prev,
 	}));
 
-	// Reset playback when the camera changes or a fresh session arrives.
+	// A token refresh updates request credentials without restarting playback.
+	// Reset only when this tile is reused for a different camera.
 	$effect(() => {
 		void camera.id;
-		void liveQuery.dataUpdatedAt;
 		mode = "hls";
 		playing = false;
 		playerError = null;
+	});
+
+	// Preserve the old automatic recovery for a fully failed tile, but do not
+	// interrupt a player that is already working when credentials rotate.
+	$effect(() => {
+		const refreshedAt = liveQuery.dataUpdatedAt;
+		if (refreshedAt > 0 && untrack(() => mode === "failed")) {
+			mode = "hls";
+			playing = false;
+			playerError = null;
+		}
 	});
 
 	const stream = $derived(liveQuery.data);
@@ -116,7 +128,7 @@
 				</button>
 			</div>
 		{:else if stream}
-			{#key `${stream.cameraId}-${stream.token}-${mode}`}
+			{#key `${stream.cameraId}-${mode}`}
 				{#if mode === "hls"}
 					<HlsPlayer
 						hlsUrl={stream.hlsUrl}

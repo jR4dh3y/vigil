@@ -1,6 +1,7 @@
 <script lang="ts">
+	import { untrack } from "svelte";
 	import Hls from "hls.js";
-	import { withStreamToken } from "$lib/live";
+	import { streamEndpoint, withStreamToken } from "$lib/live";
 
 	type Props = {
 		hlsUrl: string;
@@ -22,13 +23,17 @@
 	}: Props = $props();
 
 	let videoEl = $state<HTMLVideoElement | null>(null);
+	const endpoint = $derived(streamEndpoint(hlsUrl));
 
 	$effect(() => {
-		const url = withStreamToken(hlsUrl, token);
 		const el = videoEl;
 		if (!el) {
 			return;
 		}
+		const hlsSupported = Hls.isSupported();
+		const url = hlsSupported
+			? withStreamToken(endpoint, untrack(() => token))
+			: withStreamToken(hlsUrl, token);
 
 		let cancelled = false;
 		let hls: Hls | null = null;
@@ -39,7 +44,7 @@
 			}
 		}
 
-		if (Hls.isSupported()) {
+		if (hlsSupported) {
 			hls = new Hls({
 				enableWorker: true,
 				// MediaMTX low-latency HLS; slightly more tolerant for DVR jitter.
@@ -49,6 +54,11 @@
 				manifestLoadingMaxRetry: 4,
 				levelLoadingMaxRetry: 4,
 				fragLoadingMaxRetry: 4,
+				// Refreshing a short-lived token must not recreate the player. Apply
+				// the latest token to every playlist and segment request instead.
+				xhrSetup: (xhr, requestUrl) => {
+					xhr.open("GET", withStreamToken(requestUrl, token), true);
+				},
 			});
 			hls.loadSource(url);
 			hls.attachMedia(el);
