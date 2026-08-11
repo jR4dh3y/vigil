@@ -233,6 +233,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /cameras/discover/streams:
+    post:
+      operationId: discoverCameraStreams
+      tags: [cameras]
+      summary: Discover authenticated RTSP streams
+      description: |
+        Authenticates to a selected ONVIF camera and returns its RTSP stream
+        URLs. Credentials are used only for this request and are not persisted.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoverCameraStreamsRequest"
+      responses:
+        "200":
+          description: Discovered RTSP stream URLs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverCameraStreamsResult"
+        "400":
+          description: Camera credentials or ONVIF request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 
   /cameras/probe:
     post:
@@ -1225,6 +1261,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiscoveredCamera"
+    DiscoverCameraStreamsRequest:
+      type: object
+      required: [xaddr, username, password]
+      properties:
+        xaddr:
+          type: string
+          format: uri
+          description: ONVIF device service URL returned by discovery
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+          writeOnly: true
+    DiscoverCameraStreamsResult:
+      type: object
+      required: [liveRtspUrl, recordRtspUrl]
+      properties:
+        liveRtspUrl:
+          type: string
+          format: uri
+        recordRtspUrl:
+          type: string
+          format: uri
     UpdateCameraRequest:
       type: object
       properties:

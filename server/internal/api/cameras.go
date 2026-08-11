@@ -126,6 +126,46 @@ func (s *Server) DiscoverCameras(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, DiscoverResult{Cameras: out})
 }
 
+// DiscoverCameraStreams authenticates to a selected ONVIF camera and returns
+// the RTSP URLs reported by its media service.
+func (s *Server) DiscoverCameraStreams(w http.ResponseWriter, r *http.Request) {
+	if !requireOperator(w, r) {
+		return
+	}
+	if s.Camera == nil {
+		writeError(w, http.StatusInternalServerError, "camera service unavailable", "internal")
+		return
+	}
+
+	var body DiscoverCameraStreamsRequest
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
+		return
+	}
+	if strings.TrimSpace(body.Xaddr) == "" ||
+		strings.TrimSpace(body.Username) == "" ||
+		body.Password == nil ||
+		*body.Password == "" {
+		writeError(w, http.StatusBadRequest, "xaddr, username, and password are required", "validation")
+		return
+	}
+
+	result, err := s.Camera.DiscoverStreams(r.Context(), camera.StreamDiscoveryInput{
+		XAddr:    body.Xaddr,
+		Username: body.Username,
+		Password: *body.Password,
+	})
+	if err != nil {
+		slog.Warn("discover camera streams", "err", err)
+		writeError(w, http.StatusBadRequest, err.Error(), "discovery_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, DiscoverCameraStreamsResult{
+		LiveRtspUrl:   result.LiveRTSPURL,
+		RecordRtspUrl: result.RecordRTSPURL,
+	})
+}
+
 // GetCamera returns one camera for any authenticated user.
 func (s *Server) GetCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	if auth.UserFromContext(r.Context()) == nil {

@@ -13,13 +13,14 @@ The dashboard is built with Svelte 5 runes mode. It uses Tailwind CSS 4. It uses
 ## Camera discovery
 
 The add-camera flow starts with a server-side ONVIF WS-Discovery scan of the
-NVR host's local network. Discovery does not require camera credentials and
-does not persist anything. After a camera is selected, its reported name and
-host are prefilled before the user enters the camera username and password.
+NVR host's local network. Discovery finds devices without credentials and does
+not persist anything. After a camera is selected, the user enters its username
+and password; the NVR then authenticates to the camera's ONVIF media service
+and pre-fills the RTSP stream URLs.
 
 Discovery is limited to ONVIF-compatible cameras visible from the NVR host's
-network interfaces. RTSP stream paths may still need to be entered and probed
-when a camera does not expose them through its configuration.
+network interfaces. If a camera does not expose stream profiles through ONVIF,
+the user can continue with manual RTSP stream URLs.
 
 ## Build and configuration
 

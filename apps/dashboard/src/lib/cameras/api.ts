@@ -1,6 +1,8 @@
 import type {
 	Camera,
 	CreateCameraRequest,
+	DiscoverCameraStreamsRequest,
+	DiscoverCameraStreamsResult,
 	DiscoverResult,
 	ProbeCameraRequest,
 	ProbeResult,
@@ -47,6 +49,18 @@ export async function discoverCameras(): Promise<DiscoverResult["cameras"]> {
 		return data.cameras;
 	}
 	throwCameraError(error, response.status, "Failed to discover cameras");
+}
+
+/** POST /cameras/discover/streams */
+export async function discoverCameraStreams(
+	body: DiscoverCameraStreamsRequest,
+): Promise<DiscoverCameraStreamsResult> {
+	const api = getApiClient();
+	const { data, error, response } = await api.POST("/cameras/discover/streams", { body });
+	if (data) {
+		return data;
+	}
+	throwCameraError(error, response.status, "Failed to detect camera streams");
 }
 
 /** GET /cameras */

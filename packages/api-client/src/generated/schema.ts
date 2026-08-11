@@ -177,6 +177,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/discover/streams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discover authenticated RTSP streams
+         * @description Authenticates to a selected ONVIF camera and returns its RTSP stream
+         *     URLs. Credentials are used only for this request and are not persisted.
+         */
+        post: operations["discoverCameraStreams"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/probe": {
         parameters: {
             query?: never;
@@ -667,6 +688,21 @@ export interface components {
         };
         DiscoverResult: {
             cameras: components["schemas"]["DiscoveredCamera"][];
+        };
+        DiscoverCameraStreamsRequest: {
+            /**
+             * Format: uri
+             * @description ONVIF device service URL returned by discovery
+             */
+            xaddr: string;
+            username: string;
+            password: string;
+        };
+        DiscoverCameraStreamsResult: {
+            /** Format: uri */
+            liveRtspUrl: string;
+            /** Format: uri */
+            recordRtspUrl: string;
         };
         UpdateCameraRequest: {
             name?: string;
@@ -1161,6 +1197,48 @@ export interface operations {
             };
             /** @description Discovery failed */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    discoverCameraStreams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscoverCameraStreamsRequest"];
+            };
+        };
+        responses: {
+            /** @description Discovered RTSP stream URLs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverCameraStreamsResult"];
+                };
+            };
+            /** @description Camera credentials or ONVIF request failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

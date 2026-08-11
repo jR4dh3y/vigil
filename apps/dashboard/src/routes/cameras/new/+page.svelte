@@ -5,6 +5,8 @@
 	import { createMutation, useQueryClient } from "@tanstack/svelte-query";
 	import type {
 		CreateCameraRequest,
+		DiscoverCameraStreamsRequest,
+		DiscoverCameraStreamsResult,
 		DiscoveredCamera,
 		ProbeCameraRequest,
 		ProbeResult,
@@ -13,11 +15,13 @@
 		CameraApiError,
 		cameraKeys,
 		createCamera,
+		discoverCameraStreams,
 		discoverCameras,
 		type CreateCameraFormValues,
 		probeCamera,
 		toCreateCameraRequest,
 	} from "$lib/cameras";
+	import CameraCredentialsPanel from "$lib/components/cameras/CameraCredentialsPanel.svelte";
 	import CameraDiscoveryPanel from "$lib/components/cameras/CameraDiscoveryPanel.svelte";
 	import CameraForm from "$lib/components/cameras/CameraForm.svelte";
 
@@ -27,9 +31,14 @@
 	let probeError = $state<string | null>(null);
 	let probeResult = $state<ProbeResult | null>(null);
 	let discoveryError = $state<string | null>(null);
+	let streamDiscoveryError = $state<string | null>(null);
 	let discoveredCameras = $state<DiscoveredCamera[]>([]);
 	let selectedCamera = $state<DiscoveredCamera | null>(null);
+	let streamResult = $state<DiscoverCameraStreamsResult | null>(null);
+	let credentialUsername = $state("");
+	let credentialPassword = $state("");
 	let configureCamera = $state(false);
+	let credentialsReady = $state(false);
 
 	const createCameraMutation = createMutation(() => ({
 		mutationFn: (body: CreateCameraRequest) => createCamera(body),
@@ -67,6 +76,10 @@
 		mutationFn: discoverCameras,
 	}));
 
+	const streamDiscoveryMutation = createMutation(() => ({
+		mutationFn: (body: DiscoverCameraStreamsRequest) => discoverCameraStreams(body),
+	}));
+
 	onMount(() => {
 		void handleDiscover();
 	});
@@ -89,6 +102,11 @@
 	function handleSelect(camera: DiscoveredCamera) {
 		selectedCamera = camera;
 		configureCamera = true;
+		credentialsReady = false;
+		streamResult = null;
+		streamDiscoveryError = null;
+		credentialUsername = "";
+		credentialPassword = "";
 		serverError = null;
 		probeError = null;
 		probeResult = null;
@@ -97,14 +115,56 @@
 	function handleManual() {
 		selectedCamera = null;
 		configureCamera = true;
+		credentialsReady = true;
+		streamResult = null;
+		credentialUsername = "";
+		credentialPassword = "";
 		serverError = null;
 		probeError = null;
 		probeResult = null;
 	}
 
+	async function handleDiscoverStreams(username: string, password: string) {
+		if (!selectedCamera) {
+			return;
+		}
+		credentialUsername = username;
+		credentialPassword = password;
+		streamDiscoveryError = null;
+		try {
+			streamResult = await streamDiscoveryMutation.mutateAsync({
+				xaddr: selectedCamera.xaddr,
+				username,
+				password,
+			});
+			credentialsReady = true;
+		} catch (error: unknown) {
+			streamResult = null;
+			streamDiscoveryError =
+				error instanceof CameraApiError
+					? error.message
+					: error instanceof Error
+						? error.message
+						: "RTSP stream discovery failed";
+		}
+	}
+
+	function handleContinueWithoutDiscovery(username: string, password: string) {
+		credentialUsername = username;
+		credentialPassword = password;
+		streamResult = null;
+		streamDiscoveryError = null;
+		credentialsReady = true;
+	}
+
 	function handleBackToDiscovery() {
 		configureCamera = false;
+		credentialsReady = false;
 		selectedCamera = null;
+		streamResult = null;
+		credentialUsername = "";
+		credentialPassword = "";
+		streamDiscoveryError = null;
 		serverError = null;
 		probeError = null;
 		probeResult = null;
@@ -161,17 +221,38 @@
 				</button>
 			</div>
 
-			<CameraForm
-				mode="create"
-				initial={selectedCamera ? { name: selectedCamera.name, host: selectedCamera.host } : {}}
-				submitting={createCameraMutation.isPending}
-				probing={probeMutation.isPending}
-				{serverError}
-				{probeResult}
-				{probeError}
-				onSubmit={handleSubmit}
-				onProbe={handleProbe}
-			/>
+			{#if selectedCamera && !credentialsReady}
+				<CameraCredentialsPanel
+					camera={selectedCamera}
+					detecting={streamDiscoveryMutation.isPending}
+					error={streamDiscoveryError}
+					onDetect={handleDiscoverStreams}
+					onContinue={handleContinueWithoutDiscovery}
+				/>
+			{:else}
+				<CameraForm
+					mode="create"
+					initial={
+						selectedCamera
+							? {
+									name: selectedCamera.name,
+									host: selectedCamera.host,
+									username: credentialUsername,
+									password: credentialPassword,
+									liveRtspUrl: streamResult?.liveRtspUrl ?? "",
+									recordRtspUrl: streamResult?.recordRtspUrl ?? "",
+								}
+							: {}
+					}
+					submitting={createCameraMutation.isPending}
+					probing={probeMutation.isPending}
+					{serverError}
+					{probeResult}
+					{probeError}
+					onSubmit={handleSubmit}
+					onProbe={handleProbe}
+				/>
+			{/if}
 		{/if}
 	</div>
 </section>

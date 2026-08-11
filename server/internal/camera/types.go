@@ -41,6 +41,20 @@ type DiscoveredCamera struct {
 	XAddr string
 }
 
+// StreamDiscoveryInput contains the selected ONVIF endpoint and credentials.
+// It is used transiently and is never persisted.
+type StreamDiscoveryInput struct {
+	XAddr    string
+	Username string
+	Password string
+}
+
+// StreamDiscoveryResult contains RTSP URLs returned by the camera.
+type StreamDiscoveryResult struct {
+	LiveRTSPURL   string
+	RecordRTSPURL string
+}
+
 // StreamProfile is a live or record RTSP profile.
 type StreamProfile struct {
 	ID      string

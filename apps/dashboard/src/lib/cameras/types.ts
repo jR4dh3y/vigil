@@ -3,6 +3,8 @@ import type { Camera as ApiCamera } from "@nvr/api-client";
 export type {
 	Camera,
 	CreateCameraRequest,
+	DiscoverCameraStreamsRequest,
+	DiscoverCameraStreamsResult,
 	DiscoveredCamera,
 	DiscoverResult,
 	ProbeCameraRequest,
