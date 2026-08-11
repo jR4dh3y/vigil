@@ -204,6 +204,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /cameras/discover:
+    get:
+      operationId: discoverCameras
+      tags: [cameras]
+      summary: Discover ONVIF cameras
+      description: |
+        Scans the NVR host's local network for ONVIF network video transmitters.
+        Discovery does not require camera credentials and does not persist results.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Discovered cameras
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoverResult"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Discovery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /cameras/probe:
     post:
       operationId: probeCamera
@@ -1170,6 +1200,31 @@ components:
         recordRtspUrl:
           type: string
           description: Record stream RTSP URL
+    DiscoveredCamera:
+      type: object
+      required: [id, name, host, xaddr]
+      properties:
+        id:
+          type: string
+          description: Stable ONVIF endpoint identifier for this discovery result
+        name:
+          type: string
+          description: Camera name reported by its ONVIF scopes
+        host:
+          type: string
+          description: Host and optional port reported by the ONVIF service URL
+        xaddr:
+          type: string
+          format: uri
+          description: ONVIF device service URL
+    DiscoverResult:
+      type: object
+      required: [cameras]
+      properties:
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoveredCamera"
     UpdateCameraRequest:
       type: object
       properties:

@@ -156,6 +156,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Discover ONVIF cameras
+         * @description Scans the NVR host's local network for ONVIF network video transmitters.
+         *     Discovery does not require camera credentials and does not persist results.
+         */
+        get: operations["discoverCameras"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/probe": {
         parameters: {
             query?: never;
@@ -631,6 +652,22 @@ export interface components {
             /** @description Record stream RTSP URL */
             recordRtspUrl?: string;
         };
+        DiscoveredCamera: {
+            /** @description Stable ONVIF endpoint identifier for this discovery result */
+            id: string;
+            /** @description Camera name reported by its ONVIF scopes */
+            name: string;
+            /** @description Host and optional port reported by the ONVIF service URL */
+            host: string;
+            /**
+             * Format: uri
+             * @description ONVIF device service URL
+             */
+            xaddr: string;
+        };
+        DiscoverResult: {
+            cameras: components["schemas"]["DiscoveredCamera"][];
+        };
         UpdateCameraRequest: {
             name?: string;
             driver?: string;
@@ -1086,6 +1123,44 @@ export interface operations {
             };
             /** @description Unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    discoverCameras: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discovered cameras */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoverResult"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Discovery failed */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

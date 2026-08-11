@@ -10,6 +10,17 @@ The dashboard is a static client. It renders the API state. It has no business l
 
 The dashboard is built with Svelte 5 runes mode. It uses Tailwind CSS 4. It uses TanStack Query for server state.
 
+## Camera discovery
+
+The add-camera flow starts with a server-side ONVIF WS-Discovery scan of the
+NVR host's local network. Discovery does not require camera credentials and
+does not persist anything. After a camera is selected, its reported name and
+host are prefilled before the user enters the camera username and password.
+
+Discovery is limited to ONVIF-compatible cameras visible from the NVR host's
+network interfaces. RTSP stream paths may still need to be entered and probed
+when a camera does not expose them through its configuration.
+
 ## Build and configuration
 
 The dashboard uses the `adapter-static` adapter. The configuration is in `apps/dashboard/vite.config.ts`. The build output goes to `build/`. The SPA fallback is `index.html`.

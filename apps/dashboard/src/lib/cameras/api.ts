@@ -1,6 +1,7 @@
 import type {
 	Camera,
 	CreateCameraRequest,
+	DiscoverResult,
 	ProbeCameraRequest,
 	ProbeResult,
 	UpdateCameraRequest,
@@ -36,6 +37,16 @@ function errorDetails(body: unknown, fallback: string): { message: string; code?
 function throwCameraError(body: unknown, status: number, fallback: string): never {
 	const { message, code } = errorDetails(body, fallback);
 	throw new CameraApiError(message, status, code);
+}
+
+/** GET /cameras/discover */
+export async function discoverCameras(): Promise<DiscoverResult["cameras"]> {
+	const api = getApiClient();
+	const { data, error, response } = await api.GET("/cameras/discover");
+	if (data) {
+		return data.cameras;
+	}
+	throwCameraError(error, response.status, "Failed to discover cameras");
 }
 
 /** GET /cameras */

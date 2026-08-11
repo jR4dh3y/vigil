@@ -32,6 +32,15 @@ type Camera struct {
 	UpdatedAt      time.Time
 }
 
+// DiscoveredCamera is an ONVIF device found on the local network.
+// It contains no credentials and is not persisted until the user creates it.
+type DiscoveredCamera struct {
+	ID    string
+	Name  string
+	Host  string
+	XAddr string
+}
+
 // StreamProfile is a live or record RTSP profile.
 type StreamProfile struct {
 	ID      string

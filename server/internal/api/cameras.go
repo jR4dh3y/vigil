@@ -102,6 +102,30 @@ func (s *Server) CreateCamera(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, mapCamera(c))
 }
 
+// DiscoverCameras scans the local network for ONVIF cameras without credentials.
+func (s *Server) DiscoverCameras(w http.ResponseWriter, r *http.Request) {
+	if !requireOperator(w, r) {
+		return
+	}
+	if s.Camera == nil {
+		writeError(w, http.StatusInternalServerError, "camera service unavailable", "internal")
+		return
+	}
+
+	list, err := s.Camera.Discover(r.Context())
+	if err != nil {
+		slog.Error("discover cameras", "err", err)
+		writeError(w, http.StatusInternalServerError, "camera discovery failed", "internal")
+		return
+	}
+
+	out := make([]DiscoveredCamera, 0, len(list))
+	for _, discovered := range list {
+		out = append(out, mapDiscoveredCamera(discovered))
+	}
+	writeJSON(w, http.StatusOK, DiscoverResult{Cameras: out})
+}
+
 // GetCamera returns one camera for any authenticated user.
 func (s *Server) GetCamera(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	if auth.UserFromContext(r.Context()) == nil {
@@ -316,6 +340,15 @@ func (s *Server) syncMediaPath(ctx context.Context, c camera.Camera) {
 	}
 	if err := s.Media.DeletePath(ctx, c.ID); err != nil {
 		slog.Warn("mediamtx delete path", "camera_id", c.ID, "err", err)
+	}
+}
+
+func mapDiscoveredCamera(c camera.DiscoveredCamera) DiscoveredCamera {
+	return DiscoveredCamera{
+		Id:    c.ID,
+		Name:  c.Name,
+		Host:  c.Host,
+		Xaddr: c.XAddr,
 	}
 }
 

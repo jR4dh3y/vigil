@@ -31,7 +31,7 @@ The API has three roles:
 The authorization rules are:
 
 - User administration, settings writes, and Drive administration require `admin`.
-- Camera create, update, delete, and probe require `operator` or `admin`.
+- Camera create, update, delete, discovery, and probe require `operator` or `admin`.
 - Camera reads, live, snapshots, recordings, events, and system reads require any authenticated user.
 
 ## The REST endpoints
@@ -61,6 +61,7 @@ The authorization rules are:
 |---|---|---|
 | GET | `/cameras` | List the cameras. |
 | POST | `/cameras` | Create a camera. |
+| GET | `/cameras/discover` | Discover ONVIF cameras on the local network. |
 | POST | `/cameras/probe` | Probe a camera stream. |
 | GET | `/cameras/{id}` | Get a camera. |
 | PATCH | `/cameras/{id}` | Update a camera. |
