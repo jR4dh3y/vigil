@@ -62,11 +62,16 @@ bun run dev          # Starts MediaMTX, Go API (:8080), and Dashboard (:5173)
 
 ### Production Binary
 ```bash
-bun run build --filter=@nvr/dashboard
-cp -a apps/dashboard/build/. server/internal/ui/dist/
-cd server && go build -o bin/nvrd ./cmd/nvrd
-./bin/nvrd           # Serves API + Dashboard on :8080
+bun run build:bin
+./server/bin/nvrd       # Serves API + Dashboard on :8080
 ```
+
+The build command builds the dashboard, copies it into the Go embed directory,
+and produces `server/bin/nvrd`.
+
+Runtime state defaults to `./data` and `./recordings` relative to the directory
+where `nvrd` is launched, not the binary's directory. Set `NVR_DATA_DIR` and
+`NVR_RECORDINGS_DIR` to absolute paths for a fixed deployment location.
 
 ### Docker
 ```bash

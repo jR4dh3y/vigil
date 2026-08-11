@@ -44,7 +44,7 @@ Run `nvrd setup` with the URL flags. It prompts for the admin username and the
 password on a hidden terminal line:
 
 ```bash
-./bin/nvrd setup \
+./server/bin/nvrd setup \
   --public-url https://recorder.example.com \
   --hosted-url https://nvr.example.com/dashboard
 ```
@@ -55,7 +55,7 @@ For first-start automation, pass the password over standard input so it never
 appears in `argv`:
 
 ```bash
-./bin/nvrd setup \
+./server/bin/nvrd setup \
   --username admin \
   --password-stdin \
   --public-url https://recorder.example.com \
@@ -76,7 +76,7 @@ updates, which persist the public and hosted dashboard URLs without touching
 users:
 
 ```bash
-./bin/nvrd setup --public-url https://recorder.example.com
+./server/bin/nvrd setup --public-url https://recorder.example.com
 ```
 
 ### Env first-start bootstrap

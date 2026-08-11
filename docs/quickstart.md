@@ -4,14 +4,18 @@ This quickstart runs Vigil, creates the first administrator, and verifies the se
 
 ## Prerequisites
 
-To run Vigil in development, you need:
+To run Vigil in development and build the production binary, you need:
 
+- Bash.
 - Bun (version 1.3.14).
 - Go (version 1.26 or later).
+- Make.
 - MediaMTX.
 - FFmpeg.
 
-The repository uses Bun for the JavaScript packages. The backend uses Go. MediaMTX is the media server. FFmpeg is a tool for snapshots and probing.
+The repository uses Bun for JavaScript packages and Bash plus Make for the
+production build command. The backend uses Go. MediaMTX is the media server.
+FFmpeg provides snapshots and stream probing.
 
 ## Install The Dependencies
 
@@ -70,16 +74,20 @@ http://127.0.0.1:9997/v3/paths/list
 
 ## 4. Build The Production Binary
 
-To build the production binary:
+Build the dashboard and the Go server together:
 
 ```bash
-bun run build --filter=@nvr/dashboard
-cp -a apps/dashboard/build/. server/internal/ui/dist/
-cd server && go build -o bin/nvrd ./cmd/nvrd
-./bin/nvrd
+bun run build:bin
+./server/bin/nvrd
 ```
 
-The dashboard is built first. Then the built files are copied into the Go binary. The single binary serves the API and the dashboard on `:8080`.
+The build command copies the dashboard into the Go embed directory, so the
+single binary serves the API and dashboard on `:8080`.
+
+Runtime state defaults to `./data` and `./recordings` relative to the directory
+where `nvrd` is launched. Moving the binary does not move its state. Set
+`NVR_DATA_DIR` and `NVR_RECORDINGS_DIR` to absolute paths when the server can be
+started from different working directories.
 
 ### Headless (hosted dashboard) binary
 
@@ -101,7 +109,7 @@ origins are configured at first run with `nvrd setup`. See
 dashboard URLs. The password is never shown on the command line. Interactive:
 
 ```bash
-./bin/nvrd setup \
+./server/bin/nvrd setup \
   --public-url https://recorder.example.com \
   --hosted-url https://nvr.example.com/dashboard
 ```

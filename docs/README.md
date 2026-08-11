@@ -35,11 +35,12 @@ The server runs on `:8080`. On a new database, open the dashboard and create the
 Run the production binary:
 
 ```bash
-bun run build --filter=@nvr/dashboard
-cp -a apps/dashboard/build/. server/internal/ui/dist/
-cd server && go build -o bin/nvrd ./cmd/nvrd
-./bin/nvrd
+bun run build:bin
+./server/bin/nvrd
 ```
+
+This builds the dashboard, embeds it into the Go binary, and serves both the
+API and dashboard from one process.
 
 ## API Families
 

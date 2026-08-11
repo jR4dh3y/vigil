@@ -4,6 +4,7 @@
 	"private": true,
 	"scripts": {
 		"build": "turbo run build",
+		"build:bin": "bash ./tools/build.sh",
 		"dev": "turbo run dev",
 		"lint": "biome check .",
 		"check-types": "turbo run check-types",
