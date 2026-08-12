@@ -2,7 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import { createMutation, createQuery, useQueryClient } from "@tanstack/svelte-query";
-	import { RefreshCw } from "lucide-svelte";
+	import { RefreshCw, ShieldCheck } from "lucide-svelte";
 	import { onMount } from "svelte";
 	import { authKeys, loadStatus } from "$lib/auth";
 	import PageActions from "$lib/components/PageActions.svelte";
@@ -71,7 +71,9 @@
 		if (notice.kind === "connected") {
 			driveFlashSuccess = notice.message;
 			driveServerError = null;
-			void queryClient.invalidateQueries({ queryKey: storageKeys.gdriveStatus() });
+			void queryClient.invalidateQueries({
+				queryKey: storageKeys.gdriveStatus(),
+			});
 		} else {
 			driveServerError = notice.message;
 			driveFlashSuccess = null;
@@ -147,7 +149,9 @@
 		onSuccess: async () => {
 			driveServerError = null;
 			driveFlashSuccess = "Google Drive disconnected.";
-			await queryClient.invalidateQueries({ queryKey: storageKeys.gdriveStatus() });
+			await queryClient.invalidateQueries({
+				queryKey: storageKeys.gdriveStatus(),
+			});
 		},
 		onError: (error: unknown) => {
 			driveFlashSuccess = null;
@@ -264,9 +268,33 @@
 	</button>
 </PageActions>
 
-<section class="mx-auto flex w-full max-w-3xl flex-col gap-6">
+<section class="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
+	<div
+		class="flex flex-col gap-4 border-b border-zinc-800/80 pb-6 sm:flex-row sm:items-end sm:justify-between"
+	>
+		<div class="max-w-2xl">
+			<p class="mb-2 text-xs font-medium tracking-[0.16em] text-emerald-400 uppercase">
+				Recorder configuration
+			</p>
+			<h2 class="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
+				General settings
+			</h2>
+			<p class="mt-2 text-sm leading-6 text-zinc-400">
+				Manage this recorder, local storage, retention, and off-site archives from one place.
+			</p>
+		</div>
+		<div class="flex items-center gap-2 text-xs text-zinc-400">
+			<span class="flex size-7 items-center justify-center rounded-full bg-zinc-900 text-zinc-400">
+				<ShieldCheck class="size-3.5" />
+			</span>
+			<span>{isAdmin ? "Administrator access" : "View-only access"}</span>
+		</div>
+	</div>
+
 	{#if systemQuery.isPending}
-		<div class="flex min-h-[160px] items-center justify-center">
+		<div
+			class="flex min-h-[190px] items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/30"
+		>
 			<Spinner label="Loading system status" />
 		</div>
 	{:else if systemQuery.isError}
@@ -291,94 +319,100 @@
 		<SystemStatusCard status={systemQuery.data} />
 	{/if}
 
-	<div class="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-		<div class="mb-5 flex flex-col gap-1">
-			<h2 class="text-sm font-semibold text-zinc-100">Site settings</h2>
-			<p class="text-xs text-zinc-500">
-				{#if isAdmin}
-					Site name, recording location on this server, and retention.
-				{:else}
-					View-only. Ask an administrator to change these values.
-				{/if}
-			</p>
-		</div>
-
-		{#if settingsQuery.isPending}
-			<div class="flex min-h-[120px] items-center justify-center">
-				<Spinner label="Loading settings" />
-			</div>
-		{:else if settingsQuery.isError}
-			<div class="flex flex-col gap-2">
-				<p class="text-sm text-red-300">
-					{settingsQuery.error instanceof Error
-						? settingsQuery.error.message
-						: "Failed to load settings."}
+	<div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.8fr)]">
+		<div class="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/35">
+			<div class="border-b border-zinc-800 px-5 py-4 sm:px-6">
+				<h2 class="text-sm font-semibold text-zinc-100">Recorder</h2>
+				<p class="mt-1 text-xs leading-5 text-zinc-500">
+					Identity, local recording, and retention policy.
 				</p>
-				<button
-					type="button"
-					class="w-fit rounded-lg bg-zinc-800 px-3 py-1.5 text-sm text-zinc-100 hover:bg-zinc-700"
-					onclick={() => settingsQuery.refetch()}
-				>
-					Retry
-				</button>
 			</div>
-		{:else if formInitial}
-			{#key `${formInitial.siteName}:${formInitial.retentionDays}:${formInitial.recordingsDir}:${formInitial.recordingEnabled}`}
-				<SettingsForm
-					initial={formInitial}
-					readonly={!isAdmin}
-					submitting={saveMutation.isPending}
-					{serverError}
-					{successMessage}
-					onSubmit={handleSave}
-				/>
-			{/key}
-		{/if}
-	</div>
 
-	{#if gdriveQuery.isPending}
-		<div class="flex min-h-[120px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50">
-			<Spinner label="Loading Google Drive status" />
+			<div class="p-5 sm:p-6">
+				{#if settingsQuery.isPending}
+					<div class="flex min-h-[240px] items-center justify-center">
+						<Spinner label="Loading settings" />
+					</div>
+				{:else if settingsQuery.isError}
+					<div class="flex min-h-[240px] flex-col items-center justify-center gap-3 text-center">
+						<p class="text-sm font-medium text-red-200">Could not load recorder settings</p>
+						<p class="max-w-sm text-sm text-red-300/80">
+							{settingsQuery.error instanceof Error
+								? settingsQuery.error.message
+								: "Failed to load settings."}
+						</p>
+						<button
+							type="button"
+							class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
+							onclick={() => settingsQuery.refetch()}
+						>
+							Retry
+						</button>
+					</div>
+				{:else if formInitial}
+					{#key `${formInitial.siteName}:${formInitial.retentionDays}:${formInitial.recordingsDir}:${formInitial.recordingEnabled}`}
+						<SettingsForm
+							initial={formInitial}
+							readonly={!isAdmin}
+							submitting={saveMutation.isPending}
+							{serverError}
+							{successMessage}
+							onSubmit={handleSave}
+						/>
+					{/key}
+				{/if}
+			</div>
 		</div>
-	{:else if gdriveQuery.isError}
-		<div
-			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-6 py-10 text-center"
-		>
-			<p class="text-sm font-medium text-red-200">Could not load Google Drive status</p>
-			<p class="max-w-sm text-sm text-red-300/80">
-				{gdriveQuery.error instanceof Error
-					? gdriveQuery.error.message
-					: "Unknown error while loading Drive status."}
-			</p>
-			<button
-				type="button"
-				class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
-				onclick={() => gdriveQuery.refetch()}
-			>
-				Retry
-			</button>
+
+		<div class="flex flex-col gap-3">
+			{#if driveFlashSuccess}
+				<p
+					class="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
+					role="status"
+				>
+					{driveFlashSuccess}
+				</p>
+			{/if}
+
+			{#if gdriveQuery.isPending}
+				<div
+					class="flex min-h-[280px] items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/35"
+				>
+					<Spinner label="Loading Google Drive status" />
+				</div>
+			{:else if gdriveQuery.isError}
+				<div
+					class="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 px-6 py-10 text-center"
+				>
+					<p class="text-sm font-medium text-red-200">Could not load Google Drive status</p>
+					<p class="max-w-sm text-sm text-red-300/80">
+						{gdriveQuery.error instanceof Error
+							? gdriveQuery.error.message
+							: "Unknown error while loading Drive status."}
+					</p>
+					<button
+						type="button"
+						class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
+						onclick={() => gdriveQuery.refetch()}
+					>
+						Retry
+					</button>
+				</div>
+			{:else if gdriveQuery.data}
+				<GoogleDriveCard
+					status={gdriveQuery.data}
+					readonly={!isAdmin}
+					connecting={connectMutation.isPending}
+					configuring={configureMutation.isPending}
+					disconnecting={disconnectMutation.isPending}
+					archiving={archiveMutation.isPending}
+					serverError={driveServerError}
+					onConnect={handleConnect}
+					onDisconnect={handleDisconnect}
+					onArchive={handleArchive}
+					onConfigure={handleConfigure}
+				/>
+			{/if}
 		</div>
-	{:else if gdriveQuery.data}
-		{#if driveFlashSuccess}
-			<p
-				class="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
-				role="status"
-			>
-				{driveFlashSuccess}
-			</p>
-		{/if}
-		<GoogleDriveCard
-			status={gdriveQuery.data}
-			readonly={!isAdmin}
-			connecting={connectMutation.isPending}
-			configuring={configureMutation.isPending}
-			disconnecting={disconnectMutation.isPending}
-			archiving={archiveMutation.isPending}
-			serverError={driveServerError}
-			onConnect={handleConnect}
-			onDisconnect={handleDisconnect}
-			onArchive={handleArchive}
-			onConfigure={handleConfigure}
-		/>
-	{/if}
+	</div>
 </section>
