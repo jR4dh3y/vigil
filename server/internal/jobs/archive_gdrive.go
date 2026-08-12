@@ -16,7 +16,7 @@ import (
 const DefaultGDriveArchiveLimit = 50
 
 // RunGDriveArchive archives up to limit unarchived recordings to Google Drive.
-// Safe to call from the API and from the midnight cron job.
+// Safe to call from the API and from the recurring archive job.
 func (s *Scheduler) RunGDriveArchive(ctx context.Context, limit int) (gdrive.ArchiveStats, error) {
 	var zero gdrive.ArchiveStats
 	index, err := storage.PrepareGDriveArchive(ctx, s.cfg.GDrive, s.cfg.Recording)

@@ -64,7 +64,7 @@ pathDefaults:
   runOnRecordSegmentComplete: >-
     curl -sS -X POST http://127.0.0.1:8080/internal/mediamtx/segment-complete
     -H 'Content-Type: application/json'
-    -d '{"path":"$MTX_PATH","file_path":"$MTX_SEGMENT_PATH","duration_ms":"$MTX_SEGMENT_DURATION"}'
+    -d '{"path":"$MTX_PATH","file_path":"$MTX_SEGMENT_PATH","duration_sec":"$MTX_SEGMENT_DURATION"}'
 
 # Paths are created at runtime by nvrd via the Control API.
 paths: {}

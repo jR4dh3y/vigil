@@ -72,12 +72,45 @@ func (q *Queries) GetRecording(ctx context.Context, id string) (Recording, error
 	return i, err
 }
 
+const getRecordingByPath = `-- name: GetRecordingByPath :one
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE path = ?
+`
+
+func (q *Queries) GetRecordingByPath(ctx context.Context, path string) (Recording, error) {
+	row := q.db.QueryRowContext(ctx, getRecordingByPath, path)
+	var i Recording
+	err := row.Scan(
+		&i.ID,
+		&i.CameraID,
+		&i.StartedAt,
+		&i.DurationSec,
+		&i.SizeBytes,
+		&i.Path,
+		&i.Codec,
+		&i.ThumbnailPath,
+		&i.ArchivedAt,
+		&i.ArchiveLocation,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const insertRecording = `-- name: InsertRecording :one
 INSERT INTO recordings (
   id, camera_id, started_at, duration_sec, size_bytes, path, codec, thumbnail_path
 ) VALUES (
   ?, ?, ?, ?, ?, ?, ?, ?
 )
+ON CONFLICT(path) DO UPDATE SET
+  camera_id = excluded.camera_id,
+  started_at = excluded.started_at,
+  duration_sec = excluded.duration_sec,
+  size_bytes = excluded.size_bytes,
+  codec = COALESCE(excluded.codec, recordings.codec),
+  thumbnail_path = COALESCE(excluded.thumbnail_path, recordings.thumbnail_path)
 RETURNING id, camera_id, started_at, duration_sec, size_bytes, path, codec,
           thumbnail_path, archived_at, archive_location, created_at
 `

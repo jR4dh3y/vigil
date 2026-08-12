@@ -101,6 +101,86 @@ func TestIndexSegmentAndListRange(t *testing.T) {
 	}
 }
 
+func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	path := filepath.Join(svc.RecordingsDir(), "cam_550e8400e29b41d4a716446655440000", "2026-08-12", "14-00-00.mp4")
+	started := time.Date(2026, 8, 12, 14, 0, 0, 0, time.UTC)
+
+	first, err := svc.IndexSegment(ctx, camID, path, started, 60, 100, "")
+	if err != nil {
+		t.Fatalf("first IndexSegment: %v", err)
+	}
+	second, err := svc.IndexSegment(ctx, camID, path, started, 61, 200, "h264")
+	if err != nil {
+		t.Fatalf("second IndexSegment: %v", err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("duplicate path changed id: %q != %q", second.ID, first.ID)
+	}
+	if second.DurationSec != 61 || second.SizeBytes != 200 {
+		t.Fatalf("segment was not refreshed: %+v", second)
+	}
+
+	got, err := svc.List(ctx, camID, started.Add(-time.Minute), started.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Segments) != 1 {
+		t.Fatalf("got %d segments, want 1", len(got.Segments))
+	}
+}
+
+func TestReconcileDiskBackfillsAndSkipsActiveFiles(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	cameraDir := filepath.Join(svc.RecordingsDir(), "cam_550e8400e29b41d4a716446655440000", "2026-08-12")
+	if err := os.MkdirAll(cameraDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	completed := filepath.Join(cameraDir, "14-00-00-000000.mp4")
+	active := filepath.Join(cameraDir, "14-01-00-000000.mp4")
+	if err := os.WriteFile(completed, []byte("completed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(completed, time.Now().Add(-time.Minute), time.Now().Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(active, []byte("active"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := svc.ReconcileDisk(ctx, 5*time.Second)
+	if err != nil {
+		t.Fatalf("ReconcileDisk: %v", err)
+	}
+	if stats.Indexed != 1 || stats.Skipped != 1 {
+		t.Fatalf("unexpected stats: %+v", stats)
+	}
+	segments, err := svc.List(
+		ctx,
+		camID,
+		time.Date(2026, 8, 12, 13, 59, 0, 0, time.UTC),
+		time.Date(2026, 8, 12, 14, 2, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(segments.Segments) != 1 {
+		t.Fatalf("got %d segments, want 1", len(segments.Segments))
+	}
+
+	stats, err = svc.ReconcileDisk(ctx, 5*time.Second)
+	if err != nil {
+		t.Fatalf("second ReconcileDisk: %v", err)
+	}
+	if stats.Existing != 1 || stats.Indexed != 0 {
+		t.Fatalf("reconciliation was not idempotent: %+v", stats)
+	}
+}
+
 func TestCameraIDFromPathName(t *testing.T) {
 	id, ok := CameraIDFromPathName("cam_550e8400e29b41d4a716446655440000")
 	if !ok || id != "550e8400-e29b-41d4-a716-446655440000" {
@@ -112,6 +192,19 @@ func TestCameraIDFromPathName(t *testing.T) {
 	}
 	if _, ok := CameraIDFromPathName("not-a-path"); ok {
 		t.Fatal("expected failure")
+	}
+}
+
+func TestStartedAtFromMediaMTXFileName(t *testing.T) {
+	got, ok := startedAtFromFileName(
+		"/recordings/cam_550e8400e29b41d4a716446655440000/2026-08-12/14-53-34-741969.mp4",
+	)
+	if !ok {
+		t.Fatal("expected timestamp to parse")
+	}
+	want := time.Date(2026, 8, 12, 14, 53, 34, 0, time.UTC)
+	if !got.Equal(want) {
+		t.Fatalf("got %v, want %v", got, want)
 	}
 }
 

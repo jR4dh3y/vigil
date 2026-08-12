@@ -251,6 +251,7 @@ func (s *Service) IssuePlayback(ctx context.Context, cameraID string, start time
 		q.Set("path", path)
 		q.Set("start", startParam)
 		q.Set("duration", formatDurationSec(durationSec))
+		q.Set("format", "mp4")
 		q.Set("token", token)
 		playback = s.cfg.PlaybackURL + "/get?" + q.Encode()
 	} else {

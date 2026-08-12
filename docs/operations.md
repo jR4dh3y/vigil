@@ -113,7 +113,7 @@ The configuration sets the `runOnRecordSegmentComplete` hook. After each segment
 POST http://127.0.0.1:8080/internal/mediamtx/segment-complete
 ```
 
-The body contains the path, the file path, and the segment duration. The backend indexes the segment.
+The body contains the path, the file path, and the segment duration in seconds. The backend indexes the segment. Vigil also reconciles completed MP4 files at startup and every five minutes so a missed hook does not leave playback or archival empty.
 
 ## The Recordings Layout
 
@@ -127,7 +127,7 @@ The recordings directory is runtime data. It is ignored by Git. Refer to [databa
 
 ## The Archive Behavior
 
-Vigil uploads unarchived recordings to Google Drive at 00:00 UTC each day. The archive runs in batches of 100. You can also trigger an archive from the dashboard.
+Vigil uploads up to 50 unarchived recordings to Google Drive every five minutes. You can also trigger an immediate archive from the dashboard.
 
 The archive retries are idempotent. A failed upload does not corrupt the state. The retention preserves the pending recording metadata while a Drive connection is stored.
 

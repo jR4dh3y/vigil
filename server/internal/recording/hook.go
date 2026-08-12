@@ -410,6 +410,16 @@ func startedAtFromFileName(filePath string) (time.Time, bool) {
 	if len(dir) == 10 && dir[4] == '-' && dir[7] == '-' {
 		candidates = append(candidates, dir+"_"+base, dir+"T"+base)
 	}
+	expanded := make([]string, 0, len(candidates)*2)
+	for _, candidate := range candidates {
+		expanded = append(expanded, candidate)
+		if i := strings.LastIndex(candidate, "-"); i > 0 {
+			tail := candidate[i+1:]
+			if len(tail) >= 3 && isAllDigits(tail) {
+				expanded = append(expanded, candidate[:i])
+			}
+		}
+	}
 
 	layouts := []string{
 		"2006-01-02_15-04-05",
@@ -420,18 +430,9 @@ func startedAtFromFileName(filePath string) (time.Time, bool) {
 		"15-04-05",
 		"15-04-05-000000",
 	}
-	for _, c := range candidates {
-		// Truncate trailing fractional -NNNNNN if present with date prefix.
-		trimmed := c
-		if i := strings.LastIndex(trimmed, "-"); i > 0 {
-			tail := trimmed[i+1:]
-			if len(tail) >= 3 && isAllDigits(tail) {
-				// keep as full string first; also try without fraction
-				candidates = append(candidates, trimmed[:i])
-			}
-		}
+	for _, candidate := range expanded {
 		for _, layout := range layouts {
-			if t, err := time.ParseInLocation(layout, trimmed, time.UTC); err == nil {
+			if t, err := time.ParseInLocation(layout, candidate, time.UTC); err == nil {
 				// Time-only layouts use year 0; fill date from parent if needed.
 				if t.Year() == 0 && len(dir) == 10 {
 					if d, err := time.ParseInLocation("2006-01-02", dir, time.UTC); err == nil {

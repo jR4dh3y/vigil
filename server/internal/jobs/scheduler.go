@@ -46,7 +46,7 @@ func NewScheduler(cfg Config) *Scheduler {
 	}
 	return &Scheduler{
 		cfg: cfg,
-		// All schedules (including midnight archive) use UTC for predictable ops.
+		// All schedules use UTC for predictable operations.
 		cron: cron.New(cron.WithSeconds(), cron.WithLocation(time.UTC)),
 	}
 }
@@ -65,13 +65,37 @@ func (s *Scheduler) Start() error {
 	if _, err := s.cron.AddFunc("0 */5 * * * *", s.safeRun("disk_check", s.checkDisk)); err != nil {
 		return err
 	}
-	// Midnight UTC: archive unarchived recordings to Google Drive (long timeout).
-	if _, err := s.cron.AddFunc("0 0 0 * * *", s.safeRunTimeout("gdrive_archive", 30*time.Minute, s.archiveToGDrive)); err != nil {
+	// Every 5 minutes: reconcile the disk in case a MediaMTX hook was missed.
+	if _, err := s.cron.AddFunc("30 */5 * * * *", s.safeRun("recording_reconcile", s.reconcileRecordings)); err != nil {
+		return err
+	}
+	// Every 5 minutes: keep Drive close to the live recording queue. With six
+	// one-minute camera segments this remains below the 50-item batch limit.
+	if _, err := s.cron.AddFunc("15 */5 * * * *", s.safeRunTimeout("gdrive_archive", 30*time.Minute, s.archiveToGDrive)); err != nil {
 		return err
 	}
 	s.cron.Start()
 	slog.Info("jobs scheduler started", "cron_location", "UTC")
 	return nil
+}
+
+func (s *Scheduler) reconcileRecordings(ctx context.Context) {
+	if s.cfg.Recording == nil {
+		return
+	}
+	stats, err := s.cfg.Recording.ReconcileDisk(ctx, 5*time.Second)
+	if err != nil {
+		slog.Warn("recording reconciliation failed", "err", err)
+		return
+	}
+	if stats.Indexed > 0 || stats.Failed > 0 {
+		slog.Info("recording reconciliation complete",
+			"indexed", stats.Indexed,
+			"existing", stats.Existing,
+			"skipped", stats.Skipped,
+			"failed", stats.Failed,
+		)
+	}
 }
 
 // Stop gracefully stops cron jobs, waiting for in-flight work (incl. long archive runs).

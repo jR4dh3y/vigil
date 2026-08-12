@@ -135,6 +135,16 @@ func main() {
 		RecordingEnabled: recordingEnabled,
 	}, cameraSvc)
 
+	// MediaMTX path configuration is runtime state and is lost whenever its
+	// container restarts. Restore all enabled cameras during NVR startup so
+	// continuous recording does not depend on someone opening the dashboard.
+	cameras, err := cameraSvc.List(ctx)
+	if err != nil {
+		slog.Warn("list cameras for mediamtx startup sync", "err", err)
+	} else {
+		mediaSvc.ReapplyCameraPaths(ctx, cameras)
+	}
+
 	retentionDays := cfg.RetentionDays
 	if days, ok := loadRetentionFromDB(queries); ok {
 		retentionDays = days
@@ -143,6 +153,20 @@ func main() {
 		RecordingsDir: recordingsDir,
 		RetentionDays: retentionDays,
 	})
+	go func() {
+		stats, err := recordingSvc.ReconcileDisk(ctx, 5*time.Second)
+		if err != nil {
+			slog.Warn("recording startup reconciliation failed", "err", err)
+			return
+		}
+		slog.Info("recording startup reconciliation complete",
+			"discovered", stats.Discovered,
+			"indexed", stats.Indexed,
+			"existing", stats.Existing,
+			"skipped", stats.Skipped,
+			"failed", stats.Failed,
+		)
+	}()
 
 	eventBus := event.NewBus()
 	eventSvc := event.NewService(queries, eventBus)

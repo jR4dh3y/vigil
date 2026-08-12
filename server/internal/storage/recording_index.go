@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"time"
 
 	"github.com/nvr/nvr/server/internal/recording"
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
@@ -38,6 +40,18 @@ func PrepareGDriveArchive(
 	}
 	if !drive.Connected(ctx) {
 		return RecordingArchiveIndex{}, ErrGDriveNotConnected
+	}
+	stats, err := recordings.ReconcileDisk(ctx, 5*time.Second)
+	if err != nil {
+		return RecordingArchiveIndex{}, err
+	}
+	if stats.Indexed > 0 || stats.Failed > 0 {
+		slog.Info("recording pre-archive reconciliation complete",
+			"indexed", stats.Indexed,
+			"existing", stats.Existing,
+			"skipped", stats.Skipped,
+			"failed", stats.Failed,
+		)
 	}
 	return RecordingArchiveIndex{Recording: recordings}, nil
 }

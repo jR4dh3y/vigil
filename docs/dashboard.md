@@ -118,7 +118,7 @@ The route queries `GET /cameras/{id}/recordings`. The response has the segments 
 
 The `CoverageTimeline` component renders the coverage bars. You can click or drag to scrub. You can use the keyboard arrows and the Home and End keys.
 
-A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` plays the MediaMTX HLS URL with the playback token.
+A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` loads the tokenized MediaMTX MP4 playback URL directly in a browser video element.
 
 ## Camera setup
 
@@ -170,7 +170,7 @@ The dashboard does not use Svelte stores. Local state uses Svelte 5 runes.
 The dashboard does not use a WebSocket. It uses:
 
 - HTTP for the API.
-- HLS over HTTP for playback.
+- MP4 over HTTP for recorded playback.
 - WebRTC over HTTP signaling for live view.
 - Polling every 15 seconds for events.
 

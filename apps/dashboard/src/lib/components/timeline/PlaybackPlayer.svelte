@@ -2,7 +2,6 @@
 	import { AlertCircle } from "lucide-svelte";
 	import type { PlaybackSession } from "$lib/recordings";
 	import Spinner from "$lib/components/Spinner.svelte";
-	import HlsPlayer from "$lib/components/live/HlsPlayer.svelte";
 
 	type Props = {
 		session: PlaybackSession | null;
@@ -41,6 +40,12 @@
 		playing = false;
 		onError?.(err);
 	}
+
+	function handleVideoError(event: Event) {
+		const video = event.currentTarget as HTMLVideoElement;
+		const detail = video.error?.message?.trim();
+		handleError(new Error(detail || "Recorded MP4 playback failed"));
+	}
 </script>
 
 <div
@@ -60,14 +65,17 @@
 		</div>
 	{:else if session}
 		{#key `${session.cameraId}-${session.token}-${session.playbackUrl}`}
-			<HlsPlayer
-				hlsUrl={session.playbackUrl}
-				token={session.token}
-				class={videoClass}
+			<video
+				src={session.playbackUrl}
+				class="h-full w-full bg-black {videoClass}"
 				controls
-				onError={handleError}
-				onPlaying={handlePlaying}
-			/>
+				autoplay
+				playsinline
+				muted
+				preload="auto"
+				onplaying={handlePlaying}
+				onerror={handleVideoError}
+			></video>
 		{/key}
 		{#if !playing}
 			<div

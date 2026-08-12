@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,6 +57,7 @@ type Service struct {
 	q             *store.Queries
 	recordingsDir string
 	retentionDays int
+	reconcileMu   sync.Mutex
 }
 
 // SetRecordingsDir updates the root used to relativize segment paths.

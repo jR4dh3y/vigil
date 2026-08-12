@@ -52,6 +52,8 @@ MediaMTX calls back into `nvrd` through two HTTP hooks:
 - `POST /internal/mediamtx/auth`: `nvrd` validates stream tokens.
 - `POST /internal/mediamtx/segment-complete`: `nvrd` indexes a completed recording segment.
 
+The recording index is also reconciled from disk at startup and periodically, making the hook an efficient fast path rather than a single point of failure.
+
 ### FFmpeg (the media tool)
 
 The backend runs FFmpeg as a tool. It uses FFmpeg to:

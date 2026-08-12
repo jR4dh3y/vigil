@@ -54,19 +54,22 @@ type pathConf struct {
 	RecordSegmentDuration string `json:"recordSegmentDuration,omitempty"`
 }
 
-// UpsertPath creates or replaces a MediaMTX path that pulls sourceRTSP on demand.
-// When rec.Enabled is true, continuous fMP4 recording is configured under rec.RecordPath.
+// UpsertPath creates or replaces a MediaMTX path for sourceRTSP.
+// Recording paths keep the source connected continuously; non-recording paths
+// pull the source on demand.
 // Connection failures return a clear error; they do not panic.
 func (c *MediaMTXClient) UpsertPath(ctx context.Context, name, sourceRTSP string, rec PathRecordOptions) error {
 	if c.baseURL == "" {
 		return fmt.Errorf("mediamtx api url not configured")
 	}
 	body := pathConf{
-		Source:                     sourceRTSP,
-		SourceOnDemand:             true,
-		SourceOnDemandStartTimeout: "20s",
-		RTSPTransport:              "tcp",
-		Record:                     rec.Enabled,
+		Source:         sourceRTSP,
+		SourceOnDemand: !rec.Enabled,
+		RTSPTransport:  "tcp",
+		Record:         rec.Enabled,
+	}
+	if body.SourceOnDemand {
+		body.SourceOnDemandStartTimeout = "20s"
 	}
 	if rec.Enabled {
 		body.RecordPath = rec.RecordPath

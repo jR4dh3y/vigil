@@ -18,7 +18,7 @@ vigil/
 - **Live & Playback:** Low-latency HLS/WHEP streams, timeline segment playback.
 - **Management:** RTSP camera CRUD, setup wizard, role-based auth, user control.
 - **Alerts & System:** Camera state/disk monitoring, retention pruning, event logs.
-- **Offsite Archive:** Optional encrypted Google Drive connection with nightly and on-demand uploads.
+- **Offsite Archive:** Optional encrypted Google Drive connection with frequent background and on-demand uploads.
 
 ## Deployment artifacts
 

@@ -939,7 +939,7 @@ paths:
       summary: Archive recordings to Google Drive
       description: |
         Admin only. Uploads a batch of unarchived local recordings to the connected
-        Google Drive account (same work as the midnight archive job).
+        Google Drive account (same work as the recurring background archive job).
       security:
         - cookieAuth: []
       requestBody:

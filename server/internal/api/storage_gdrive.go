@@ -16,7 +16,7 @@ import (
 const (
 	defaultGDriveArchiveLimit = 50
 	maxGDriveArchiveLimit     = 50
-	gDriveArchiveTimeout      = 30 * time.Second
+	gDriveArchiveTimeout      = 30 * time.Minute
 )
 
 // GetGDriveStatus returns Google Drive OAuth configuration and connection status.

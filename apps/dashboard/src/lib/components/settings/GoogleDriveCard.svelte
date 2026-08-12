@@ -49,8 +49,7 @@
 				{:else if !status.configured}
 					Save your Google OAuth web-client details below, then connect the Drive account.
 				{:else if status.connected}
-					Unarchived recordings upload to Drive daily at 00:00 UTC, or use Run archive
-					now.
+					Unarchived recordings upload to Drive every five minutes, or use Run archive now.
 				{:else}
 					Connect a Google account to enable Drive archive for this NVR.
 				{/if}
