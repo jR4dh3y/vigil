@@ -112,13 +112,13 @@ The live query refreshes before the token expires. The refresh interval is about
 
 ## Timeline playback
 
-The timeline route shows the recording coverage for a camera. The presets are 1 hour, 24 hours, and 7 days. The default range is the last 24 hours.
+The timeline route shows the recording coverage for a camera. The presets are 1 hour, 24 hours, and 7 days, and the date control opens any older calendar day without loading the entire archive at once. The default range is the last 24 hours.
 
 The route queries `GET /cameras/{id}/recordings`. The response has the segments and the coverage bars.
 
 The `CoverageTimeline` component renders the coverage bars. You can click or drag to scrub. You can use the keyboard arrows and the Home and End keys.
 
-A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` loads the tokenized MediaMTX MP4 playback URL directly in a browser video element.
+A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` loads either a tokenized MediaMTX MP4 URL or a tokenized Vigil Drive-proxy URL in the same browser video element. Drive playback forwards byte ranges for seeking and displays a small source label. Relative proxy URLs are resolved against the active recorder so hosted-dashboard Bearer mode also works.
 
 ## Camera setup
 

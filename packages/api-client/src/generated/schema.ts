@@ -335,6 +335,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/{id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream an archived recording
+         * @description Proxies a Google Drive archived MP4 with HTTP byte-range support. Access
+         *     uses the short-lived playback token returned by the playback-session API,
+         *     allowing native video elements to play in embedded and remote dashboards.
+         */
+        get: operations["getRecordingContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/events": {
         parameters: {
             query?: never;
@@ -542,7 +564,7 @@ export interface paths {
         /**
          * Archive recordings to Google Drive
          * @description Admin only. Uploads a batch of unarchived local recordings to the connected
-         *     Google Drive account (same work as the midnight archive job).
+         *     Google Drive account (same work as the recurring background archive job).
          */
         post: operations["postGDriveArchive"];
         delete?: never;
@@ -796,10 +818,15 @@ export interface components {
         };
         PlaybackSession: {
             cameraId: string;
+            recordingId: string;
             playbackUrl: string;
             token: string;
             /** Format: date-time */
             expiresAt: string;
+            /** @enum {string} */
+            source: "local" | "gdrive";
+            /** @description Position inside the selected recording segment where playback should begin */
+            startOffsetSec: number;
         };
         Event: {
             id: string;
@@ -1646,6 +1673,77 @@ export interface operations {
             };
             /** @description Playback not available */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getRecordingContent: {
+        parameters: {
+            query: {
+                /** @description Short-lived recording playback token */
+                token: string;
+            };
+            header?: never;
+            path: {
+                /** @description Recording ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Complete MP4 content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": string;
+                };
+            };
+            /** @description Requested MP4 byte range */
+            206: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": string;
+                };
+            };
+            /** @description Missing, invalid, or expired playback token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Recording or Drive archive not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid or unsatisfiable byte range */
+            416: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Drive archive could not be read */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

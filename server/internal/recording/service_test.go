@@ -2,6 +2,7 @@ package recording
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -129,6 +130,43 @@ func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
 	}
 	if len(got.Segments) != 1 {
 		t.Fatalf("got %d segments, want 1", len(got.Segments))
+	}
+}
+
+func TestFindAtAndLocalPath(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	start := time.Date(2026, 8, 12, 14, 0, 0, 0, time.UTC)
+	local := filepath.Join(svc.RecordingsDir(), "cam", "segment.mp4")
+	if err := os.MkdirAll(filepath.Dir(local), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(local, []byte("mp4"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	segment, err := svc.IndexSegment(ctx, camID, local, start, 60, 3, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	found, err := svc.FindAt(ctx, camID, start.Add(25*time.Second))
+	if err != nil || found.ID != segment.ID {
+		t.Fatalf("FindAt = %+v, %v", found, err)
+	}
+	path, available, err := svc.LocalPath(found)
+	if err != nil || !available || path != local {
+		t.Fatalf("LocalPath = %q, %v, %v", path, available, err)
+	}
+	if _, err := svc.FindAt(ctx, camID, start.Add(2*time.Minute)); !errors.Is(err, ErrOutsideRecording) {
+		t.Fatalf("gap lookup error = %v, want ErrOutsideRecording", err)
+	}
+	if err := os.Remove(local); err != nil {
+		t.Fatal(err)
+	}
+	_, available, err = svc.LocalPath(found)
+	if err != nil || available {
+		t.Fatalf("missing LocalPath available=%v err=%v", available, err)
 	}
 }
 
@@ -295,7 +333,7 @@ func TestPruneArchivedPreservesPendingRows(t *testing.T) {
 	if _, err := svc.IndexSegment(ctx, camID, "old/pending.mp4", old.Add(time.Minute), 60, 1, ""); err != nil {
 		t.Fatalf("index pending: %v", err)
 	}
-	if err := svc.MarkArchived(ctx, archived.ID, "gdrive:file123"); err != nil {
+	if err := svc.MarkArchived(ctx, archived.ID, "skipped:missing"); err != nil {
 		t.Fatalf("mark archived: %v", err)
 	}
 
@@ -312,6 +350,27 @@ func TestPruneArchivedPreservesPendingRows(t *testing.T) {
 	}
 	if len(pending) != 1 || pending[0].Path != "old/pending.mp4" {
 		t.Fatalf("unexpected pending rows: %+v", pending)
+	}
+}
+
+func TestPrunePreservesDriveArchiveMetadata(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	old := time.Now().UTC().AddDate(0, 0, -30)
+	archived, err := svc.IndexSegment(ctx, camID, "old/drive.mp4", old, 60, 1, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.MarkArchived(ctx, archived.ID, "gdrive:file123"); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := svc.Prune(ctx); err != nil || n != 0 {
+		t.Fatalf("Prune = %d, %v; Drive metadata must be preserved", n, err)
+	}
+	found, err := svc.FindAt(ctx, camID, old.Add(30*time.Second))
+	if err != nil || found.ID != archived.ID {
+		t.Fatalf("archived recording missing after prune: %+v, %v", found, err)
 	}
 }
 

@@ -101,7 +101,7 @@ The recordings table stores the segment index.
 | `codec` | The codec. |
 | `thumbnail_path` | The optional thumbnail path. |
 | `archived_at` | The archive time. |
-| `archive_location` | The archive location. |
+| `archive_location` | The archive location, such as `gdrive:<file-id>` or `skipped:missing`. Successful Drive rows are retained so archived footage remains searchable. |
 
 There is an index on the camera and start time. There are partial indexes for the archive state.
 

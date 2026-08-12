@@ -593,6 +593,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /recordings/{id}/content:
+    get:
+      operationId: getRecordingContent
+      tags: [recordings]
+      summary: Stream an archived recording
+      description: |
+        Proxies a Google Drive archived MP4 with HTTP byte-range support. Access
+        uses the short-lived playback token returned by the playback-session API,
+        allowing native video elements to play in embedded and remote dashboards.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Recording ID
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Short-lived recording playback token
+      responses:
+        "200":
+          description: Complete MP4 content
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        "206":
+          description: Requested MP4 byte range
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Missing, invalid, or expired playback token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Recording or Drive archive not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "416":
+          description: Invalid or unsatisfiable byte range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Drive archive could not be read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /events:
     get:
       operationId: listEvents
@@ -1449,9 +1512,11 @@ components:
           description: Playback window length in seconds
     PlaybackSession:
       type: object
-      required: [cameraId, playbackUrl, token, expiresAt]
+      required: [cameraId, recordingId, playbackUrl, token, expiresAt, source, startOffsetSec]
       properties:
         cameraId:
+          type: string
+        recordingId:
           type: string
         playbackUrl:
           type: string
@@ -1460,6 +1525,12 @@ components:
         expiresAt:
           type: string
           format: date-time
+        source:
+          type: string
+          enum: [local, gdrive]
+        startOffsetSec:
+          type: number
+          description: Position inside the selected recording segment where playback should begin
     Event:
       type: object
       required:

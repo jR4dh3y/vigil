@@ -114,15 +114,15 @@ The client asks the API for a live stream. The API returns a WHEP URL, an HLS UR
 
 ### Recording
 
-MediaMTX records the video as one-minute fMP4 segments. When a segment completes, MediaMTX calls the segment-complete hook. `nvrd` indexes the segment in SQLite. The recording is continuous by default. Retention prunes the old index rows.
+MediaMTX records the video as one-minute fMP4 segments. When a segment completes, MediaMTX calls the segment-complete hook. `nvrd` indexes the segment in SQLite. The recording is continuous by default. Retention prunes old non-Drive index rows while keeping successful Drive archive metadata searchable.
 
 ### Timeline playback
 
-The dashboard asks the API for the recordings in a time range. The API returns coverage bars from SQLite. The user seeks to a time. The API issues a playback token and a MediaMTX playback URL. MediaMTX streams the requested range.
+The dashboard asks the API for recordings in a time range. The API returns coverage bars from SQLite. For a local segment, the API issues a MediaMTX playback URL. If the local MP4 is gone and the row has a Drive archive location, it instead issues a recording-scoped URL that proxies Google Drive with HTTP byte-range support. Both sources play in the same native video preview.
 
 ### Archive
 
-The archive job uploads unarchived recordings to Google Drive. It uses the S3-style archive seam. The row is marked as archived. Playback of archived footage is not implemented.
+The archive job uploads unarchived recordings to Google Drive and marks each successful row with the Drive file ID. Those rows stay in the timeline after local retention. A short-lived token protects the Drive content endpoint; Drive credentials never reach the browser.
 
 ### Events
 

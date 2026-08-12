@@ -119,7 +119,7 @@ The snapshot function is in `snapshot.go`. It runs FFmpeg to capture one JPEG fr
 
 The recording package owns the segment index. It indexes completed segments, answers timeline queries, and enforces retention.
 
-The service is in `service.go`. It lists recordings, indexes segments, and prunes old rows. The retention period defaults to 7 days.
+The service is in `service.go`. It lists recordings, resolves the segment covering a playback time, indexes segments, and prunes old non-Drive rows. Successful Drive rows are retained for archived timeline playback. The local retention period defaults to 7 days.
 
 The segment-complete handler is in `hook.go`. It accepts the MediaMTX callback and indexes the segment. It tolerates JSON or form data with varied field names.
 
@@ -172,7 +172,7 @@ The gdrive package is the Google Drive archive. It manages the OAuth lifecycle a
 
 The service is in `service.go`. It validates configuration, begins OAuth, handles the callback, and disconnects.
 
-The archive functions are in `archive.go`. The `ArchivePending` function is single-flight. It uploads older unarchived rows in batches. It marks missing files as skipped.
+The archive functions are in `archive.go`. The `ArchivePending` function is single-flight. It uploads older unarchived rows in batches and marks missing files as skipped. `download.go` forwards validated browser byte ranges to Drive for archived playback.
 
 The upload function is in `upload.go`. It creates files in the `NVR Archives` folder. It uses the `nvr_recording_id` property for idempotent retries.
 

@@ -46,6 +46,14 @@
 		const detail = video.error?.message?.trim();
 		handleError(new Error(detail || "Recorded MP4 playback failed"));
 	}
+
+	function handleLoadedMetadata(event: Event) {
+		const video = event.currentTarget as HTMLVideoElement;
+		const offset = session?.source === "gdrive" ? session.startOffsetSec : 0;
+		if (offset > 0 && Number.isFinite(offset)) {
+			video.currentTime = Math.min(offset, Math.max(0, video.duration || offset));
+		}
+	}
 </script>
 
 <div
@@ -74,9 +82,15 @@
 				muted
 				preload="auto"
 				onplaying={handlePlaying}
+				onloadedmetadata={handleLoadedMetadata}
 				onerror={handleVideoError}
 			></video>
 		{/key}
+		<span
+			class="pointer-events-none absolute top-2 right-2 rounded-md border border-zinc-700/80 bg-zinc-950/80 px-2 py-1 text-[10px] font-medium tracking-wide text-zinc-300 uppercase"
+		>
+			{session.source === "gdrive" ? "Google Drive" : "Local recording"}
+		</span>
 		{#if !playing}
 			<div
 				class="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-950/40"

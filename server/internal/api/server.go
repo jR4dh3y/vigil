@@ -1,6 +1,9 @@
 package api
 
 import (
+	"context"
+	"net/http"
+
 	"github.com/nvr/nvr/server/internal/auth"
 	"github.com/nvr/nvr/server/internal/camera"
 	"github.com/nvr/nvr/server/internal/event"
@@ -9,6 +12,12 @@ import (
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
 	"github.com/nvr/nvr/server/internal/store"
 )
+
+// ArchivedContentProvider opens archived recording content, optionally for an
+// HTTP byte range. Google Drive implements this in production.
+type ArchivedContentProvider interface {
+	Download(ctx context.Context, fileID, byteRange string) (*http.Response, error)
+}
 
 // Server implements ServerInterface.
 type Server struct {
@@ -19,6 +28,7 @@ type Server struct {
 	Recording     *recording.Service
 	Event         *event.Service
 	GDrive        *gdrive.Service
+	DrivePlayback ArchivedContentProvider
 	Version       string
 	Commit        string
 	RecordingsDir string
@@ -50,6 +60,7 @@ func NewServer(
 		Recording:            recordingSvc,
 		Event:                eventSvc,
 		GDrive:               gdriveSvc,
+		DrivePlayback:        gdriveSvc,
 		Version:              version,
 		Commit:               commit,
 		RecordingsDir:        recordingsDir,

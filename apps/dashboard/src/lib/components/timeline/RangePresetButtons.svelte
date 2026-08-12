@@ -3,7 +3,7 @@
 	import { RANGE_PRESET_LABELS, RANGE_PRESETS } from "$lib/recordings";
 
 	type Props = {
-		value: RangePreset;
+		value: RangePreset | null;
 		disabled?: boolean;
 		orientation?: "horizontal" | "vertical";
 		onChange: (preset: RangePreset) => void;

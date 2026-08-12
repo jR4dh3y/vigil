@@ -18,6 +18,11 @@ import (
 // DefaultRetentionDays is used when config does not specify a retention window.
 const DefaultRetentionDays = 7
 
+var (
+	ErrNotFound         = errors.New("recording not found")
+	ErrOutsideRecording = errors.New("requested time is outside the recording segment")
+)
+
 // Segment is a recorded media segment in the index.
 type Segment struct {
 	ID              string
@@ -76,6 +81,59 @@ func NewService(q *store.Queries, cfg Config) *Service {
 		recordingsDir: strings.TrimSpace(cfg.RecordingsDir),
 		retentionDays: days,
 	}
+}
+
+// Get returns a recording segment by ID.
+func (s *Service) Get(ctx context.Context, id string) (Segment, error) {
+	row, err := s.q.GetRecording(ctx, strings.TrimSpace(id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Segment{}, ErrNotFound
+		}
+		return Segment{}, fmt.Errorf("get recording: %w", err)
+	}
+	return toSegment(row)
+}
+
+// FindAt returns the segment covering at for a camera. The lookup starts with
+// the latest segment at or before at, then verifies that at is inside it.
+func (s *Service) FindAt(ctx context.Context, cameraID string, at time.Time) (Segment, error) {
+	row, err := s.q.GetRecordingAtOrBefore(ctx, store.GetRecordingAtOrBeforeParams{
+		CameraID: strings.TrimSpace(cameraID),
+		AtTs:     formatTime(at.UTC()),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Segment{}, ErrNotFound
+		}
+		return Segment{}, fmt.Errorf("find recording at time: %w", err)
+	}
+	segment, err := toSegment(row)
+	if err != nil {
+		return Segment{}, err
+	}
+	end := segment.StartedAt.Add(time.Duration(segment.DurationSec * float64(time.Second)))
+	if at.Before(segment.StartedAt) || at.After(end) {
+		return Segment{}, ErrOutsideRecording
+	}
+	return segment, nil
+}
+
+// LocalPath returns the safe absolute path and whether the recording exists as
+// a regular local file.
+func (s *Service) LocalPath(segment Segment) (string, bool, error) {
+	abs, err := s.AbsolutePath(segment.Path)
+	if err != nil {
+		return "", false, err
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return abs, false, nil
+		}
+		return "", false, fmt.Errorf("stat recording: %w", err)
+	}
+	return abs, info.Mode().IsRegular(), nil
 }
 
 // List returns segments and coverage bars for cameraID in [from, to] (inclusive).
@@ -148,8 +206,9 @@ func (s *Service) IndexSegment(ctx context.Context, cameraID, path string, start
 	return toSegment(row)
 }
 
-// DeleteOlderThan removes index rows with started_at before the given cutoff.
-// File deletion is optional and not performed here (retention stub).
+// DeleteOlderThan removes non-Drive index rows before the cutoff. Successful
+// Drive archive metadata is retained so old recordings remain on the timeline.
+// File deletion is managed separately by MediaMTX.
 func (s *Service) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
 	n, err := s.q.DeleteRecordingsOlderThan(ctx, formatTime(before.UTC()))
 	if err != nil {
@@ -158,15 +217,14 @@ func (s *Service) DeleteOlderThan(ctx context.Context, before time.Time) (int64,
 	return n, nil
 }
 
-// Prune deletes index rows older than the configured retention window.
-// File deletion is left for a later jobs phase.
+// Prune deletes non-Drive index rows older than the configured retention window.
 func (s *Service) Prune(ctx context.Context) (int64, error) {
 	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
 	return s.DeleteOlderThan(ctx, cutoff)
 }
 
-// PruneArchived removes only old rows that have completed (or explicitly skipped)
-// archive processing. It keeps pending rows available for a later archive retry.
+// PruneArchived removes old rows that completed without a durable Drive object
+// (for example skipped:missing). Successful Drive rows remain searchable.
 func (s *Service) PruneArchived(ctx context.Context) (int64, error) {
 	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
 	n, err := s.q.DeleteArchivedRecordingsOlderThan(ctx, formatTime(cutoff))

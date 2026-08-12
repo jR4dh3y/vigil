@@ -129,13 +129,13 @@ The recordings directory is runtime data. It is ignored by Git. Refer to [databa
 
 Vigil uploads up to 50 unarchived recordings to Google Drive every five minutes. You can also trigger an immediate archive from the dashboard.
 
-The archive retries are idempotent. A failed upload does not corrupt the state. The retention preserves the pending recording metadata while a Drive connection is stored.
+The archive retries are idempotent. A failed upload does not corrupt the state. Pending rows remain available for retry, and successful `gdrive:` rows remain in SQLite so Drive footage stays visible in the timeline. The dashboard can browse an older calendar day and plays the archive through Vigil; OAuth credentials are never exposed to the browser.
 
 ## Cleanup
 
-The retention job prunes the old index rows. The default retention period is 7 days. You can change it with the `NVR_RETENTION_DAYS` variable or in the dashboard settings.
+The retention job prunes old rows that do not have a successful Drive archive. The default local retention period is 7 days. You can change it with the `NVR_RETENTION_DAYS` variable or in the dashboard settings.
 
-The retention job does not delete the media files. It deletes the index rows. See [database](./database.md) for the details.
+The retention job does not delete media files. MediaMTX manages local-file expiry. Vigil keeps successful Drive metadata and removes eligible non-Drive index rows. See [database](./database.md) for the details.
 
 ## The Local Media Tools
 

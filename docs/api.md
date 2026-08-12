@@ -71,6 +71,7 @@ The authorization rules are:
 | GET | `/cameras/{id}/snapshot` | Get a camera snapshot. |
 | GET | `/cameras/{id}/recordings` | List the recordings in a range. |
 | POST | `/cameras/{id}/playback` | Get a playback session. |
+| GET | `/recordings/{id}/content` | Stream a tokenized Drive archive with byte ranges. |
 
 ### Events
 
@@ -97,6 +98,10 @@ The authorization rules are:
 | DELETE | `/storage/gdrive/disconnect` | Disconnect Drive. |
 | POST | `/storage/gdrive/archive` | Run the archive now. |
 
+Archived playback uses `GET /recordings/{id}/content?token=...`. It is normally
+opened by the native video element from a playback session and supports HTTP
+`Range` requests; clients should not construct its token themselves.
+
 ### Users
 
 | Method | Path | Purpose |
@@ -122,9 +127,12 @@ The client appends the token to the HLS and WHEP URLs. The token expires after a
 The playback endpoint returns a playback session. The session has:
 
 - `cameraId`: the camera ID.
-- `playbackUrl`: the MediaMTX playback URL.
+- `recordingId`: the selected recording ID.
+- `playbackUrl`: a MediaMTX URL for local video or a Vigil URL for Drive video.
 - `token`: the short-lived playback token.
 - `expiresAt`: the token expiry time.
+- `source`: `local` or `gdrive`.
+- `startOffsetSec`: the seek position inside a Drive segment (zero for local playback).
 
 The playback request has a `start` time and an optional `durationSec`. The default duration is 60 seconds.
 

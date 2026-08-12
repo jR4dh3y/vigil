@@ -18,6 +18,31 @@ export function rangeForPreset(preset: RangePreset, now: Date = new Date()): Tim
 	return { from, to };
 }
 
+/** YYYY-MM-DD in the browser's local timezone for a date input. */
+export function localDateValue(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+/** One local calendar day, converted to the API's absolute time range. */
+export function rangeForLocalDate(value: string): TimeRange | null {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) {
+		return null;
+	}
+	const year = Number(match[1]);
+	const month = Number(match[2]) - 1;
+	const day = Number(match[3]);
+	const from = new Date(year, month, day);
+	if (from.getFullYear() !== year || from.getMonth() !== month || from.getDate() !== day) {
+		return null;
+	}
+	const to = new Date(year, month, day + 1);
+	return { from, to };
+}
+
 export function toIso(date: Date): string {
 	return date.toISOString();
 }

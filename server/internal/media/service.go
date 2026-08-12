@@ -23,6 +23,10 @@ var (
 	ErrSnapshotFailed = errors.New("snapshot failed")
 )
 
+// ArchivedPlaybackTokenTTL allows a browser to make follow-up range requests
+// while seeking through a Drive-backed one-minute segment.
+const ArchivedPlaybackTokenTTL = 15 * time.Minute
+
 // LiveStream is the live playback bundle returned to API clients.
 type LiveStream struct {
 	CameraID  string
@@ -269,6 +273,44 @@ func (s *Service) IssuePlayback(ctx context.Context, cameraID string, start time
 		Token:       token,
 		ExpiresAt:   expires,
 	}, nil
+}
+
+// IssueArchivedPlayback returns a tokenized, same-preview URL for a recording
+// whose local file is no longer available. The API content handler validates
+// the token before proxying byte ranges from the archive provider.
+func (s *Service) IssueArchivedPlayback(ctx context.Context, cameraID, recordingID string) (PlaybackStream, error) {
+	cam, err := s.cams.Get(ctx, cameraID)
+	if err != nil {
+		return PlaybackStream{}, err
+	}
+	recordingID = strings.TrimSpace(recordingID)
+	if recordingID == "" {
+		return PlaybackStream{}, fmt.Errorf("recording id is required")
+	}
+
+	tokenPath := archivedPlaybackTokenPath(recordingID)
+	token, expires, err := s.tokens.MintToken(cam.ID, tokenPath, ArchivedPlaybackTokenTTL)
+	if err != nil {
+		return PlaybackStream{}, fmt.Errorf("mint archived playback token: %w", err)
+	}
+	q := url.Values{}
+	q.Set("token", token)
+	playback := "/api/v1/recordings/" + url.PathEscape(recordingID) + "/content?" + q.Encode()
+	return PlaybackStream{
+		CameraID:    cam.ID,
+		PlaybackURL: playback,
+		Token:       token,
+		ExpiresAt:   expires,
+	}, nil
+}
+
+// ValidateArchivedPlayback authorizes a Drive content request for one recording.
+func (s *Service) ValidateArchivedPlayback(token, recordingID string) bool {
+	return s.tokens.ValidateAndConsume(strings.TrimSpace(token), archivedPlaybackTokenPath(recordingID))
+}
+
+func archivedPlaybackTokenPath(recordingID string) string {
+	return "recording:" + strings.TrimSpace(recordingID)
 }
 
 // Snapshot captures a JPEG frame from the camera's live RTSP via ffmpeg.

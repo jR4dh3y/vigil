@@ -14,6 +14,8 @@
 		defaultTimeRange,
 		formatSelectedTime,
 		listRecordings,
+		localDateValue,
+		rangeForLocalDate,
 		rangeForPreset,
 		RecordingApiError,
 		recordingKeys,
@@ -23,8 +25,9 @@
 
 	const cameraId = $derived(page.params.id ?? "");
 
-	let preset = $state<RangePreset>("24h");
+	let preset = $state<RangePreset | null>("24h");
 	let range = $state(defaultTimeRange());
+	let archiveDate = $state(localDateValue(new Date()));
 	let selectedTime = $state<Date | null>(null);
 	let session = $state<PlaybackSession | null>(null);
 	let playerError = $state<string | null>(null);
@@ -71,6 +74,20 @@
 	function setPreset(next: RangePreset) {
 		preset = next;
 		range = rangeForPreset(next);
+		archiveDate = localDateValue(range.to);
+		selectedTime = null;
+		session = null;
+		playerError = null;
+	}
+
+	function setArchiveDate(value: string) {
+		const selectedRange = rangeForLocalDate(value);
+		if (!selectedRange) {
+			return;
+		}
+		archiveDate = value;
+		preset = null;
+		range = selectedRange;
 		selectedTime = null;
 		session = null;
 		playerError = null;
@@ -167,7 +184,20 @@
 						{/if}
 					</span>
 				</div>
-				<RangePresetButtons value={preset} onChange={setPreset} />
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					<label class="flex items-center gap-2 text-xs text-zinc-500">
+						<span>Browse day</span>
+						<input
+							type="date"
+							value={archiveDate}
+							max={localDateValue(new Date())}
+							onchange={(event) => setArchiveDate(event.currentTarget.value)}
+							class="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 scheme-dark"
+							aria-label="Browse recordings by date"
+						/>
+					</label>
+					<RangePresetButtons value={preset} onChange={setPreset} />
+				</div>
 			</div>
 
 			{#if recordingsLoading}

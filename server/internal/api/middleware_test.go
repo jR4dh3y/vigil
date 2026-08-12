@@ -23,10 +23,10 @@ func TestCORSConfiguredOriginNoCredentials(t *testing.T) {
 	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "https://client.example.com" {
 		t.Fatalf("allow-origin = %q", got)
 	}
-	if got := rr.Header().Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Session-Token" {
+	if got := rr.Header().Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Session-Token, Range" {
 		t.Fatalf("allow-headers = %q", got)
 	}
-	if got := rr.Header().Get("Access-Control-Expose-Headers"); got != "X-Session-Token" {
+	if got := rr.Header().Get("Access-Control-Expose-Headers"); got != "X-Session-Token, Accept-Ranges, Content-Length, Content-Range" {
 		t.Fatalf("expose-headers = %q", got)
 	}
 	if got := rr.Header().Get("Vary"); got != "Origin" {

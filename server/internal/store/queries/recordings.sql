@@ -19,6 +19,15 @@ SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
 FROM recordings
 WHERE path = ?;
 
+-- name: GetRecordingAtOrBefore :one
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE camera_id = sqlc.arg(camera_id)
+  AND started_at <= sqlc.arg(at_ts)
+ORDER BY started_at DESC
+LIMIT 1;
+
 -- name: InsertRecording :one
 INSERT INTO recordings (
   id, camera_id, started_at, duration_sec, size_bytes, path, codec, thumbnail_path
@@ -39,13 +48,16 @@ RETURNING id, camera_id, started_at, duration_sec, size_bytes, path, codec,
 DELETE FROM recordings WHERE id = ?;
 
 -- name: DeleteRecordingsOlderThan :execrows
-DELETE FROM recordings WHERE started_at < sqlc.arg(before_ts);
+DELETE FROM recordings
+WHERE started_at < sqlc.arg(before_ts)
+  AND (archive_location IS NULL OR archive_location = '' OR archive_location NOT LIKE 'gdrive:%');
 
 -- name: DeleteArchivedRecordingsOlderThan :execrows
 DELETE FROM recordings
 WHERE started_at < sqlc.arg(before_ts)
   AND archived_at IS NOT NULL
-  AND archived_at != '';
+  AND archived_at != ''
+  AND (archive_location IS NULL OR archive_location = '' OR archive_location NOT LIKE 'gdrive:%');
 
 -- name: ListUnarchivedRecordings :many
 SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,

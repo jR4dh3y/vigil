@@ -48,10 +48,11 @@ configured for the Google OAuth web client. `NVR_GOOGLE_CLIENT_ID`,
 `NVR_GOOGLE_CLIENT_SECRET`, and `NVR_GOOGLE_REDIRECT_URL` remain available as an
 environment-based fallback for unattended deployments.
 
-Vigil uploads pending recordings at 00:00 UTC each day. Archive retries are
-idempotent, and retention preserves pending recording metadata while a Drive
-connection is stored. See [`deploy/nvr.example.env`](deploy/nvr.example.env) for
-the required OAuth scopes and an example callback URL.
+Vigil uploads up to 50 pending recordings every five minutes. Archive retries
+are idempotent, and successful Drive metadata remains in the recording index so
+archived footage can play in the same dashboard timeline after the local copy
+expires. See [`deploy/nvr.example.env`](deploy/nvr.example.env) for the required
+OAuth scopes and an example callback URL.
 
 ## Quick Start
 

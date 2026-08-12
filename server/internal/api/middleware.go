@@ -37,8 +37,8 @@ func CORSMiddleware(configured []string) func(http.Handler) http.Handler {
 			if origin != "" && (bootstrap.IsLocalOrigin(origin) || inOrigins(configured, origin)) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Session-Token")
-				w.Header().Set("Access-Control-Expose-Headers", "X-Session-Token")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Session-Token, Range")
+				w.Header().Set("Access-Control-Expose-Headers", "X-Session-Token, Accept-Ranges, Content-Length, Content-Range")
 				w.Header().Set("Vary", "Origin")
 				if bootstrap.IsLocalOrigin(origin) {
 					w.Header().Set("Access-Control-Allow-Credentials", "true")

@@ -15,6 +15,7 @@ DELETE FROM recordings
 WHERE started_at < ?1
   AND archived_at IS NOT NULL
   AND archived_at != ''
+  AND (archive_location IS NULL OR archive_location = '' OR archive_location NOT LIKE 'gdrive:%')
 `
 
 func (q *Queries) DeleteArchivedRecordingsOlderThan(ctx context.Context, beforeTs string) (int64, error) {
@@ -35,7 +36,9 @@ func (q *Queries) DeleteRecording(ctx context.Context, id string) error {
 }
 
 const deleteRecordingsOlderThan = `-- name: DeleteRecordingsOlderThan :execrows
-DELETE FROM recordings WHERE started_at < ?1
+DELETE FROM recordings
+WHERE started_at < ?1
+  AND (archive_location IS NULL OR archive_location = '' OR archive_location NOT LIKE 'gdrive:%')
 `
 
 func (q *Queries) DeleteRecordingsOlderThan(ctx context.Context, beforeTs string) (int64, error) {
@@ -55,6 +58,40 @@ WHERE id = ?
 
 func (q *Queries) GetRecording(ctx context.Context, id string) (Recording, error) {
 	row := q.db.QueryRowContext(ctx, getRecording, id)
+	var i Recording
+	err := row.Scan(
+		&i.ID,
+		&i.CameraID,
+		&i.StartedAt,
+		&i.DurationSec,
+		&i.SizeBytes,
+		&i.Path,
+		&i.Codec,
+		&i.ThumbnailPath,
+		&i.ArchivedAt,
+		&i.ArchiveLocation,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRecordingAtOrBefore = `-- name: GetRecordingAtOrBefore :one
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE camera_id = ?1
+  AND started_at <= ?2
+ORDER BY started_at DESC
+LIMIT 1
+`
+
+type GetRecordingAtOrBeforeParams struct {
+	CameraID string `json:"camera_id"`
+	AtTs     string `json:"at_ts"`
+}
+
+func (q *Queries) GetRecordingAtOrBefore(ctx context.Context, arg GetRecordingAtOrBeforeParams) (Recording, error) {
+	row := q.db.QueryRowContext(ctx, getRecordingAtOrBefore, arg.CameraID, arg.AtTs)
 	var i Recording
 	err := row.Scan(
 		&i.ID,

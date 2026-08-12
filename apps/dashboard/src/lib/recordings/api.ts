@@ -1,5 +1,5 @@
 import type { PlaybackSession, RecordingList } from "@nvr/api-client";
-import { getApiClient } from "$lib/connection";
+import { getActiveBaseUrl, getApiClient } from "$lib/connection";
 
 export class RecordingApiError extends Error {
 	readonly status: number;
@@ -65,7 +65,23 @@ export async function requestPlayback(
 		body: { start, durationSec },
 	});
 	if (data) {
-		return data;
+		return {
+			...data,
+			playbackUrl: resolvePlaybackUrl(data.playbackUrl),
+		};
 	}
 	throwRecordingError(error, response.status, "Failed to start playback");
+}
+
+/** Resolve API-relative video URLs against the active recorder, including when
+ * the dashboard is hosted separately and uses Bearer authentication. */
+function resolvePlaybackUrl(playbackUrl: string): string {
+	if (/^https?:\/\//i.test(playbackUrl)) {
+		return playbackUrl;
+	}
+	const activeBase = getActiveBaseUrl();
+	const origin = /^https?:\/\//i.test(activeBase)
+		? new URL(activeBase).origin
+		: window.location.origin;
+	return new URL(playbackUrl, origin).href;
 }
