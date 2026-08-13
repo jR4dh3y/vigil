@@ -160,7 +160,11 @@ The `sqlc` configuration is in `server/sqlc.yaml`. It reads the query files and 
 
 ## Disaster recovery
 
-The recordings files are the backup truth. The filesystem layout mirrors the index. You can rebuild the index by scanning the disk.
+The recordings directory is a recovery input for pending/local segments. Once a
+segment has a `gdrive:<file-id>` location, its local file may be removed and the
+SQLite row remains the source for timeline metadata. Reconciliation can rebuild
+missing pending rows by scanning the filesystem; it never treats an archived
+row's missing local file as data loss.
 
 The recordings layout is:
 

@@ -320,6 +320,98 @@ func TestListUnarchivedAndMarkArchived(t *testing.T) {
 	}
 }
 
+func TestDeleteLocalRequiresDriveArchiveAndIsIdempotent(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	oldRoot := svc.RecordingsDir()
+	path := filepath.Join(oldRoot, "cam", "segment.mp4")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("recording"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	seg, err := svc.IndexSegment(ctx, camID, path, time.Now().UTC().Add(-time.Minute), 60, 9, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DeleteLocal(ctx, seg.ID, seg.Path); err == nil {
+		t.Fatal("pending recording was deleted")
+	}
+	if err := svc.MarkArchived(ctx, seg.ID, "gdrive:file123"); err != nil {
+		t.Fatal(err)
+	}
+	newRoot := filepath.Join(t.TempDir(), "new-recordings")
+	newPath := filepath.Join(newRoot, seg.Path)
+	if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newPath, []byte("new root recording"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetRecordingsDir(newRoot)
+	if err := svc.DeleteLocalAt(ctx, seg.ID, seg.Path, path); err != nil {
+		t.Fatalf("DeleteLocalAt: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("local file still exists, stat error=%v", err)
+	}
+	if _, err := os.Stat(newPath); err != nil {
+		t.Fatalf("recording in new root was removed: %v", err)
+	}
+	if err := svc.DeleteLocalAt(ctx, seg.ID, seg.Path, path); err != nil {
+		t.Fatalf("idempotent DeleteLocalAt: %v", err)
+	}
+	if _, err := os.Stat(newPath); err != nil {
+		t.Fatalf("recording in new root was removed on retry: %v", err)
+	}
+}
+
+func TestCleanupArchivedLocalsPreservesPendingFiles(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	root := filepath.Join(svc.RecordingsDir(), "cam")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	archivedPath := filepath.Join(root, "archived.mp4")
+	pendingPath := filepath.Join(root, "pending.mp4")
+	for _, path := range []string{archivedPath, pendingPath} {
+		if err := os.WriteFile(path, []byte("recording"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		old := time.Now().Add(-time.Minute)
+		if err := os.Chtimes(path, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	archived, err := svc.IndexSegment(ctx, camID, archivedPath, time.Now().UTC().Add(-2*time.Minute), 60, 9, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.IndexSegment(ctx, camID, pendingPath, time.Now().UTC().Add(-time.Minute), 60, 9, "h264"); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.MarkArchived(ctx, archived.ID, "gdrive:file123"); err != nil {
+		t.Fatal(err)
+	}
+	stats, err := svc.CleanupArchivedLocals(ctx, time.Second)
+	if err != nil {
+		t.Fatalf("CleanupArchivedLocals: %v", err)
+	}
+	if stats.Matched != 1 || stats.Deleted != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected cleanup stats: %+v", stats)
+	}
+	if _, err := os.Stat(archivedPath); !os.IsNotExist(err) {
+		t.Fatalf("archived local file still exists, stat error=%v", err)
+	}
+	if _, err := os.Stat(pendingPath); err != nil {
+		t.Fatalf("pending local file was removed: %v", err)
+	}
+}
+
 func TestPruneArchivedPreservesPendingRows(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

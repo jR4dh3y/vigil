@@ -52,7 +52,10 @@ MediaMTX calls back into `nvrd` through two HTTP hooks:
 - `POST /internal/mediamtx/auth`: `nvrd` validates stream tokens.
 - `POST /internal/mediamtx/segment-complete`: `nvrd` indexes a completed recording segment.
 
-The recording index is also reconciled from disk at startup and periodically, making the hook an efficient fast path rather than a single point of failure.
+The recording index is also reconciled from disk at startup and periodically,
+making the hook an efficient fast path rather than a single point of failure.
+The same passes remove local files whose `gdrive:` archive metadata is already
+durable, while preserving pending files.
 
 ### FFmpeg (the media tool)
 
@@ -114,7 +117,13 @@ The client asks the API for a live stream. The API returns a WHEP URL, an HLS UR
 
 ### Recording
 
-MediaMTX records the video as one-minute fMP4 segments. When a segment completes, MediaMTX calls the segment-complete hook. `nvrd` indexes the segment in SQLite. The recording is continuous by default. Retention prunes old non-Drive index rows while keeping successful Drive archive metadata searchable.
+MediaMTX records the video as one-minute fMP4 segments. When a segment
+completes, MediaMTX calls the segment-complete hook. `nvrd` indexes the segment
+in SQLite. The recording is continuous by default. The archive worker commits
+the Drive location before deleting the local MP4; a periodic cleanup pass
+retries deletion failures. MediaMTX's `recordDeleteAfter` remains a fallback
+when Drive is unavailable. Retention prunes old non-Drive index rows while
+keeping successful Drive archive metadata searchable.
 
 ### Timeline playback
 
@@ -122,7 +131,10 @@ The dashboard asks the API for recordings in a time range. The API returns cover
 
 ### Archive
 
-The archive job uploads unarchived recordings to Google Drive and marks each successful row with the Drive file ID. Those rows stay in the timeline after local retention. A short-lived token protects the Drive content endpoint; Drive credentials never reach the browser.
+The archive job uploads unarchived recordings to Google Drive, marks each
+successful row with the Drive file ID, and removes its local copy. Those rows
+stay in the timeline after local cleanup. A short-lived token protects the
+Drive content endpoint; Drive credentials never reach the browser.
 
 ### Events
 
@@ -134,7 +146,8 @@ The background jobs emit events. The event service writes them to SQLite and pub
 - **Contract-first**: the OpenAPI contract drives both the Go server and the TypeScript clients.
 - **Events for decoupling**: cross-domain side effects go through the event bus.
 - **Crash-only design**: on boot, the backend reconciles state. It does not keep state only in memory.
-- **Filesystem as backup truth**: the recordings files can be re-indexed by scanning the disk.
+- **Filesystem as recovery input**: pending recordings can be re-indexed by
+  scanning the disk; Drive is the durable media tier after an archive succeeds.
 
 ## The service boundaries
 

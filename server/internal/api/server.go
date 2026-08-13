@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/nvr/nvr/server/internal/auth"
 	"github.com/nvr/nvr/server/internal/camera"
+	"github.com/nvr/nvr/server/internal/config"
 	"github.com/nvr/nvr/server/internal/event"
 	"github.com/nvr/nvr/server/internal/media"
 	"github.com/nvr/nvr/server/internal/recording"
@@ -34,6 +36,7 @@ type Server struct {
 	RecordingsDir string
 	// DefaultRetentionDays is used when settings has no retentionDays key.
 	DefaultRetentionDays int
+	settingsMu           sync.Mutex
 }
 
 // NewServer constructs an API server.
@@ -50,7 +53,7 @@ func NewServer(
 	defaultRetentionDays int,
 ) *Server {
 	if defaultRetentionDays <= 0 {
-		defaultRetentionDays = recording.DefaultRetentionDays
+		defaultRetentionDays = config.DefaultRetentionDays
 	}
 	return &Server{
 		Queries:              q,

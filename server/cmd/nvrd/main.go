@@ -125,6 +125,10 @@ func main() {
 		slog.Error("ensure recordings dir", "path", recordingsDir, "err", err)
 		os.Exit(1)
 	}
+	retentionDays := cfg.RetentionDays
+	if days, ok := loadRetentionFromDB(queries); ok {
+		retentionDays = days
+	}
 
 	mediaSvc := media.NewService(media.Config{
 		APIURL:           cfg.MediaMTXAPIURL,
@@ -133,6 +137,7 @@ func main() {
 		PlaybackURL:      cfg.MediaMTXPlaybackURL,
 		RecordingsDir:    recordingsDir,
 		RecordingEnabled: recordingEnabled,
+		RetentionDays:    retentionDays,
 	}, cameraSvc)
 
 	// MediaMTX path configuration is runtime state and is lost whenever its
@@ -142,13 +147,11 @@ func main() {
 	if err != nil {
 		slog.Warn("list cameras for mediamtx startup sync", "err", err)
 	} else {
-		mediaSvc.ReapplyCameraPaths(ctx, cameras)
+		if err := mediaSvc.ReapplyCameraPaths(ctx, cameras); err != nil {
+			slog.Warn("mediamtx startup sync failed", "err", err)
+		}
 	}
 
-	retentionDays := cfg.RetentionDays
-	if days, ok := loadRetentionFromDB(queries); ok {
-		retentionDays = days
-	}
 	recordingSvc := recording.NewService(queries, recording.Config{
 		RecordingsDir: recordingsDir,
 		RetentionDays: retentionDays,
@@ -166,6 +169,21 @@ func main() {
 			"skipped", stats.Skipped,
 			"failed", stats.Failed,
 		)
+		cleanupCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+		cleanup, err := recordingSvc.CleanupArchivedLocals(cleanupCtx, 5*time.Second)
+		if err != nil {
+			slog.Warn("archived local startup cleanup failed", "err", err)
+			return
+		}
+		if cleanup.Matched > 0 || cleanup.Failed > 0 {
+			slog.Info("archived local startup cleanup complete",
+				"scanned", cleanup.Scanned,
+				"matched", cleanup.Matched,
+				"deleted", cleanup.Deleted,
+				"failed", cleanup.Failed,
+			)
+		}
 	}()
 
 	eventBus := event.NewBus()
@@ -200,7 +218,7 @@ func main() {
 		cfg.Version,
 		cfg.Commit,
 		recordingsDir,
-		cfg.RetentionDays,
+		retentionDays,
 	)
 
 	r := chi.NewRouter()

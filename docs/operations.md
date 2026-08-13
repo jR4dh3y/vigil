@@ -104,6 +104,8 @@ WebRTC uses local UDP at `:8189`.
 The `paths` map is empty. The backend creates the paths at runtime through the MediaMTX control API.
 
 The path defaults configure the recording. Each segment is one minute of fMP4.
+`recordDeleteAfter` is a safety net for files that cannot be archived; `nvrd`
+overrides it on every camera path with the retention setting from SQLite.
 
 ### The Segment Hook
 
@@ -127,15 +129,31 @@ The recordings directory is runtime data. It is ignored by Git. Refer to [databa
 
 ## The Archive Behavior
 
-Vigil uploads up to 50 unarchived recordings to Google Drive every five minutes. You can also trigger an immediate archive from the dashboard.
+Vigil uploads up to 50 unarchived recordings to Google Drive every five minutes. You can also trigger an immediate archive from the dashboard. After an
+upload succeeds, `nvrd` commits the `gdrive:<file-id>` location and removes the
+local MP4 in the same archive pass. Successful Drive rows remain in SQLite so
+the timeline can play them through the Drive proxy.
 
-The archive retries are idempotent. A failed upload does not corrupt the state. Pending rows remain available for retry, and successful `gdrive:` rows remain in SQLite so Drive footage stays visible in the timeline. The dashboard can browse an older calendar day and plays the archive through Vigil; OAuth credentials are never exposed to the browser.
+The archive retries are idempotent. A failed upload does not corrupt the state:
+pending rows and their local files remain available for retry. If the remote
+upload succeeds but local deletion fails, the API/event reports
+`deleteFailed`, and the reconciliation job retries cleanup every five minutes
+and at startup. The dashboard can browse an older calendar day and plays the
+archive through Vigil; OAuth credentials are never exposed to the browser.
 
 ## Cleanup
 
-The retention job prunes old rows that do not have a successful Drive archive. The default local retention period is 7 days. You can change it with the `NVR_RETENTION_DAYS` variable or in the dashboard settings.
+The retention job prunes old rows that do not have a successful Drive archive.
+The default local fallback retention period is 7 days. You can change it with
+the `NVR_RETENTION_DAYS` variable or in the dashboard settings; changing the
+setting also updates MediaMTX's `recordDeleteAfter` value for every active
+camera path.
 
-The retention job does not delete media files. MediaMTX manages local-file expiry. Vigil keeps successful Drive metadata and removes eligible non-Drive index rows. See [database](./database.md) for the details.
+Drive-archived local files are deleted by Vigil only after the archive location
+is durable. MediaMTX independently removes files after `recordDeleteAfter` as
+a fallback when Drive is unavailable. Vigil keeps successful Drive metadata and
+removes eligible non-Drive index rows. See [database](./database.md) for the
+details.
 
 ## The Local Media Tools
 
@@ -169,4 +187,6 @@ The `.bin/mediamtx` binary is version 1.19.2. The Docker image pins MediaMTX to 
 - If the server does not start, check the log level and the health endpoint.
 - If a camera does not record, check that MediaMTX runs and that the camera streams over RTSP.
 - If Google Drive does not connect, verify the OAuth redirect URI and the `NVR_SECRETS_KEY`.
-- If the disk fills, check the retention job and the recordings directory.
+- If the disk fills, check the recordings directory, the Drive connection, and
+  archive events for `deleteFailed`; the next reconciliation pass retries any
+  safe archived-file cleanup.

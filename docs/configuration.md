@@ -11,7 +11,7 @@ The backend reads its configuration from environment variables. There is no conf
 | `NVR_RECORDINGS_DIR` | The recordings directory. | `./recordings` |
 | `NVR_SECRETS_KEY` | The encryption key for secrets. | empty |
 | `NVR_LOG_LEVEL` | The log level. | `info` |
-| `NVR_RETENTION_DAYS` | The recording retention period. | `7` |
+| `NVR_RETENTION_DAYS` | The local fallback retention period in days. Drive-archived files are removed sooner after upload. | `7` |
 | `NVR_MEDIAMTX_API_URL` | The MediaMTX control API URL. | `http://127.0.0.1:9997` |
 | `NVR_MEDIAMTX_WEBRTC_URL` | The MediaMTX WebRTC URL. | `http://127.0.0.1:8889` |
 | `NVR_MEDIAMTX_HLS_URL` | The MediaMTX HLS URL. | `http://127.0.0.1:8888` |
@@ -39,7 +39,9 @@ The backend stores some settings in the SQLite `settings` table. These settings 
 
 - The recordings directory.
 - The recording enabled flag.
-- The retention period.
+- The retention period. It controls non-Drive pruning and MediaMTX's
+  `recordDeleteAfter` fallback; successful Drive uploads are cleaned up
+  immediately.
 
 When the recordings directory is empty, the backend disables recording.
 

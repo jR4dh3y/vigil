@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/nvr/nvr/server/internal/camera"
+	"github.com/nvr/nvr/server/internal/config"
 )
 
 // Domain errors for the media plane.
@@ -52,6 +53,7 @@ type Config struct {
 	PlaybackURL      string // Optional MediaMTX playback server base, e.g. http://127.0.0.1:9996
 	RecordingsDir    string // Root directory for recorded segments
 	RecordingEnabled bool   // Continuous recording when true and RecordingsDir is set
+	RetentionDays    int    // MediaMTX fallback local retention when archive cleanup is unavailable
 }
 
 // CameraReader is the subset of camera.Service used by media.
@@ -75,19 +77,42 @@ type Service struct {
 func NewService(cfg Config, cams CameraReader) *Service {
 	dir := strings.TrimSpace(cfg.RecordingsDir)
 	enabled := cfg.RecordingEnabled && dir != ""
+	if cfg.RetentionDays <= 0 {
+		cfg.RetentionDays = config.DefaultRetentionDays
+	}
 	return &Service{
 		cfg: Config{
-			APIURL:        strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/"),
-			WebRTCURL:     strings.TrimRight(strings.TrimSpace(cfg.WebRTCURL), "/"),
-			HLSURL:        strings.TrimRight(strings.TrimSpace(cfg.HLSURL), "/"),
-			PlaybackURL:   strings.TrimRight(strings.TrimSpace(cfg.PlaybackURL), "/"),
-			RecordingsDir: dir,
+			APIURL:           strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/"),
+			WebRTCURL:        strings.TrimRight(strings.TrimSpace(cfg.WebRTCURL), "/"),
+			HLSURL:           strings.TrimRight(strings.TrimSpace(cfg.HLSURL), "/"),
+			PlaybackURL:      strings.TrimRight(strings.TrimSpace(cfg.PlaybackURL), "/"),
+			RecordingsDir:    dir,
+			RecordingEnabled: cfg.RecordingEnabled,
+			RetentionDays:    cfg.RetentionDays,
 		},
 		recordingEnabled: enabled,
 		cams:             cams,
 		mtx:              NewMediaMTXClient(cfg.APIURL),
 		tokens:           NewTokenStore(),
 	}
+}
+
+// RetentionDays returns the fallback local retention configured for MediaMTX.
+func (s *Service) RetentionDays() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg.RetentionDays
+}
+
+// SetRetentionDays updates the fallback local retention used when camera paths
+// are next applied. Callers should reapply the paths after changing it.
+func (s *Service) SetRetentionDays(days int) {
+	if days <= 0 {
+		days = config.DefaultRetentionDays
+	}
+	s.mu.Lock()
+	s.cfg.RetentionDays = days
+	s.mu.Unlock()
 }
 
 // TokenStore exposes the in-memory token store (auth hook / tests).
@@ -109,22 +134,35 @@ func (s *Service) RecordingEnabled() bool {
 	return s.recordingEnabled && s.cfg.RecordingsDir != ""
 }
 
-// SetRecordingConfig updates the recordings directory and enable flag.
-// When enabled is true, dir must be non-empty; the directory is created if needed.
-func (s *Service) SetRecordingConfig(dir string, enabled bool) error {
+// NormalizeRecordingConfig validates and canonicalizes a recordings directory
+// and enable flag without changing service state or touching the filesystem.
+func NormalizeRecordingConfig(dir string, enabled bool) (string, bool, error) {
 	dir = strings.TrimSpace(dir)
 	if enabled && dir == "" {
-		return fmt.Errorf("recordings directory is required when recording is enabled")
+		return "", false, fmt.Errorf("recordings directory is required when recording is enabled")
 	}
 	if dir != "" {
 		clean := filepath.Clean(dir)
 		if clean == "." || clean == "" {
-			return fmt.Errorf("invalid recordings directory")
-		}
-		if err := os.MkdirAll(clean, 0o755); err != nil {
-			return fmt.Errorf("create recordings directory: %w", err)
+			return "", false, fmt.Errorf("invalid recordings directory")
 		}
 		dir = clean
+	}
+	return dir, enabled && dir != "", nil
+}
+
+// SetRecordingConfig updates the recordings directory and enable flag.
+// When enabled is true, dir must be non-empty; the directory is created if needed.
+func (s *Service) SetRecordingConfig(dir string, enabled bool) error {
+	var err error
+	dir, enabled, err = NormalizeRecordingConfig(dir, enabled)
+	if err != nil {
+		return err
+	}
+	if dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create recordings directory: %w", err)
+		}
 	}
 
 	s.mu.Lock()
@@ -141,6 +179,7 @@ func (s *Service) recordOptionsForCamera(cameraID string) PathRecordOptions {
 	s.mu.RLock()
 	dir := s.cfg.RecordingsDir
 	enabled := s.recordingEnabled
+	retentionDays := s.cfg.RetentionDays
 	s.mu.RUnlock()
 
 	if !enabled || dir == "" {
@@ -153,14 +192,18 @@ func (s *Service) recordOptionsForCamera(cameraID string) PathRecordOptions {
 		RecordPath:      root + "/%path/%Y-%m-%d/%H-%M-%S-%f",
 		SegmentDuration: "1m",
 		Format:          "fmp4",
+		DeleteAfter:     strconv.Itoa(retentionDays) + "d",
 	}
 }
 
-// ReapplyCameraPaths re-upserts MediaMTX paths so recording settings take effect.
-func (s *Service) ReapplyCameraPaths(ctx context.Context, cameras []camera.Camera) {
+// ReapplyCameraPaths re-upserts MediaMTX paths so recording settings take
+// effect. It attempts every enabled camera and returns an aggregate error when
+// one or more paths could not be synchronized.
+func (s *Service) ReapplyCameraPaths(ctx context.Context, cameras []camera.Camera) error {
+	var errs []error
 	for _, cam := range cameras {
-		if ctx.Err() != nil {
-			return
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		if !cam.Enabled {
 			continue
@@ -168,8 +211,10 @@ func (s *Service) ReapplyCameraPaths(ctx context.Context, cameras []camera.Camer
 		if err := s.EnsurePathForCamera(ctx, cam); err != nil {
 			slog.Warn("reapply mediamtx path failed",
 				"camera_id", cam.ID, "err", err)
+			errs = append(errs, fmt.Errorf("camera %s: %w", cam.ID, err))
 		}
 	}
+	return errors.Join(errs...)
 }
 
 // EnsurePathForCamera upserts a MediaMTX on-demand path for the camera's live RTSP

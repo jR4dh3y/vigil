@@ -1709,14 +1709,23 @@ components:
           description: Max segments to archive in this batch (default 50)
     GDriveArchiveResponse:
       type: object
-      required: [uploaded, failed, skipped]
+      required: [uploaded, deleted, deleteFailed, failed, skipped]
       properties:
         uploaded:
           type: integer
+          description: Recordings uploaded successfully to Google Drive.
+        deleted:
+          type: integer
+          description: Uploaded recordings whose local copy was removed.
+        deleteFailed:
+          type: integer
+          description: Uploaded recordings whose local cleanup needs a retry.
         failed:
           type: integer
+          description: Recordings that could not be uploaded or indexed.
         skipped:
           type: integer
+          description: Recordings skipped because their local file was already missing.
 
     CreateUserRequest:
       type: object

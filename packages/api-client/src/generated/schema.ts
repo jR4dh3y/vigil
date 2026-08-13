@@ -927,6 +927,8 @@ export interface components {
         };
         GDriveArchiveResponse: {
             uploaded: number;
+            deleted: number;
+            deleteFailed: number;
             failed: number;
             skipped: number;
         };
