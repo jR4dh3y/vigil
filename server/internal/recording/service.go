@@ -49,6 +49,16 @@ type ListResult struct {
 	Coverage []CoverageBar
 }
 
+// CleanupStats summarizes a pass that removes local files whose Drive archive
+// metadata is already durable. Archived rows stay in SQLite for Drive-backed
+// timeline playback.
+type CleanupStats struct {
+	Scanned int
+	Matched int
+	Deleted int
+	Failed  int
+}
+
 // Config holds recording service options.
 type Config struct {
 	// RecordingsDir is the absolute or relative root for recording files.
@@ -358,6 +368,119 @@ func (s *Service) MarkArchived(ctx context.Context, id, location string) error {
 		return fmt.Errorf("mark recording archived: recording %q not found", id)
 	}
 	return nil
+}
+
+// DeleteLocal removes the local copy of a recording after a successful Drive
+// archive. The recording ID and relative path must agree with the database,
+// and the row must point at a gdrive: location, so callers cannot accidentally
+// remove an unrelated or still-pending recording.
+//
+// Missing files are treated as success to make retries idempotent.
+func (s *Service) DeleteLocal(ctx context.Context, id, path string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+
+	row, err := s.q.GetRecording(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("get recording for local cleanup: %w", err)
+	}
+	location := strings.TrimSpace(row.ArchiveLocation.String)
+	if !row.ArchiveLocation.Valid || !strings.HasPrefix(location, "gdrive:") {
+		return fmt.Errorf("recording %q is not archived to Google Drive", id)
+	}
+
+	rel := filepath.ToSlash(filepath.Clean(s.relativizePath(path)))
+	expected := filepath.ToSlash(filepath.Clean(row.Path))
+	if rel == "." || rel != expected {
+		return fmt.Errorf("recording %q path mismatch: got %q, want %q", id, rel, expected)
+	}
+	abs, err := s.AbsolutePath(rel)
+	if err != nil {
+		return fmt.Errorf("resolve local cleanup path: %w", err)
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("stat local cleanup path: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("local cleanup path is not a regular file: %s", abs)
+	}
+	if err := os.Remove(abs); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove local recording: %w", err)
+	}
+	return nil
+}
+
+// CleanupArchivedLocals retries local cleanup for Drive-archived files left by
+// an interrupted or permission-failed archive pass. Files newer than settleAge
+// are skipped so a just-created segment cannot be removed while MediaMTX is
+// still finishing it.
+func (s *Service) CleanupArchivedLocals(ctx context.Context, settleAge time.Duration) (CleanupStats, error) {
+	var stats CleanupStats
+	root := strings.TrimSpace(s.recordingsDir)
+	if root == "" {
+		return stats, fmt.Errorf("recordings dir not configured")
+	}
+	if settleAge <= 0 {
+		settleAge = defaultRecordingSettleAge
+	}
+	cutoff := time.Now().Add(-settleAge)
+
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !strings.EqualFold(filepath.Ext(entry.Name()), ".mp4") {
+			return nil
+		}
+		stats.Scanned++
+		info, err := entry.Info()
+		if err != nil {
+			stats.Failed++
+			return nil
+		}
+		if !info.Mode().IsRegular() || info.ModTime().After(cutoff) {
+			return nil
+		}
+
+		rel := s.relativizePath(path)
+		row, err := s.q.GetRecordingByPath(ctx, rel)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			stats.Failed++
+			return nil
+		}
+		if !row.ArchiveLocation.Valid || !strings.HasPrefix(strings.TrimSpace(row.ArchiveLocation.String), "gdrive:") {
+			return nil
+		}
+		stats.Matched++
+		if err := s.DeleteLocal(ctx, row.ID, rel); err != nil {
+			stats.Failed++
+			return nil
+		}
+		stats.Deleted++
+		return nil
+	})
+	if err != nil {
+		return stats, fmt.Errorf("walk recordings for archived cleanup: %w", err)
+	}
+	return stats, nil
 }
 
 // relativizePath stores paths relative to RecordingsDir when possible.

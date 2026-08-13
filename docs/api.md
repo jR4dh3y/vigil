@@ -98,6 +98,11 @@ The authorization rules are:
 | DELETE | `/storage/gdrive/disconnect` | Disconnect Drive. |
 | POST | `/storage/gdrive/archive` | Run the archive now. |
 
+The archive response reports `uploaded`, `deleted`, `deleteFailed`, `failed`,
+and `skipped`. `deleted` counts local MP4s removed after a durable Drive
+upload. `deleteFailed` means the Drive upload succeeded but local cleanup needs
+another reconciliation pass; it is not an upload failure.
+
 Archived playback uses `GET /recordings/{id}/content?token=...`. It is normally
 opened by the native video element from a playback session and supports HTTP
 `Range` requests; clients should not construct its token themselves.

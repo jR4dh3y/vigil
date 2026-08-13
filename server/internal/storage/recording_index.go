@@ -80,3 +80,7 @@ func (a RecordingArchiveIndex) AbsolutePath(rel string) (string, error) {
 func (a RecordingArchiveIndex) MarkArchived(ctx context.Context, id, location string) error {
 	return a.Recording.MarkArchived(ctx, id, location)
 }
+
+func (a RecordingArchiveIndex) DeleteLocal(ctx context.Context, id, path string) error {
+	return a.Recording.DeleteLocal(ctx, id, path)
+}

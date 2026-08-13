@@ -18,8 +18,9 @@ func TestUpsertPathSourceDemandFollowsRecording(t *testing.T) {
 		{
 			name: "continuous recording keeps source connected",
 			record: PathRecordOptions{
-				Enabled:    true,
-				RecordPath: "/recordings/%path/%Y-%m-%d/%H-%M-%S-%f",
+				Enabled:     true,
+				RecordPath:  "/recordings/%path/%Y-%m-%d/%H-%M-%S-%f",
+				DeleteAfter: "1d",
 			},
 			onDemand: false,
 		},
@@ -52,6 +53,9 @@ func TestUpsertPathSourceDemandFollowsRecording(t *testing.T) {
 			}
 			if got.SourceOnDemandStartTimeout != tt.startTimeout {
 				t.Fatalf("SourceOnDemandStartTimeout = %q, want %q", got.SourceOnDemandStartTimeout, tt.startTimeout)
+			}
+			if tt.record.Enabled && got.RecordDeleteAfter != tt.record.DeleteAfter {
+				t.Fatalf("RecordDeleteAfter = %q, want %q", got.RecordDeleteAfter, tt.record.DeleteAfter)
 			}
 		})
 	}

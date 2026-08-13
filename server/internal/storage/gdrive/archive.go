@@ -24,13 +24,16 @@ type ArchiveIndex interface {
 	ListUnarchived(ctx context.Context, limit int) ([]ArchiveSegment, error)
 	AbsolutePath(rel string) (string, error)
 	MarkArchived(ctx context.Context, id, location string) error
+	DeleteLocal(ctx context.Context, id, rel string) error
 }
 
 // ArchiveStats summarizes a batch archive run.
 type ArchiveStats struct {
-	Uploaded int
-	Failed   int
-	Skipped  int
+	Uploaded     int
+	Deleted      int
+	DeleteFailed int
+	Failed       int
+	Skipped      int
 }
 
 // DefaultArchiveBatchLimit is used when limit <= 0.
@@ -81,7 +84,9 @@ const LocationMissing = "skipped:missing"
 // ArchivePending uploads up to limit unarchived segments via index.
 // Single-flight: concurrent cron/API calls serialize on one mutex.
 // Missing local files are marked LocationMissing (skipped) so the queue advances.
-// Upload then mark: mark is retried a few times after a successful upload.
+// Upload then mark: mark is retried a few times after a successful upload. Once
+// the Drive metadata is durable, the local file is removed. A local cleanup
+// failure is reported separately because the remote archive is still safe.
 func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit int) (ArchiveStats, error) {
 	var stats ArchiveStats
 	if s == nil {
@@ -150,10 +155,18 @@ func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit 
 			continue
 		}
 		stats.Uploaded++
+		if err := index.DeleteLocal(ctx, seg.ID, seg.Path); err != nil {
+			slog.Warn("gdrive archive: local cleanup failed", "id", seg.ID, "path", abs, "err", err)
+			stats.DeleteFailed++
+		} else {
+			stats.Deleted++
+		}
 	}
 
 	slog.Info("gdrive archive batch complete",
 		"uploaded", stats.Uploaded,
+		"deleted", stats.Deleted,
+		"delete_failed", stats.DeleteFailed,
 		"failed", stats.Failed,
 		"skipped", stats.Skipped,
 	)

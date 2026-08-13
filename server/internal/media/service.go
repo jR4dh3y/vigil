@@ -27,6 +27,8 @@ var (
 // while seeking through a Drive-backed one-minute segment.
 const ArchivedPlaybackTokenTTL = 15 * time.Minute
 
+const defaultRetentionDays = 7
+
 // LiveStream is the live playback bundle returned to API clients.
 type LiveStream struct {
 	CameraID  string
@@ -52,6 +54,7 @@ type Config struct {
 	PlaybackURL      string // Optional MediaMTX playback server base, e.g. http://127.0.0.1:9996
 	RecordingsDir    string // Root directory for recorded segments
 	RecordingEnabled bool   // Continuous recording when true and RecordingsDir is set
+	RetentionDays    int    // MediaMTX fallback local retention when archive cleanup is unavailable
 }
 
 // CameraReader is the subset of camera.Service used by media.
@@ -75,19 +78,42 @@ type Service struct {
 func NewService(cfg Config, cams CameraReader) *Service {
 	dir := strings.TrimSpace(cfg.RecordingsDir)
 	enabled := cfg.RecordingEnabled && dir != ""
+	if cfg.RetentionDays <= 0 {
+		cfg.RetentionDays = defaultRetentionDays
+	}
 	return &Service{
 		cfg: Config{
-			APIURL:        strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/"),
-			WebRTCURL:     strings.TrimRight(strings.TrimSpace(cfg.WebRTCURL), "/"),
-			HLSURL:        strings.TrimRight(strings.TrimSpace(cfg.HLSURL), "/"),
-			PlaybackURL:   strings.TrimRight(strings.TrimSpace(cfg.PlaybackURL), "/"),
-			RecordingsDir: dir,
+			APIURL:           strings.TrimRight(strings.TrimSpace(cfg.APIURL), "/"),
+			WebRTCURL:        strings.TrimRight(strings.TrimSpace(cfg.WebRTCURL), "/"),
+			HLSURL:           strings.TrimRight(strings.TrimSpace(cfg.HLSURL), "/"),
+			PlaybackURL:      strings.TrimRight(strings.TrimSpace(cfg.PlaybackURL), "/"),
+			RecordingsDir:    dir,
+			RecordingEnabled: cfg.RecordingEnabled,
+			RetentionDays:    cfg.RetentionDays,
 		},
 		recordingEnabled: enabled,
 		cams:             cams,
 		mtx:              NewMediaMTXClient(cfg.APIURL),
 		tokens:           NewTokenStore(),
 	}
+}
+
+// RetentionDays returns the fallback local retention configured for MediaMTX.
+func (s *Service) RetentionDays() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.cfg.RetentionDays
+}
+
+// SetRetentionDays updates the fallback local retention used when camera paths
+// are next applied. Callers should reapply the paths after changing it.
+func (s *Service) SetRetentionDays(days int) {
+	if days <= 0 {
+		days = defaultRetentionDays
+	}
+	s.mu.Lock()
+	s.cfg.RetentionDays = days
+	s.mu.Unlock()
 }
 
 // TokenStore exposes the in-memory token store (auth hook / tests).
@@ -141,6 +167,7 @@ func (s *Service) recordOptionsForCamera(cameraID string) PathRecordOptions {
 	s.mu.RLock()
 	dir := s.cfg.RecordingsDir
 	enabled := s.recordingEnabled
+	retentionDays := s.cfg.RetentionDays
 	s.mu.RUnlock()
 
 	if !enabled || dir == "" {
@@ -153,6 +180,7 @@ func (s *Service) recordOptionsForCamera(cameraID string) PathRecordOptions {
 		RecordPath:      root + "/%path/%Y-%m-%d/%H-%M-%S-%f",
 		SegmentDuration: "1m",
 		Format:          "fmp4",
+		DeleteAfter:     strconv.Itoa(retentionDays) + "d",
 	}
 }
 

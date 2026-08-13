@@ -96,6 +96,19 @@ func (s *Scheduler) reconcileRecordings(ctx context.Context) {
 			"failed", stats.Failed,
 		)
 	}
+	cleanup, err := s.cfg.Recording.CleanupArchivedLocals(ctx, 5*time.Second)
+	if err != nil {
+		slog.Warn("archived local cleanup failed", "err", err)
+		return
+	}
+	if cleanup.Matched > 0 || cleanup.Failed > 0 {
+		slog.Info("archived local cleanup complete",
+			"scanned", cleanup.Scanned,
+			"matched", cleanup.Matched,
+			"deleted", cleanup.Deleted,
+			"failed", cleanup.Failed,
+		)
+	}
 }
 
 // Stop gracefully stops cron jobs, waiting for in-flight work (incl. long archive runs).

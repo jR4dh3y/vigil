@@ -61,6 +61,9 @@ rtspAddress: :8554
 pathDefaults:
   # After each completed record segment, POST metadata to nvrd.
   # MediaMTX expands env vars for the hook command.
+  # nvrd overrides this per path from the configured retention setting. It is
+  # an emergency local fallback when Drive archival is unavailable.
+  recordDeleteAfter: 7d
   runOnRecordSegmentComplete: >-
     curl -sS -X POST http://127.0.0.1:8080/internal/mediamtx/segment-complete
     -H 'Content-Type: application/json'

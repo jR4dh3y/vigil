@@ -313,7 +313,9 @@ type fakeArchiveIndex struct {
 	segments  []ArchiveSegment
 	paths     map[string]string
 	marked    map[string]string
+	deleted   map[string]string
 	markError error
+	deleteErr error
 }
 
 func (f *fakeArchiveIndex) ListUnarchived(context.Context, int) ([]ArchiveSegment, error) {
@@ -333,6 +335,17 @@ func (f *fakeArchiveIndex) MarkArchived(_ context.Context, id, location string) 
 		return f.markError
 	}
 	f.marked[id] = location
+	return nil
+}
+
+func (f *fakeArchiveIndex) DeleteLocal(_ context.Context, id, path string) error {
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
+	if f.deleted == nil {
+		f.deleted = make(map[string]string)
+	}
+	f.deleted[id] = path
 	return nil
 }
 
@@ -365,6 +378,37 @@ func TestArchivePendingUploadsAndMarks(t *testing.T) {
 	}
 	if index.marked["recording-1"] != "gdrive:file-1" {
 		t.Fatalf("unexpected archive location: %+v", index.marked)
+	}
+	if index.deleted["recording-1"] != "cam/segment.mp4" {
+		t.Fatalf("local file was not deleted after archive: %+v", index.deleted)
+	}
+}
+
+func TestArchivePendingReportsLocalCleanupFailureSeparately(t *testing.T) {
+	service := newTestService(t)
+	recordingPath := filepath.Join(t.TempDir(), "segment.mp4")
+	if err := writeTestRecording(recordingPath); err != nil {
+		t.Fatal(err)
+	}
+	index := &fakeArchiveIndex{
+		segments:  []ArchiveSegment{{ID: "recording-1", Path: "cam/segment.mp4"}},
+		paths:     map[string]string{"cam/segment.mp4": recordingPath},
+		marked:    make(map[string]string),
+		deleteErr: errors.New("permission denied"),
+	}
+	service.archiveFile = func(context.Context, string, string, string) (string, error) {
+		return "gdrive:file-1", nil
+	}
+
+	stats, err := service.ArchivePending(context.Background(), index, 10)
+	if err != nil {
+		t.Fatalf("ArchivePending: %v", err)
+	}
+	if stats.Uploaded != 1 || stats.Deleted != 0 || stats.DeleteFailed != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats: %+v", stats)
+	}
+	if index.marked["recording-1"] != "gdrive:file-1" {
+		t.Fatalf("archive metadata was not persisted: %+v", index.marked)
 	}
 }
 

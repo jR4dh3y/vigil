@@ -331,9 +331,11 @@ type GDriveArchiveRequest struct {
 
 // GDriveArchiveResponse defines model for GDriveArchiveResponse.
 type GDriveArchiveResponse struct {
-	Failed   int `json:"failed"`
-	Skipped  int `json:"skipped"`
-	Uploaded int `json:"uploaded"`
+	Deleted      int `json:"deleted"`
+	DeleteFailed int `json:"deleteFailed"`
+	Failed       int `json:"failed"`
+	Skipped      int `json:"skipped"`
+	Uploaded     int `json:"uploaded"`
 }
 
 // GDriveConfigurationRequest defines model for GDriveConfigurationRequest.

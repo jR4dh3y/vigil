@@ -222,9 +222,11 @@ func (s *Server) PostGDriveArchive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, GDriveArchiveResponse{
-		Uploaded: stats.Uploaded,
-		Failed:   stats.Failed,
-		Skipped:  stats.Skipped,
+		Uploaded:     stats.Uploaded,
+		Deleted:      stats.Deleted,
+		DeleteFailed: stats.DeleteFailed,
+		Failed:       stats.Failed,
+		Skipped:      stats.Skipped,
 	})
 }
 

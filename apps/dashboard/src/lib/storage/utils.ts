@@ -52,9 +52,9 @@ export function formatConnectedAt(value: string | Date | undefined): string | nu
 	});
 }
 
-/** Success flash for an archive run (Uploaded N, skipped M, failed K). */
+/** Success flash for an archive run, including local cleanup status. */
 export function formatGDriveArchiveResult(result: GDriveArchiveResult): string {
-	return `Uploaded ${result.uploaded}, skipped ${result.skipped}, failed ${result.failed}`;
+	return `Uploaded ${result.uploaded}, deleted local ${result.deleted}, cleanup failed ${result.deleteFailed}, skipped ${result.skipped}, failed ${result.failed}`;
 }
 
 /** Reads and sanitizes the one-time OAuth callback result from the settings URL. */

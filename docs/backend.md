@@ -43,12 +43,12 @@ The configuration variables are:
 | `NVR_MEDIAMTX_WEBRTC_URL` | The MediaMTX WebRTC URL. | `http://127.0.0.1:8889` |
 | `NVR_MEDIAMTX_HLS_URL` | The MediaMTX HLS URL. | `http://127.0.0.1:8888` |
 | `NVR_MEDIAMTX_PLAYBACK_URL` | The MediaMTX playback URL. | empty |
-| `NVR_RETENTION_DAYS` | The recording retention period. | `7` |
+| `NVR_RETENTION_DAYS` | The local fallback retention period in days; Drive-archived files are removed after upload. | `7` |
 | `NVR_GOOGLE_CLIENT_ID` | The Google OAuth client ID. | empty |
 | `NVR_GOOGLE_CLIENT_SECRET` | The Google OAuth client secret. | empty |
 | `NVR_GOOGLE_REDIRECT_URL` | The Google OAuth redirect URL. | empty |
 
-The backend stores some settings in the database. These settings override the environment variables. The settings are the recordings directory, the recording enabled flag, and the retention period.
+The backend stores some settings in the database. These settings override the environment variables. The settings are the recordings directory, the recording enabled flag, and the retention period. A retention update also re-applies MediaMTX paths so its local fallback timer matches the persisted value.
 
 ## The service packages
 
@@ -119,7 +119,7 @@ The snapshot function is in `snapshot.go`. It runs FFmpeg to capture one JPEG fr
 
 The recording package owns the segment index. It indexes completed segments, answers timeline queries, and enforces retention.
 
-The service is in `service.go`. It lists recordings, resolves the segment covering a playback time, indexes segments, and prunes old non-Drive rows. Successful Drive rows are retained for archived timeline playback. The local retention period defaults to 7 days.
+The service is in `service.go`. It lists recordings, resolves the segment covering a playback time, indexes segments, removes a local file only after its row has a durable `gdrive:` location, and prunes old non-Drive rows. Successful Drive rows are retained for archived timeline playback. A startup/periodic cleanup pass retries archived files left behind by an interrupted or failed delete. The local fallback retention period defaults to 7 days.
 
 The segment-complete handler is in `hook.go`. It accepts the MediaMTX callback and indexes the segment. It tolerates JSON or form data with varied field names.
 
@@ -172,7 +172,7 @@ The gdrive package is the Google Drive archive. It manages the OAuth lifecycle a
 
 The service is in `service.go`. It validates configuration, begins OAuth, handles the callback, and disconnects.
 
-The archive functions are in `archive.go`. The `ArchivePending` function is single-flight. It uploads older unarchived rows in batches and marks missing files as skipped. `download.go` forwards validated browser byte ranges to Drive for archived playback.
+The archive functions are in `archive.go`. The `ArchivePending` function is single-flight. It uploads older unarchived rows in batches, marks missing files as skipped, commits the Drive location, and then removes the local copy. Upload failures leave rows and files pending; cleanup failures are reported separately and retried by the recording reconciler. `download.go` forwards validated browser byte ranges to Drive for archived playback.
 
 The upload function is in `upload.go`. It creates files in the `NVR Archives` folder. It uses the `nvr_recording_id` property for idempotent retries.
 

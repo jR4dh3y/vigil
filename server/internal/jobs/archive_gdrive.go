@@ -44,6 +44,8 @@ func (s *Scheduler) archiveToGDrive(ctx context.Context) {
 	}
 	slog.Info("gdrive archive job finished",
 		"uploaded", stats.Uploaded,
+		"deleted", stats.Deleted,
+		"delete_failed", stats.DeleteFailed,
 		"failed", stats.Failed,
 		"skipped", stats.Skipped,
 	)
@@ -51,12 +53,12 @@ func (s *Scheduler) archiveToGDrive(ctx context.Context) {
 	if s.cfg.Events == nil {
 		return
 	}
-	if stats.Uploaded == 0 && stats.Failed == 0 && stats.Skipped == 0 {
+	if stats.Uploaded == 0 && stats.Deleted == 0 && stats.DeleteFailed == 0 && stats.Failed == 0 && stats.Skipped == 0 {
 		return
 	}
 	severity := event.SeverityInfo
 	title := "Google Drive archive complete"
-	if stats.Failed > 0 {
+	if stats.Failed > 0 || stats.DeleteFailed > 0 {
 		severity = event.SeverityWarning
 		title = "Google Drive archive completed with errors"
 	}
@@ -64,12 +66,14 @@ func (s *Scheduler) archiveToGDrive(ctx context.Context) {
 		Type:      event.TypeArchiveComplete,
 		Severity:  severity,
 		Title:     title,
-		Message:   fmt.Sprintf("Uploaded %d, failed %d, skipped %d", stats.Uploaded, stats.Failed, stats.Skipped),
+		Message:   fmt.Sprintf("Uploaded %d, deleted %d local, cleanup failed %d, failed %d, skipped %d", stats.Uploaded, stats.Deleted, stats.DeleteFailed, stats.Failed, stats.Skipped),
 		StartedAt: time.Now().UTC(),
 		Metadata: map[string]any{
-			"uploaded": stats.Uploaded,
-			"failed":   stats.Failed,
-			"skipped":  stats.Skipped,
+			"uploaded":     stats.Uploaded,
+			"deleted":      stats.Deleted,
+			"deleteFailed": stats.DeleteFailed,
+			"failed":       stats.Failed,
+			"skipped":      stats.Skipped,
 		},
 	}); err != nil {
 		slog.Warn("gdrive archive: emit event failed", "err", err)

@@ -239,6 +239,10 @@ func (*blockingArchiveIndex) MarkArchived(context.Context, string, string) error
 	return nil
 }
 
+func (*blockingArchiveIndex) DeleteLocal(context.Context, string, string) error {
+	return nil
+}
+
 func newGDriveAPITestServer(t *testing.T) *Server {
 	t.Helper()
 	db, err := store.Open(t.TempDir())

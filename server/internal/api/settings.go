@@ -39,6 +39,7 @@ func (s *Server) PatchSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
 		return
 	}
+	refreshMediaPaths := false
 
 	if body.RetentionDays != nil {
 		days := *body.RetentionDays
@@ -56,6 +57,10 @@ func (s *Server) PatchSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if s.Recording != nil {
 			s.Recording.SetRetentionDays(days)
+		}
+		if s.Media != nil {
+			s.Media.SetRetentionDays(days)
+			refreshMediaPaths = true
 		}
 	}
 
@@ -130,14 +135,18 @@ func (s *Server) PatchSettings(w http.ResponseWriter, r *http.Request) {
 			s.Recording.SetRecordingsDir(nextDir)
 		}
 
-		// Push MediaMTX path recording settings for enabled cameras.
-		if s.Media != nil && s.Camera != nil {
-			list, err := s.Camera.List(r.Context())
-			if err != nil {
-				slog.Warn("list cameras after recording settings change", "err", err)
-			} else {
-				s.Media.ReapplyCameraPaths(r.Context(), list)
-			}
+		refreshMediaPaths = true
+	}
+
+	// Push retention and recording settings to every runtime MediaMTX path.
+	// MediaMTX keeps path configuration in memory, so a database-only update
+	// would leave its local deletion timer stale until the next restart.
+	if refreshMediaPaths && s.Media != nil && s.Camera != nil {
+		list, err := s.Camera.List(r.Context())
+		if err != nil {
+			slog.Warn("list cameras after recording settings change", "err", err)
+		} else {
+			s.Media.ReapplyCameraPaths(r.Context(), list)
 		}
 	}
 

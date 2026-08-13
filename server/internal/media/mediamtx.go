@@ -39,6 +39,9 @@ type PathRecordOptions struct {
 	SegmentDuration string
 	// Format is e.g. "fmp4". Empty defaults to "fmp4".
 	Format string
+	// DeleteAfter is the local retention duration MediaMTX applies when an
+	// archive worker cannot remove a file sooner (for example "1d").
+	DeleteAfter string
 }
 
 // pathConf is the JSON body for path add/replace (subset of MediaMTX PathConf).
@@ -52,6 +55,7 @@ type pathConf struct {
 	RecordPath            string `json:"recordPath,omitempty"`
 	RecordFormat          string `json:"recordFormat,omitempty"`
 	RecordSegmentDuration string `json:"recordSegmentDuration,omitempty"`
+	RecordDeleteAfter     string `json:"recordDeleteAfter,omitempty"`
 }
 
 // UpsertPath creates or replaces a MediaMTX path for sourceRTSP.
@@ -81,6 +85,7 @@ func (c *MediaMTXClient) UpsertPath(ctx context.Context, name, sourceRTSP string
 		if body.RecordSegmentDuration == "" {
 			body.RecordSegmentDuration = "1m"
 		}
+		body.RecordDeleteAfter = rec.DeleteAfter
 	}
 	// Prefer replace (idempotent). If path is missing, add it.
 	status, errBody, err := c.doJSON(ctx, http.MethodPost, "/v3/config/paths/replace/"+url.PathEscape(name), body)
