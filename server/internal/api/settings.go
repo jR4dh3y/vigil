@@ -1,14 +1,18 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/nvr/nvr/server/internal/camera"
+	"github.com/nvr/nvr/server/internal/media"
 	"github.com/nvr/nvr/server/internal/store"
 )
 
@@ -39,114 +43,160 @@ func (s *Server) PatchSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body", "bad_request")
 		return
 	}
-	refreshMediaPaths := false
 
+	// Settings updates include a runtime MediaMTX change and must not race one
+	// another while reading current values, applying paths, or committing DB
+	// state. The lock is intentionally held through the path synchronization.
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
+
+	current := s.loadSettings(r)
+	nextRetention := current.RetentionDays
 	if body.RetentionDays != nil {
-		days := *body.RetentionDays
-		if days < 1 {
+		nextRetention = *body.RetentionDays
+		if nextRetention < 1 {
 			writeError(w, http.StatusBadRequest, "retentionDays must be at least 1", "validation")
 			return
 		}
-		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
-			Key:   settingKeyRetentionDays,
-			Value: strconv.Itoa(days),
-		}); err != nil {
-			slog.Error("upsert retentionDays", "err", err)
-			writeError(w, http.StatusInternalServerError, "internal error", "internal")
-			return
-		}
-		if s.Recording != nil {
-			s.Recording.SetRetentionDays(days)
-		}
-		if s.Media != nil {
-			s.Media.SetRetentionDays(days)
-			refreshMediaPaths = true
-		}
 	}
 
+	nextSiteName := current.SiteName
 	if body.SiteName != nil {
-		name := strings.TrimSpace(*body.SiteName)
-		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
-			Key:   settingKeySiteName,
-			Value: name,
-		}); err != nil {
-			slog.Error("upsert siteName", "err", err)
-			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		nextSiteName = strings.TrimSpace(*body.SiteName)
+	}
+
+	recordingConfigChanged := body.RecordingsDir != nil || body.RecordingEnabled != nil
+	nextDir := current.RecordingsDir
+	nextEnabled := current.RecordingEnabled
+	if body.RecordingsDir != nil {
+		nextDir = *body.RecordingsDir
+	}
+	if body.RecordingEnabled != nil {
+		nextEnabled = *body.RecordingEnabled
+	}
+	if recordingConfigChanged {
+		var err error
+		nextDir, nextEnabled, err = media.NormalizeRecordingConfig(nextDir, nextEnabled)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error(), "validation")
 			return
 		}
 	}
 
-	// Resolve next recording config from body + current values.
-	if body.RecordingsDir != nil || body.RecordingEnabled != nil {
-		current := s.loadSettings(r)
-		nextDir := current.RecordingsDir
-		nextEnabled := current.RecordingEnabled
+	retentionChanged := body.RetentionDays != nil
+	refreshMediaPaths := s.Media != nil && (retentionChanged || recordingConfigChanged)
+	var restoreRuntime func()
+	if refreshMediaPaths {
+		oldDir := s.Media.RecordingsDir()
+		oldEnabled := s.Media.RecordingEnabled()
+		oldRetention := s.Media.RetentionDays()
 
-		if body.RecordingsDir != nil {
-			nextDir = strings.TrimSpace(*body.RecordingsDir)
-			if nextDir != "" {
-				nextDir = filepath.Clean(nextDir)
+		var cameraList []camera.Camera
+		if s.Camera != nil {
+			var err error
+			cameraList, err = s.Camera.List(r.Context())
+			if err != nil {
+				slog.Warn("list cameras before recording settings change", "err", err)
+				writeError(w, http.StatusServiceUnavailable, "could not synchronize camera recording paths", "mediamtx_sync_failed")
+				return
 			}
 		}
-		if body.RecordingEnabled != nil {
-			nextEnabled = *body.RecordingEnabled
-		}
-		if nextEnabled && nextDir == "" {
-			writeError(w, http.StatusBadRequest, "recordingsDir is required when recording is enabled", "validation")
-			return
+
+		restoreRuntime = func() {
+			// Rollback must still run when the request was cancelled after runtime
+			// state changed. Keep it bounded but independent of r.Context().
+			restoreCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			if recordingConfigChanged {
+				if err := s.Media.SetRecordingConfig(oldDir, oldEnabled); err != nil {
+					slog.Warn("restore recording config after settings failure", "err", err)
+				}
+			}
+			if retentionChanged {
+				s.Media.SetRetentionDays(oldRetention)
+			}
+			if s.Camera != nil {
+				if err := s.Media.ReapplyCameraPaths(restoreCtx, cameraList); err != nil {
+					slog.Warn("restore mediamtx paths after settings failure", "err", err)
+				}
+			}
 		}
 
-		if s.Media != nil {
+		if recordingConfigChanged {
 			if err := s.Media.SetRecordingConfig(nextDir, nextEnabled); err != nil {
-				slog.Error("set recording config", "err", err)
 				writeError(w, http.StatusBadRequest, err.Error(), "validation")
 				return
 			}
-			// Prefer cleaned path after mkdir.
-			if abs := s.Media.RecordingsDir(); abs != "" {
-				nextDir = abs
-			}
+			nextDir = s.Media.RecordingsDir()
 			nextEnabled = s.Media.RecordingEnabled()
 		}
+		if retentionChanged {
+			s.Media.SetRetentionDays(nextRetention)
+		}
+		if s.Camera != nil {
+			if err := s.Media.ReapplyCameraPaths(r.Context(), cameraList); err != nil {
+				restoreRuntime()
+				writeError(w, http.StatusServiceUnavailable, "could not synchronize camera recording paths", "mediamtx_sync_failed")
+				return
+			}
+		}
+	}
 
-		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
-			Key:   settingKeyRecordingsDir,
-			Value: nextDir,
-		}); err != nil {
-			slog.Error("upsert recordingsDir", "err", err)
-			writeError(w, http.StatusInternalServerError, "internal error", "internal")
-			return
+	// Commit all requested settings together. Runtime changes are rolled back
+	// best-effort if the database transaction fails.
+	err := store.InTransaction(r.Context(), s.Queries, func(q *store.Queries) error {
+		if retentionChanged {
+			if err := q.UpsertSetting(r.Context(), store.UpsertSettingParams{
+				Key:   settingKeyRetentionDays,
+				Value: strconv.Itoa(nextRetention),
+			}); err != nil {
+				return fmt.Errorf("upsert retentionDays: %w", err)
+			}
 		}
-		enabledVal := "false"
-		if nextEnabled {
-			enabledVal = "true"
+		if body.SiteName != nil {
+			if err := q.UpsertSetting(r.Context(), store.UpsertSettingParams{
+				Key:   settingKeySiteName,
+				Value: nextSiteName,
+			}); err != nil {
+				return fmt.Errorf("upsert siteName: %w", err)
+			}
 		}
-		if err := s.Queries.UpsertSetting(r.Context(), store.UpsertSettingParams{
-			Key:   settingKeyRecordingEnabled,
-			Value: enabledVal,
-		}); err != nil {
-			slog.Error("upsert recordingEnabled", "err", err)
-			writeError(w, http.StatusInternalServerError, "internal error", "internal")
-			return
+		if recordingConfigChanged {
+			if err := q.UpsertSetting(r.Context(), store.UpsertSettingParams{
+				Key:   settingKeyRecordingsDir,
+				Value: nextDir,
+			}); err != nil {
+				return fmt.Errorf("upsert recordingsDir: %w", err)
+			}
+			enabledVal := "false"
+			if nextEnabled {
+				enabledVal = "true"
+			}
+			if err := q.UpsertSetting(r.Context(), store.UpsertSettingParams{
+				Key:   settingKeyRecordingEnabled,
+				Value: enabledVal,
+			}); err != nil {
+				return fmt.Errorf("upsert recordingEnabled: %w", err)
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		if restoreRuntime != nil {
+			restoreRuntime()
+		}
+		slog.Error("commit settings", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
 
+	if retentionChanged && s.Recording != nil {
+		s.Recording.SetRetentionDays(nextRetention)
+	}
+	if recordingConfigChanged {
 		s.RecordingsDir = nextDir
 		if s.Recording != nil {
 			s.Recording.SetRecordingsDir(nextDir)
-		}
-
-		refreshMediaPaths = true
-	}
-
-	// Push retention and recording settings to every runtime MediaMTX path.
-	// MediaMTX keeps path configuration in memory, so a database-only update
-	// would leave its local deletion timer stale until the next restart.
-	if refreshMediaPaths && s.Media != nil && s.Camera != nil {
-		list, err := s.Camera.List(r.Context())
-		if err != nil {
-			slog.Warn("list cameras after recording settings change", "err", err)
-		} else {
-			s.Media.ReapplyCameraPaths(r.Context(), list)
 		}
 	}
 

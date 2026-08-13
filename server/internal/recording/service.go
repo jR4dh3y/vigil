@@ -12,11 +12,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nvr/nvr/server/internal/config"
 	"github.com/nvr/nvr/server/internal/store"
 )
 
 // DefaultRetentionDays is used when config does not specify a retention window.
-const DefaultRetentionDays = 7
+const DefaultRetentionDays = config.DefaultRetentionDays
 
 var (
 	ErrNotFound         = errors.New("recording not found")
@@ -377,6 +378,15 @@ func (s *Service) MarkArchived(ctx context.Context, id, location string) error {
 //
 // Missing files are treated as success to make retries idempotent.
 func (s *Service) DeleteLocal(ctx context.Context, id, path string) error {
+	return s.DeleteLocalAt(ctx, id, path, "")
+}
+
+// DeleteLocalAt removes a recording using an optional absolute path that was
+// resolved before an archive upload. Archive batches pass that path so a
+// concurrent recordings-directory setting change cannot redirect cleanup to a
+// different root. An empty absolutePath uses the service's current root and is
+// appropriate for reconciliation retries.
+func (s *Service) DeleteLocalAt(ctx context.Context, id, path, absolutePath string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -397,16 +407,35 @@ func (s *Service) DeleteLocal(ctx context.Context, id, path string) error {
 		return fmt.Errorf("recording %q is not archived to Google Drive", id)
 	}
 
-	rel := filepath.ToSlash(filepath.Clean(s.relativizePath(path)))
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return fmt.Errorf("path is required")
+	}
+	if filepath.IsAbs(path) {
+		return fmt.Errorf("recording path must be relative")
+	}
+	rel := filepath.ToSlash(filepath.Clean(path))
 	expected := filepath.ToSlash(filepath.Clean(row.Path))
 	if rel == "." || rel != expected {
 		return fmt.Errorf("recording %q path mismatch: got %q, want %q", id, rel, expected)
 	}
-	abs, err := s.AbsolutePath(rel)
-	if err != nil {
-		return fmt.Errorf("resolve local cleanup path: %w", err)
+	abs := strings.TrimSpace(absolutePath)
+	if abs == "" {
+		var err error
+		abs, err = s.AbsolutePath(rel)
+		if err != nil {
+			return fmt.Errorf("resolve local cleanup path: %w", err)
+		}
+	} else {
+		if !filepath.IsAbs(abs) {
+			return fmt.Errorf("local cleanup path must be absolute")
+		}
+		abs = filepath.Clean(abs)
 	}
-	info, err := os.Stat(abs)
+	// Lstat deliberately refuses symlinks. Absolute paths supplied by the
+	// archive adapter were already checked by AbsolutePath before upload, while
+	// retry cleanup resolves the path through AbsolutePath above.
+	info, err := os.Lstat(abs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil

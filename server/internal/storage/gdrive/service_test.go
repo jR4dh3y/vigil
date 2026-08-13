@@ -314,6 +314,7 @@ type fakeArchiveIndex struct {
 	paths     map[string]string
 	marked    map[string]string
 	deleted   map[string]string
+	deletedAt map[string]string
 	markError error
 	deleteErr error
 }
@@ -338,14 +339,18 @@ func (f *fakeArchiveIndex) MarkArchived(_ context.Context, id, location string) 
 	return nil
 }
 
-func (f *fakeArchiveIndex) DeleteLocal(_ context.Context, id, path string) error {
+func (f *fakeArchiveIndex) DeleteLocal(_ context.Context, id, path, absolutePath string) error {
 	if f.deleteErr != nil {
 		return f.deleteErr
 	}
 	if f.deleted == nil {
 		f.deleted = make(map[string]string)
 	}
+	if f.deletedAt == nil {
+		f.deletedAt = make(map[string]string)
+	}
 	f.deleted[id] = path
+	f.deletedAt[id] = absolutePath
 	return nil
 }
 
@@ -381,6 +386,9 @@ func TestArchivePendingUploadsAndMarks(t *testing.T) {
 	}
 	if index.deleted["recording-1"] != "cam/segment.mp4" {
 		t.Fatalf("local file was not deleted after archive: %+v", index.deleted)
+	}
+	if index.deletedAt["recording-1"] != recordingPath {
+		t.Fatalf("cleanup used a different path than the uploaded file: %+v", index.deletedAt)
 	}
 }
 

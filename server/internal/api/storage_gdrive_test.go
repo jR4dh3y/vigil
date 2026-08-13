@@ -239,7 +239,7 @@ func (*blockingArchiveIndex) MarkArchived(context.Context, string, string) error
 	return nil
 }
 
-func (*blockingArchiveIndex) DeleteLocal(context.Context, string, string) error {
+func (*blockingArchiveIndex) DeleteLocal(context.Context, string, string, string) error {
 	return nil
 }
 

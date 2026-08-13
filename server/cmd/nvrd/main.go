@@ -147,7 +147,9 @@ func main() {
 	if err != nil {
 		slog.Warn("list cameras for mediamtx startup sync", "err", err)
 	} else {
-		mediaSvc.ReapplyCameraPaths(ctx, cameras)
+		if err := mediaSvc.ReapplyCameraPaths(ctx, cameras); err != nil {
+			slog.Warn("mediamtx startup sync failed", "err", err)
+		}
 	}
 
 	recordingSvc := recording.NewService(queries, recording.Config{
@@ -167,7 +169,9 @@ func main() {
 			"skipped", stats.Skipped,
 			"failed", stats.Failed,
 		)
-		cleanup, err := recordingSvc.CleanupArchivedLocals(ctx, 5*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+		cleanup, err := recordingSvc.CleanupArchivedLocals(cleanupCtx, 5*time.Second)
 		if err != nil {
 			slog.Warn("archived local startup cleanup failed", "err", err)
 			return

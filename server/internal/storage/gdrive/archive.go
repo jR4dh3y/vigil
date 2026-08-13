@@ -24,7 +24,7 @@ type ArchiveIndex interface {
 	ListUnarchived(ctx context.Context, limit int) ([]ArchiveSegment, error)
 	AbsolutePath(rel string) (string, error)
 	MarkArchived(ctx context.Context, id, location string) error
-	DeleteLocal(ctx context.Context, id, rel string) error
+	DeleteLocal(ctx context.Context, id, rel, absolutePath string) error
 }
 
 // ArchiveStats summarizes a batch archive run.
@@ -155,7 +155,7 @@ func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit 
 			continue
 		}
 		stats.Uploaded++
-		if err := index.DeleteLocal(ctx, seg.ID, seg.Path); err != nil {
+		if err := index.DeleteLocal(ctx, seg.ID, seg.Path, abs); err != nil {
 			slog.Warn("gdrive archive: local cleanup failed", "id", seg.ID, "path", abs, "err", err)
 			stats.DeleteFailed++
 		} else {

@@ -324,7 +324,8 @@ func TestDeleteLocalRequiresDriveArchiveAndIsIdempotent(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()
 	const camID = "550e8400-e29b-41d4-a716-446655440000"
-	path := filepath.Join(svc.RecordingsDir(), "cam", "segment.mp4")
+	oldRoot := svc.RecordingsDir()
+	path := filepath.Join(oldRoot, "cam", "segment.mp4")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -341,14 +342,29 @@ func TestDeleteLocalRequiresDriveArchiveAndIsIdempotent(t *testing.T) {
 	if err := svc.MarkArchived(ctx, seg.ID, "gdrive:file123"); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.DeleteLocal(ctx, seg.ID, seg.Path); err != nil {
-		t.Fatalf("DeleteLocal: %v", err)
+	newRoot := filepath.Join(t.TempDir(), "new-recordings")
+	newPath := filepath.Join(newRoot, seg.Path)
+	if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(newPath, []byte("new root recording"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetRecordingsDir(newRoot)
+	if err := svc.DeleteLocalAt(ctx, seg.ID, seg.Path, path); err != nil {
+		t.Fatalf("DeleteLocalAt: %v", err)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("local file still exists, stat error=%v", err)
 	}
-	if err := svc.DeleteLocal(ctx, seg.ID, seg.Path); err != nil {
-		t.Fatalf("idempotent DeleteLocal: %v", err)
+	if _, err := os.Stat(newPath); err != nil {
+		t.Fatalf("recording in new root was removed: %v", err)
+	}
+	if err := svc.DeleteLocalAt(ctx, seg.ID, seg.Path, path); err != nil {
+		t.Fatalf("idempotent DeleteLocalAt: %v", err)
+	}
+	if _, err := os.Stat(newPath); err != nil {
+		t.Fatalf("recording in new root was removed on retry: %v", err)
 	}
 }
 

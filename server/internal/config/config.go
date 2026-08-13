@@ -14,6 +14,10 @@ var (
 	Commit  = "dev"
 )
 
+// DefaultRetentionDays is the local fallback retention period used when no
+// persisted or environment override is configured.
+const DefaultRetentionDays = 7
+
 type Config struct {
 	HTTPAddr      string
 	DataDir       string
@@ -61,7 +65,7 @@ func Load() (*Config, error) {
 		MediaMTXWEBRTCURL:   env("NVR_MEDIAMTX_WEBRTC_URL", "http://127.0.0.1:8889"),
 		MediaMTXHLSURL:      env("NVR_MEDIAMTX_HLS_URL", "http://127.0.0.1:8888"),
 		MediaMTXPlaybackURL: env("NVR_MEDIAMTX_PLAYBACK_URL", ""),
-		RetentionDays:       envInt("NVR_RETENTION_DAYS", 7),
+		RetentionDays:       envInt("NVR_RETENTION_DAYS", DefaultRetentionDays),
 		GoogleClientID:      env("NVR_GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:  env("NVR_GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:   env("NVR_GOOGLE_REDIRECT_URL", ""),

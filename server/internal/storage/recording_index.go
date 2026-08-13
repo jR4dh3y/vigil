@@ -81,6 +81,6 @@ func (a RecordingArchiveIndex) MarkArchived(ctx context.Context, id, location st
 	return a.Recording.MarkArchived(ctx, id, location)
 }
 
-func (a RecordingArchiveIndex) DeleteLocal(ctx context.Context, id, path string) error {
-	return a.Recording.DeleteLocal(ctx, id, path)
+func (a RecordingArchiveIndex) DeleteLocal(ctx context.Context, id, path, absolutePath string) error {
+	return a.Recording.DeleteLocalAt(ctx, id, path, absolutePath)
 }
