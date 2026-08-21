@@ -137,9 +137,9 @@ The camera detail page shows a snapshot from `GET /cameras/{id}/snapshot`. It ha
 
 ## The system alerts feed
 
-The events route lists the events. It requests `limit: 100`. It refetches every 15 seconds. There is a filter for unacknowledged events.
+The system alerts route lists alerts. It requests `limit: 100`. It refetches every 15 seconds. There is a filter for unacknowledged alerts.
 
-Each event row shows the severity, type, title, message, time, and camera link. You can acknowledge an unacknowledged event.
+Each alert row shows the severity, type, title, message, time, and camera link. You can acknowledge an unacknowledged alert.
 
 ## Settings
 
@@ -172,7 +172,7 @@ The dashboard does not use a WebSocket. It uses:
 - HTTP for the API.
 - MP4 over HTTP for recorded playback.
 - WebRTC over HTTP signaling for live view.
-- Polling every 15 seconds for events.
+- Polling every 15 seconds for system alerts.
 
 ## Hosted-dashboard transport requirements
 
