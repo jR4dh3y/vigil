@@ -4,7 +4,7 @@ This document describes the web dashboard. The dashboard is in `apps/dashboard/`
 
 ## Overview
 
-The dashboard is the main admin surface for Vigil. It provides live view, timeline playback, camera setup, events, settings, and user administration.
+The dashboard is the main admin surface for Vigil. It provides live view, timeline playback, camera setup, system alerts, settings, and user administration.
 
 The dashboard is a static client. It renders the API state. It has no business logic. The Go backend embeds the built dashboard files.
 
@@ -48,7 +48,7 @@ The dashboard uses SvelteKit file-based routing. The routes are in `apps/dashboa
 | `/cameras/new` | Create a camera. |
 | `/cameras/[id]` | Camera detail and edit. |
 | `/cameras/[id]/timeline` | Timeline playback. |
-| `/events` | The events feed. |
+| `/events` | The system alerts feed. It remains available by direct URL but is not in the primary navigation. |
 | `/settings` | System settings and storage. |
 | `/settings/users` | User administration. |
 | `/login` | Login. |
@@ -64,7 +64,7 @@ The `AuthGate` component guards the routes. It queries `GET /auth/status`. It re
 - If the user is not authenticated, it redirects to `/login`.
 - If the user is authenticated, it shows the app shell.
 
-The shell has a sidebar with four sections: Live, Cameras, Events, and Settings. The Settings section has a Users tab for admins.
+The shell has a sidebar with three primary sections: Live, Cameras, and Settings. The system alerts feed remains available at `/events` for direct access. The Settings section has a Users tab for admins.
 
 ## Embedded vs hosted connection
 
@@ -135,11 +135,11 @@ The form validates with Zod. The probe control calls `POST /cameras/probe`. The 
 
 The camera detail page shows a snapshot from `GET /cameras/{id}/snapshot`. It has edit and delete actions.
 
-## The events feed
+## The system alerts feed
 
-The events route lists the events. It requests `limit: 100`. It refetches every 15 seconds. There is a filter for unacknowledged events.
+The system alerts route lists alerts. It requests `limit: 100`. It refetches every 15 seconds. There is a filter for unacknowledged alerts.
 
-Each event row shows the severity, type, title, message, time, and camera link. You can acknowledge an unacknowledged event.
+Each alert row shows the severity, type, title, message, time, and camera link. You can acknowledge an unacknowledged alert.
 
 ## Settings
 
@@ -172,7 +172,7 @@ The dashboard does not use a WebSocket. It uses:
 - HTTP for the API.
 - MP4 over HTTP for recorded playback.
 - WebRTC over HTTP signaling for live view.
-- Polling every 15 seconds for events.
+- Polling every 15 seconds for system alerts.
 
 ## Hosted-dashboard transport requirements
 

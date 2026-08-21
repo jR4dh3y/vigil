@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-	<title>Events · NVR</title>
+	<title>System alerts · NVR</title>
 </svelte:head>
 
 <PageActions>
@@ -97,17 +97,17 @@
 
 	{#if eventsQuery.isPending}
 		<div class="flex min-h-[280px] items-center justify-center">
-			<Spinner label="Loading events" />
+			<Spinner label="Loading system alerts" />
 		</div>
 	{:else if eventsQuery.isError}
 		<div
 			class="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-6 py-12 text-center"
 		>
-			<p class="text-sm font-medium text-red-200">Could not load events</p>
+			<p class="text-sm font-medium text-red-200">Could not load system alerts</p>
 			<p class="max-w-sm text-sm text-red-300/80">
 				{eventsQuery.error instanceof Error
 					? eventsQuery.error.message
-					: "Unknown error while loading events."}
+					: "Unknown error while loading system alerts."}
 			</p>
 			<button
 				type="button"

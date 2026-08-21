@@ -42,7 +42,7 @@ const sections: MainSection[] = [
 	{
 		id: "events",
 		match: (pathname) => pathname === "/events" || pathname.startsWith("/events/"),
-		title: "Events",
+		title: "System alerts",
 		subRoutes: [],
 	},
 	{

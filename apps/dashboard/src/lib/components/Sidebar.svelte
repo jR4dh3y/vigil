@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Camera, LogOut, Settings, Video, Zap } from "lucide-svelte";
+	import { Camera, LogOut, Settings, Video } from "lucide-svelte";
 	import type { UserPublic } from "$lib/auth";
 
 	type NavItem = {
@@ -20,7 +20,6 @@
 	const items: NavItem[] = [
 		{ href: "/", label: "Live", icon: Video },
 		{ href: "/cameras", label: "Cameras", icon: Camera },
-		{ href: "/events", label: "Events", icon: Zap },
 		{ href: "/settings", label: "Settings", icon: Settings },
 	];
 
