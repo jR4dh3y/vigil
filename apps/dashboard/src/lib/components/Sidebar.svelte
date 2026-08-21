@@ -37,14 +37,15 @@
 >
 	<a
 		href="/"
+		aria-label="Vigil home"
 		class="flex h-14 items-center gap-2.5 border-b border-zinc-800/80 px-3 text-zinc-100 no-underline sm:px-4"
 	>
 		<span
-			class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400"
+			class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#f3eee3] p-0.5"
 		>
-			<Camera class="size-4" />
+			<img src="/owl.png" alt="" width="1254" height="1254" class="size-full object-contain" />
 		</span>
-		<span class="hidden text-sm font-semibold tracking-wide sm:inline">NVR</span>
+		<span class="hidden text-sm font-semibold tracking-wide sm:inline">Vigil</span>
 	</a>
 
 	<nav class="flex flex-1 flex-col gap-0.5 p-2" aria-label="Main">

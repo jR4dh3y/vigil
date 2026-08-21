@@ -19,6 +19,7 @@ export default function EventDetailScreen() {
 				eventError={detail.eventError}
 				eventPending={detail.eventPending}
 				onAcknowledge={detail.acknowledge}
+				onPlaybackEnded={detail.continuePlayback}
 				onRetryEvent={() => detail.retryEvent()}
 				onRetryPlayback={() => detail.retryPlayback()}
 				playbackError={detail.playbackError}

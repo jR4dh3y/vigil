@@ -170,6 +170,29 @@ func TestFindAtAndLocalPath(t *testing.T) {
 	}
 }
 
+func TestNextAfterReturnsFollowingSegment(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	start := time.Date(2026, 8, 12, 14, 0, 0, 0, time.UTC)
+	first, err := svc.IndexSegment(ctx, camID, "cam/first.mp4", start, 60, 3, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.IndexSegment(ctx, camID, "cam/second.mp4", start.Add(time.Minute), 60, 3, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	next, err := svc.NextAfter(ctx, camID, first.StartedAt)
+	if err != nil || next.ID != second.ID {
+		t.Fatalf("NextAfter = %+v, %v", next, err)
+	}
+	if _, err := svc.NextAfter(ctx, camID, second.StartedAt); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("last segment error = %v, want ErrNotFound", err)
+	}
+}
+
 func TestReconcileDiskBackfillsAndSkipsActiveFiles(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

@@ -827,6 +827,11 @@ export interface components {
             source: "local" | "gdrive";
             /** @description Position inside the selected recording segment where playback should begin */
             startOffsetSec: number;
+            /**
+             * Format: date-time
+             * @description Start time of the next indexed segment; omitted when this is the last known segment
+             */
+            nextRecordingStart?: string | null;
         };
         Event: {
             id: string;
@@ -926,10 +931,15 @@ export interface components {
             limit: number;
         };
         GDriveArchiveResponse: {
+            /** @description Recordings uploaded successfully to Google Drive. */
             uploaded: number;
+            /** @description Uploaded recordings whose local copy was removed. */
             deleted: number;
+            /** @description Uploaded recordings whose local cleanup needs a retry. */
             deleteFailed: number;
+            /** @description Recordings that could not be uploaded or indexed. */
             failed: number;
+            /** @description Recordings skipped because their local file was already missing. */
             skipped: number;
         };
         CreateUserRequest: {

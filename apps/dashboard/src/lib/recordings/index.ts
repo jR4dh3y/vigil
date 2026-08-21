@@ -15,6 +15,13 @@ export {
 	timeAtFraction,
 	toIso,
 } from "./range";
+export {
+	buildTimelineTicks,
+	coverageBarRects,
+	mergeCoverageBars,
+	timelineTickInterval,
+	timelineTrackWidth,
+} from "./timeline";
 export type {
 	CoverageBar,
 	PlaybackRequest,

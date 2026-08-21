@@ -11,6 +11,7 @@
 		videoClass?: string;
 		onError?: (error: Error) => void;
 		onPlaying?: () => void;
+		onEnded?: (session: PlaybackSession) => void;
 	};
 
 	let {
@@ -21,15 +22,14 @@
 		videoClass = "object-contain",
 		onError,
 		onPlaying,
+		onEnded,
 	}: Props = $props();
 
 	let playing = $state(false);
 
-	$effect(() => {
-		void session?.token;
-		void session?.playbackUrl;
+	function handleLoadStart() {
 		playing = false;
-	});
+	}
 
 	function handlePlaying() {
 		playing = true;
@@ -42,16 +42,29 @@
 	}
 
 	function handleVideoError(event: Event) {
-		const video = event.currentTarget as HTMLVideoElement;
+		if (!(event.currentTarget instanceof HTMLVideoElement)) {
+			return;
+		}
+		const video = event.currentTarget;
 		const detail = video.error?.message?.trim();
 		handleError(new Error(detail || "Recorded MP4 playback failed"));
 	}
 
 	function handleLoadedMetadata(event: Event) {
-		const video = event.currentTarget as HTMLVideoElement;
+		if (!(event.currentTarget instanceof HTMLVideoElement)) {
+			return;
+		}
+		const video = event.currentTarget;
 		const offset = session?.source === "gdrive" ? session.startOffsetSec : 0;
 		if (offset > 0 && Number.isFinite(offset)) {
 			video.currentTime = Math.min(offset, Math.max(0, video.duration || offset));
+		}
+	}
+
+	function handleEnded() {
+		playing = false;
+		if (session) {
+			onEnded?.(session);
 		}
 	}
 </script>
@@ -82,7 +95,9 @@
 				muted
 				preload="auto"
 				onplaying={handlePlaying}
+				onloadstart={handleLoadStart}
 				onloadedmetadata={handleLoadedMetadata}
+				onended={handleEnded}
 				onerror={handleVideoError}
 			></video>
 		{/key}

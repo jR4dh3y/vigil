@@ -130,6 +130,22 @@ func (s *Service) FindAt(ctx context.Context, cameraID string, at time.Time) (Se
 	return segment, nil
 }
 
+// NextAfter returns the first indexed segment after the supplied recording
+// start time. It is used to continue playback across archived MP4 boundaries.
+func (s *Service) NextAfter(ctx context.Context, cameraID string, after time.Time) (Segment, error) {
+	row, err := s.q.GetNextRecording(ctx, store.GetNextRecordingParams{
+		CameraID: strings.TrimSpace(cameraID),
+		AfterTs:  formatTime(after.UTC()),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Segment{}, ErrNotFound
+		}
+		return Segment{}, fmt.Errorf("find next recording: %w", err)
+	}
+	return toSegment(row)
+}
+
 // LocalPath returns the safe absolute path and whether the recording exists as
 // a regular local file.
 func (s *Service) LocalPath(segment Segment) (string, bool, error) {

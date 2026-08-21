@@ -127,7 +127,7 @@ keeping successful Drive archive metadata searchable.
 
 ### Timeline playback
 
-The dashboard asks the API for recordings in a time range. The API returns coverage bars from SQLite. For a local segment, the API issues a MediaMTX playback URL. If the local MP4 is gone and the row has a Drive archive location, it instead issues a recording-scoped URL that proxies Google Drive with HTTP byte-range support. Both sources play in the same native video preview.
+The dashboard asks the API for recordings in a time range. The API returns coverage bars from SQLite. For a local segment, the API issues a MediaMTX playback URL. If the local MP4 is gone and the row has a Drive archive location, it instead issues a recording-scoped URL that proxies Google Drive with HTTP byte-range support. A Drive session also returns the next indexed segment start. Dashboard and mobile players request that start when the current one-minute MP4 ends.
 
 ### Archive
 

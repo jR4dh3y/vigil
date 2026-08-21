@@ -262,7 +262,7 @@
 </script>
 
 <svelte:head>
-	<title>Add camera · NVR</title>
+	<title>Add camera · Vigil</title>
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-2xl flex-col gap-6">

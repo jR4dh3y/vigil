@@ -39,7 +39,7 @@
 </script>
 
 <svelte:head>
-	<title>Initial setup · NVR</title>
+	<title>Initial setup · Vigil</title>
 </svelte:head>
 
 <AuthCard

@@ -19,6 +19,7 @@ type EventDetailProps = {
 	acknowledging: boolean;
 	onRetryEvent: () => void;
 	onRetryPlayback: () => void;
+	onPlaybackEnded: () => void;
 	onAcknowledge: () => void;
 };
 
@@ -34,6 +35,7 @@ export function EventDetail({
 	acknowledging,
 	onRetryEvent,
 	onRetryPlayback,
+	onPlaybackEnded,
 	onAcknowledge,
 }: EventDetailProps) {
 	if (eventPending) {
@@ -102,7 +104,12 @@ export function EventDetail({
 					</View>
 					<View style={styles.player}>
 						{playbackUrl ? (
-							<LivePlayer nativeControls uri={playbackUrl} />
+							<LivePlayer
+								loop={false}
+								nativeControls
+								onPlaybackEnded={onPlaybackEnded}
+								uri={playbackUrl}
+							/>
 						) : playbackError ? (
 							<StatePanel
 								actionLabel="Retry"
@@ -118,6 +125,11 @@ export function EventDetail({
 							/>
 						)}
 					</View>
+					{playbackUrl && playbackError ? (
+						<Text selectable style={styles.error}>
+							Playback could not continue. {playbackError.message}
+						</Text>
+					) : null}
 					<Link href={{ pathname: "/camera/[id]", params: { id: event.cameraId } }} asChild>
 						<Pressable
 							accessibilityRole="button"

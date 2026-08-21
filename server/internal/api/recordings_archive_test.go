@@ -83,6 +83,16 @@ func setupArchivePlaybackServer(t *testing.T) (*Server, recording.Segment) {
 	if err := recordingSvc.MarkArchived(context.Background(), segment.ID, "gdrive:drive-file-1"); err != nil {
 		t.Fatal(err)
 	}
+	next, err := recordingSvc.IndexSegment(
+		context.Background(), archiveTestCameraID, "cam/segment-2.mp4",
+		time.Date(2026, 8, 12, 14, 1, 0, 0, time.UTC), 60, 100, "h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := recordingSvc.MarkArchived(context.Background(), next.ID, "gdrive:drive-file-2"); err != nil {
+		t.Fatal(err)
+	}
 	mediaSvc := media.NewService(media.Config{PlaybackURL: "https://playback.example.test"}, archiveCameraReader{})
 	return &Server{Recording: recordingSvc, Media: mediaSvc}, segment
 }
@@ -104,6 +114,9 @@ func TestPlaybackFallsBackToDriveWhenLocalFileIsGone(t *testing.T) {
 	}
 	if session.Source != Gdrive || session.RecordingId != segment.ID || session.StartOffsetSec != 10 {
 		t.Fatalf("unexpected playback session: %+v", session)
+	}
+	if session.NextRecordingStart == nil || !session.NextRecordingStart.Equal(time.Date(2026, 8, 12, 14, 1, 0, 0, time.UTC)) {
+		t.Fatalf("missing next recording start: %+v", session.NextRecordingStart)
 	}
 	if session.PlaybackUrl == "" || session.Token == "" {
 		t.Fatalf("missing Drive playback credentials: %+v", session)

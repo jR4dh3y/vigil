@@ -119,7 +119,7 @@ The snapshot function is in `snapshot.go`. It runs FFmpeg to capture one JPEG fr
 
 The recording package owns the segment index. It indexes completed segments, answers timeline queries, and enforces retention.
 
-The service is in `service.go`. It lists recordings, resolves the segment covering a playback time, indexes segments, removes a local file only after its row has a durable `gdrive:` location, and prunes old non-Drive rows. Successful Drive rows are retained for archived timeline playback. A startup/periodic cleanup pass retries archived files left behind by an interrupted or failed delete. The local fallback retention period defaults to 7 days.
+The service is in `service.go`. It lists recordings, resolves the segment covering a playback time, finds the next indexed segment for Drive continuation, indexes segments, removes a local file only after its row has a durable `gdrive:` location, and prunes old non-Drive rows. Successful Drive rows are retained for archived timeline playback. A startup/periodic cleanup pass retries archived files left behind by an interrupted or failed delete. The local fallback retention period defaults to 7 days.
 
 The segment-complete handler is in `hook.go`. It accepts the MediaMTX callback and indexes the segment. It tolerates JSON or form data with varied field names.
 

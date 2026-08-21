@@ -16,7 +16,7 @@
 </script>
 
 <svelte:head>
-	<title>Cameras · NVR</title>
+	<title>Cameras · Vigil</title>
 </svelte:head>
 
 <PageActions>

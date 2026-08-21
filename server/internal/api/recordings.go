@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
@@ -96,14 +97,23 @@ func (s *Server) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id o
 	}
 
 	var (
-		session media.PlaybackStream
-		source  PlaybackSessionSource
-		offset  float32
+		session            media.PlaybackStream
+		source             PlaybackSessionSource
+		offset             float32
+		nextRecordingStart *time.Time
 	)
 	if localAvailable {
 		session, err = s.Media.IssuePlayback(r.Context(), id.String(), body.Start, durationSec)
 		source = Local
 	} else if driveFileID(segment.ArchiveLocation) != "" && s.DrivePlayback != nil {
+		next, nextErr := s.Recording.NextAfter(r.Context(), id.String(), segment.StartedAt)
+		if nextErr == nil {
+			nextRecordingStart = &next.StartedAt
+		} else if !errors.Is(nextErr, recording.ErrNotFound) {
+			slog.Error("find next recording for playback", "err", nextErr, "recording_id", segment.ID)
+			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+			return
+		}
 		session, err = s.Media.IssueArchivedPlayback(r.Context(), id.String(), segment.ID)
 		source = Gdrive
 		offset = float32(max(0, body.Start.Sub(segment.StartedAt).Seconds()))
@@ -122,13 +132,14 @@ func (s *Server) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id o
 	}
 
 	writeJSON(w, http.StatusOK, PlaybackSession{
-		CameraId:       session.CameraID,
-		RecordingId:    segment.ID,
-		PlaybackUrl:    session.PlaybackURL,
-		Token:          session.Token,
-		ExpiresAt:      session.ExpiresAt,
-		Source:         source,
-		StartOffsetSec: offset,
+		CameraId:           session.CameraID,
+		RecordingId:        segment.ID,
+		PlaybackUrl:        session.PlaybackURL,
+		Token:              session.Token,
+		ExpiresAt:          session.ExpiresAt,
+		Source:             source,
+		StartOffsetSec:     offset,
+		NextRecordingStart: nextRecordingStart,
 	})
 }
 

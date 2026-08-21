@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Camera } from "lucide-svelte";
 	import type { Snippet } from "svelte";
 
 	type Props = {
@@ -15,12 +14,12 @@
 	<div class="w-full max-w-md">
 		<div class="mb-8 flex flex-col items-center gap-3 text-center">
 			<span
-				class="flex size-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400"
+				class="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-[#f3eee3] p-0.5"
 			>
-				<Camera class="size-6" />
+				<img src="/owl.png" alt="Vigil owl mark" width="1254" height="1254" class="size-full object-contain" />
 			</span>
 			<div>
-				<p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">NVR</p>
+				<p class="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Vigil</p>
 				<h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-50">{title}</h1>
 				{#if description}
 					<p class="mt-2 text-sm text-zinc-400">{description}</p>

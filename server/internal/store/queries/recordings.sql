@@ -28,6 +28,15 @@ WHERE camera_id = sqlc.arg(camera_id)
 ORDER BY started_at DESC
 LIMIT 1;
 
+-- name: GetNextRecording :one
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE camera_id = sqlc.arg(camera_id)
+  AND started_at > sqlc.arg(after_ts)
+ORDER BY started_at ASC
+LIMIT 1;
+
 -- name: InsertRecording :one
 INSERT INTO recordings (
   id, camera_id, started_at, duration_sec, size_bytes, path, codec, thumbnail_path

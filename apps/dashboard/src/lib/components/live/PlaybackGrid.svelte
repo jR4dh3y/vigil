@@ -13,6 +13,7 @@
 		loading?: boolean;
 		/** Per-camera errors keyed by camera id. */
 		errors?: ReadonlyMap<string, string>;
+		onEnded?: (session: PlaybackSession) => void;
 	};
 
 	let {
@@ -20,6 +21,7 @@
 		sessions,
 		loading = false,
 		errors,
+		onEnded,
 	}: Props = $props();
 
 	type Slot = {
@@ -64,6 +66,7 @@
 					<PlaybackPlayer
 						session={session}
 						error={error}
+						onEnded={onEnded}
 						loading={loading && !session}
 						class="h-full !aspect-auto rounded-none border-0"
 						videoClass="object-cover"

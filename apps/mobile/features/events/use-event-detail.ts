@@ -23,6 +23,20 @@ export function useEventDetail(id: string, active: boolean) {
 		enabled: active && Boolean(cameraId && event?.startedAt),
 		staleTime: 45_000,
 	});
+	const playbackKey = cameraKeys.playback(cameraId ?? "", event?.startedAt ?? "");
+	const continuePlaybackMutation = useMutation({
+		mutationFn: ({
+			cameraId,
+			nextStart,
+		}: {
+			cameraId: string;
+			nextStart: string;
+			playbackKey: ReturnType<typeof cameraKeys.playback>;
+		}) => getPlayback(cameraId, nextStart),
+		onSuccess: (nextSession, variables) => {
+			queryClient.setQueryData(variables.playbackKey, nextSession);
+		},
+	});
 	const acknowledgeMutation = useMutation({
 		mutationFn: () => acknowledgeEvent(id),
 		onSuccess: async (updated) => {
@@ -33,6 +47,25 @@ export function useEventDetail(id: string, active: boolean) {
 	const playbackUrl = playbackQuery.data
 		? resolveMediaUrl(playbackQuery.data.playbackUrl, playbackQuery.data.token)
 		: undefined;
+	const continuePlayback = () => {
+		const session = playbackQuery.data;
+		if (
+			session?.source !== "gdrive" ||
+			!session.nextRecordingStart ||
+			continuePlaybackMutation.isPending
+		) {
+			return;
+		}
+		continuePlaybackMutation.mutate({
+			cameraId: session.cameraId,
+			nextStart: session.nextRecordingStart,
+			playbackKey,
+		});
+	};
+	const retryPlayback = () => {
+		continuePlaybackMutation.reset();
+		return playbackQuery.refetch();
+	};
 
 	return {
 		event,
@@ -40,12 +73,13 @@ export function useEventDetail(id: string, active: boolean) {
 		playbackUrl,
 		eventPending: eventQuery.isPending,
 		eventError: eventQuery.error,
-		playbackPending: playbackQuery.isPending,
-		playbackError: playbackQuery.error,
+		playbackPending: playbackQuery.isPending || continuePlaybackMutation.isPending,
+		playbackError: continuePlaybackMutation.error ?? playbackQuery.error,
 		acknowledging: acknowledgeMutation.isPending,
 		acknowledgeError: acknowledgeMutation.error,
 		retryEvent: eventQuery.refetch,
-		retryPlayback: playbackQuery.refetch,
+		retryPlayback,
+		continuePlayback,
 		acknowledge: acknowledgeMutation.mutate,
 	};
 }

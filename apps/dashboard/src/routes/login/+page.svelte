@@ -39,7 +39,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign in · NVR</title>
+	<title>Sign in · Vigil</title>
 </svelte:head>
 
 <AuthCard title="Sign in" description="Access your NVR dashboard with your account credentials.">

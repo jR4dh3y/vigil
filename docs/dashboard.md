@@ -116,9 +116,9 @@ The timeline route shows the recording coverage for a camera. The presets are 1 
 
 The route queries `GET /cameras/{id}/recordings`. The response has the segments and the coverage bars.
 
-The `CoverageTimeline` component renders the coverage bars. You can click or drag to scrub. You can use the keyboard arrows and the Home and End keys.
+The timeline fits the selected range to the panel at 100%. Vertical scrolling zooms around the timestamp under the pointer. After zooming in, horizontal scrolling or a touch swipe pans through the range. Hovering, tapping, clicking, or dragging shows the exact local timestamp. Keyboard arrows move by one visible tick; Home and End jump to the range boundaries.
 
-A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` loads either a tokenized MediaMTX MP4 URL or a tokenized Vigil Drive-proxy URL in the same browser video element. Drive playback forwards byte ranges for seeking and displays a small source label. Relative proxy URLs are resolved against the active recorder so hosted-dashboard Bearer mode also works.
+A seek calls `POST /cameras/{id}/playback`. The `PlaybackPlayer` loads either a tokenized MediaMTX MP4 URL or a tokenized Vigil Drive-proxy URL in the same browser video element. Drive playback forwards byte ranges for seeking and displays a small source label. When a Drive MP4 ends, the player uses `nextRecordingStart` from the session to request the following indexed segment. Relative proxy URLs are resolved against the active recorder so hosted-dashboard Bearer mode also works.
 
 ## Camera setup
 

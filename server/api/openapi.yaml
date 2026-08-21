@@ -1531,6 +1531,11 @@ components:
         startOffsetSec:
           type: number
           description: Position inside the selected recording segment where playback should begin
+        nextRecordingStart:
+          type: string
+          format: date-time
+          nullable: true
+          description: Start time of the next indexed segment; omitted when this is the last known segment
     Event:
       type: object
       required:

@@ -253,7 +253,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings · NVR</title>
+	<title>Settings · Vigil</title>
 </svelte:head>
 
 <PageActions>
@@ -269,28 +269,6 @@
 </PageActions>
 
 <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
-	<div
-		class="flex flex-col gap-4 border-b border-zinc-800/80 pb-6 sm:flex-row sm:items-end sm:justify-between"
-	>
-		<div class="max-w-2xl">
-			<p class="mb-2 text-xs font-medium tracking-[0.16em] text-emerald-400 uppercase">
-				Recorder configuration
-			</p>
-			<h2 class="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
-				General settings
-			</h2>
-			<p class="mt-2 text-sm leading-6 text-zinc-400">
-				Manage this recorder, local storage, retention, and off-site archives from one place.
-			</p>
-		</div>
-		<div class="flex items-center gap-2 text-xs text-zinc-400">
-			<span class="flex size-7 items-center justify-center rounded-full bg-zinc-900 text-zinc-400">
-				<ShieldCheck class="size-3.5" />
-			</span>
-			<span>{isAdmin ? "Administrator access" : "View-only access"}</span>
-		</div>
-	</div>
-
 	{#if systemQuery.isPending}
 		<div
 			class="flex min-h-[190px] items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/30"

@@ -49,6 +49,40 @@ func (q *Queries) DeleteRecordingsOlderThan(ctx context.Context, beforeTs string
 	return result.RowsAffected()
 }
 
+const getNextRecording = `-- name: GetNextRecording :one
+SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
+       thumbnail_path, archived_at, archive_location, created_at
+FROM recordings
+WHERE camera_id = ?1
+  AND started_at > ?2
+ORDER BY started_at ASC
+LIMIT 1
+`
+
+type GetNextRecordingParams struct {
+	CameraID string `json:"camera_id"`
+	AfterTs  string `json:"after_ts"`
+}
+
+func (q *Queries) GetNextRecording(ctx context.Context, arg GetNextRecordingParams) (Recording, error) {
+	row := q.db.QueryRowContext(ctx, getNextRecording, arg.CameraID, arg.AfterTs)
+	var i Recording
+	err := row.Scan(
+		&i.ID,
+		&i.CameraID,
+		&i.StartedAt,
+		&i.DurationSec,
+		&i.SizeBytes,
+		&i.Path,
+		&i.Codec,
+		&i.ThumbnailPath,
+		&i.ArchivedAt,
+		&i.ArchiveLocation,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getRecording = `-- name: GetRecording :one
 SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
        thumbnail_path, archived_at, archive_location, created_at

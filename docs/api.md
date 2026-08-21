@@ -138,6 +138,7 @@ The playback endpoint returns a playback session. The session has:
 - `expiresAt`: the token expiry time.
 - `source`: `local` or `gdrive`.
 - `startOffsetSec`: the seek position inside a Drive segment (zero for local playback).
+- `nextRecordingStart`: the next indexed segment start. The field is omitted when there is no following segment. Drive clients use it to continue across one-minute files.
 
 The playback request has a `start` time and an optional `durationSec`. The default duration is 60 seconds.
 

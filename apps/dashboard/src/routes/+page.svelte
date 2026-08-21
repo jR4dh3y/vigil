@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from "$app/paths";
 	import { createMutation, createQuery } from "@tanstack/svelte-query";
-	import { SvelteMap } from "svelte/reactivity";
+	import { SvelteMap, SvelteSet } from "svelte/reactivity";
 	import { Film, LayoutGrid, Video, X } from "lucide-svelte";
 	import { cameraKeys, listCameras } from "$lib/cameras";
 	import PageActions from "$lib/components/PageActions.svelte";
@@ -33,6 +33,7 @@
 	let sessions = new SvelteMap<string, PlaybackSession>();
 	let playbackErrors = new SvelteMap<string, string>();
 	let latestRequestId = 0;
+	const advancingTokens = new SvelteSet<string>();
 
 	const enabledCameras = $derived(
 		(camerasQuery.data ?? [])
@@ -136,6 +137,7 @@
 		selectedTime = null;
 		sessions.clear();
 		playbackErrors.clear();
+		advancingTokens.clear();
 	}
 
 	function togglePlayback() {
@@ -164,10 +166,44 @@
 		latestRequestId = requestId;
 		void playbackMutation.mutateAsync({ start: toIso(time), requestId });
 	}
+
+	async function handlePlaybackEnded(endedSession: PlaybackSession) {
+		const nextStart = endedSession.nextRecordingStart;
+		if (
+			!playbackEnabled ||
+			endedSession.source !== "gdrive" ||
+			!nextStart ||
+			advancingTokens.has(endedSession.token) ||
+			sessions.get(endedSession.cameraId)?.token !== endedSession.token
+		) {
+			return;
+		}
+
+		advancingTokens.add(endedSession.token);
+		playbackErrors.delete(endedSession.cameraId);
+		try {
+			const nextSession = await requestPlayback(endedSession.cameraId, nextStart);
+			if (
+				playbackEnabled &&
+				sessions.get(endedSession.cameraId)?.token === endedSession.token
+			) {
+				sessions.set(endedSession.cameraId, nextSession);
+			}
+		} catch (error: unknown) {
+			if (sessions.get(endedSession.cameraId)?.token === endedSession.token) {
+				playbackErrors.set(
+					endedSession.cameraId,
+					error instanceof Error ? error.message : "Playback failed",
+				);
+			}
+		} finally {
+			advancingTokens.delete(endedSession.token);
+		}
+	}
 </script>
 
 <svelte:head>
-	<title>{playbackEnabled ? "Playback" : "Live"} · NVR</title>
+	<title>{playbackEnabled ? "Playback" : "Live"} · Vigil</title>
 </svelte:head>
 
 <div class="h-full w-full">
@@ -255,6 +291,7 @@
 						{sessions}
 						loading={playbackLoading}
 						errors={playbackErrors}
+						onEnded={handlePlaybackEnded}
 					/>
 				{:else}
 					<LiveGrid cameras={enabledCameras} />

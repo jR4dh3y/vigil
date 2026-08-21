@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { QueryClientProvider } from "@tanstack/svelte-query";
-	import favicon from "$lib/assets/favicon.svg";
 	import AuthGate from "$lib/components/AuthGate.svelte";
 	import ServerGate from "$lib/components/ServerGate.svelte";
 	import { createQueryClient } from "$lib/query";
@@ -12,8 +11,8 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
-	<title>NVR</title>
+	<link rel="icon" type="image/png" href="/owl.png" />
+	<title>Vigil</title>
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>

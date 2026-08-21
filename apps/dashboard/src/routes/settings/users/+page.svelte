@@ -97,7 +97,7 @@
 </script>
 
 <svelte:head>
-	<title>Users · Settings · NVR</title>
+	<title>Users · Settings · Vigil</title>
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-3xl flex-col gap-6">

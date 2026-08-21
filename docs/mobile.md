@@ -118,7 +118,7 @@ The HLS player uses `expo-video`. It replaces the video URI and starts playback.
 
 ## Event playback
 
-The event detail route loads the event, the camera, and the playback session. The playback session comes from `POST /cameras/{id}/playback`. The default duration is 60 seconds.
+The event detail route loads the event, the camera, and the playback session. The playback session comes from `POST /cameras/{id}/playback`. Drive recordings do not loop one segment. When Expo Video emits `playToEnd`, the app requests `nextRecordingStart` and replaces the player source with the following indexed segment.
 
 The app exposes the playback URL only while the route is focused.
 

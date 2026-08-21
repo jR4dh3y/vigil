@@ -124,7 +124,7 @@
 </script>
 
 <svelte:head>
-	<title>{camera?.name ?? "Camera"} · NVR</title>
+	<title>{camera?.name ?? "Camera"} · Vigil</title>
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-5xl flex-col gap-6">

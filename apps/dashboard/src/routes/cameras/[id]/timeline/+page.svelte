@@ -2,6 +2,7 @@
 	import { page } from "$app/state";
 	import { createMutation, createQuery } from "@tanstack/svelte-query";
 	import { Film } from "lucide-svelte";
+	import { SvelteSet } from "svelte/reactivity";
 	import { cameraKeys, getCamera } from "$lib/cameras";
 	import CameraContextBar from "$lib/components/cameras/CameraContextBar.svelte";
 	import CameraStatusBadge from "$lib/components/cameras/CameraStatusBadge.svelte";
@@ -31,6 +32,7 @@
 	let selectedTime = $state<Date | null>(null);
 	let session = $state<PlaybackSession | null>(null);
 	let playerError = $state<string | null>(null);
+	const advancingTokens = new SvelteSet<string>();
 
 	const fromIso = $derived(toIso(range.from));
 	const toIsoStr = $derived(toIso(range.to));
@@ -112,10 +114,42 @@
 	function handlePlayerError(error: Error) {
 		playerError = error.message;
 	}
+
+	async function handlePlaybackEnded(endedSession: PlaybackSession) {
+		const nextStart = endedSession.nextRecordingStart;
+		if (
+			endedSession.source !== "gdrive" ||
+			!nextStart ||
+			advancingTokens.has(endedSession.token) ||
+			session?.token !== endedSession.token
+		) {
+			return;
+		}
+		const nextTime = new Date(nextStart);
+		if (Number.isNaN(nextTime.getTime())) {
+			return;
+		}
+
+		advancingTokens.add(endedSession.token);
+		playerError = null;
+		try {
+			const nextSession = await requestPlayback(endedSession.cameraId, nextStart);
+			if (session?.token === endedSession.token) {
+				session = nextSession;
+				selectedTime = nextTime;
+			}
+		} catch (error: unknown) {
+			if (session?.token === endedSession.token) {
+				playerError = error instanceof Error ? error.message : "Failed to continue playback";
+			}
+		} finally {
+			advancingTokens.delete(endedSession.token);
+		}
+	}
 </script>
 
 <svelte:head>
-	<title>{camera ? `${camera.name} · Timeline` : "Timeline"} · NVR</title>
+	<title>{camera ? `${camera.name} · Timeline` : "Timeline"} · Vigil</title>
 </svelte:head>
 
 <section class="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -265,6 +299,7 @@
 				{session}
 				loading={playbackMutation.isPending && !session}
 				error={playerError}
+				onEnded={handlePlaybackEnded}
 				onError={handlePlayerError}
 			/>
 		</div>
