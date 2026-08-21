@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-	<title>Events · NVR</title>
+	<title>System alerts · NVR</title>
 </svelte:head>
 
 <PageActions>

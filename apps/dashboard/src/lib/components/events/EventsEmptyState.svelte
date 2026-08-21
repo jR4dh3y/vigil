@@ -18,12 +18,12 @@
 	</span>
 	<div class="flex flex-col gap-1">
 		<p class="text-sm font-medium text-zinc-300">
-			{unacknowledgedOnly ? "No unacknowledged events" : "No events yet"}
+			{unacknowledgedOnly ? "No unacknowledged alerts" : "No system alerts yet"}
 		</p>
 		<p class="max-w-sm text-sm text-zinc-500">
 			{unacknowledgedOnly
 				? "Everything has been acknowledged. Clear the filter to see the full history."
-				: "System and camera events will show up here as they occur."}
+				: "Camera, storage, and archive alerts will show up here as they occur."}
 		</p>
 	</div>
 </div>
