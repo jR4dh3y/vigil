@@ -1,7 +1,16 @@
-export { listRecordings, RecordingApiError, requestPlayback } from "./api";
+export { listRecordingDays, listRecordings, RecordingApiError, requestPlayback } from "./api";
+export type { CalendarDay, CalendarMonth } from "./calendar";
+export {
+	calendarGridDays,
+	calendarGridRange,
+	calendarMonthForDate,
+	calendarMonthForValue,
+	shiftCalendarMonth,
+} from "./calendar";
 export { recordingKeys } from "./keys";
 export {
 	clampDate,
+	currentLocalDayRange,
 	defaultTimeRange,
 	formatSelectedTime,
 	formatTimelineLabel,
@@ -27,6 +36,9 @@ export type {
 	PlaybackRequest,
 	PlaybackSession,
 	RangePreset,
+	RecordingDayAvailability,
+	RecordingDayList,
+	RecordingDaySource,
 	RecordingList,
 	RecordingSegment,
 	TimeRange,

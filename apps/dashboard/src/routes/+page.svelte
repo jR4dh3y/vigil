@@ -11,14 +11,24 @@
 	import Spinner from "$lib/components/Spinner.svelte";
 	import type { LiveCamera } from "$lib/live";
 	import {
-		defaultTimeRange,
+		calendarGridRange,
+		calendarMonthForDate,
+		calendarMonthForValue,
+		currentLocalDayRange,
+		listRecordingDays,
 		listRecordings,
-		rangeForPreset,
+		localDateValue,
+		rangeForLocalDate,
 		recordingKeys,
 		requestPlayback,
 		toIso,
 	} from "$lib/recordings";
-	import type { PlaybackSession, RangePreset, RecordingList } from "$lib/recordings";
+	import type {
+		CalendarMonth,
+		PlaybackSession,
+		RecordingDaySource,
+		RecordingList,
+	} from "$lib/recordings";
 
 	const camerasQuery = createQuery(() => ({
 		queryKey: cameraKeys.list(),
@@ -27,8 +37,10 @@
 
 	let playbackEnabled = $state(false);
 	let playbackStarted = $state(false);
-	let preset = $state<RangePreset>("24h");
-	let range = $state(defaultTimeRange());
+	let range = $state(currentLocalDayRange());
+	let archiveDate = $state(localDateValue(new Date()));
+	let calendarMonth = $state(calendarMonthForDate(new Date()));
+	let calendarTimeZone = $state("UTC");
 	let selectedTime = $state<Date | null>(null);
 	let sessions = new SvelteMap<string, PlaybackSession>();
 	let playbackErrors = new SvelteMap<string, string>();
@@ -43,6 +55,10 @@
 	const cameraIds = $derived(enabledCameras.map((camera) => camera.id));
 	const fromIso = $derived(toIso(range.from));
 	const toIsoString = $derived(toIso(range.to));
+	const maxArchiveDate = $derived(localDateValue(new Date()));
+	const calendarRange = $derived(calendarGridRange(calendarMonth));
+	const calendarFromIso = $derived(toIso(calendarRange.from));
+	const calendarToIso = $derived(toIso(calendarRange.to));
 
 	async function loadRecordings(): Promise<SvelteMap<string, RecordingList>> {
 		const entries = await Promise.all(
@@ -57,6 +73,18 @@
 	const recordingsQuery = createQuery(() => ({
 		queryKey: recordingKeys.listMany(cameraIds, fromIso, toIsoString),
 		queryFn: loadRecordings,
+		enabled: playbackEnabled && cameraIds.length > 0,
+	}));
+
+	const recordingDaysQuery = createQuery(() => ({
+		queryKey: recordingKeys.days(
+			cameraIds,
+			calendarFromIso,
+			calendarToIso,
+			calendarTimeZone,
+		),
+		queryFn: () =>
+			listRecordingDays(calendarFromIso, calendarToIso, calendarTimeZone),
 		enabled: playbackEnabled && cameraIds.length > 0,
 	}));
 
@@ -123,6 +151,11 @@
 	);
 	const playbackLoading = $derived(playbackMutation.isPending);
 	const playbackDisabled = $derived(recordingsQuery.isPending || playbackMutation.isPending);
+	const calendarAvailability = $derived(
+		new SvelteMap<string, RecordingDaySource>(
+			(recordingDaysQuery.data?.days ?? []).map((day) => [day.date, day.source]),
+		),
+	);
 
 	function replaceMap<T>(target: SvelteMap<string, T>, source: ReadonlyMap<string, T>) {
 		target.clear();
@@ -141,19 +174,28 @@
 	}
 
 	function togglePlayback() {
-		playbackEnabled = !playbackEnabled;
+		const enabled = !playbackEnabled;
+		if (enabled) {
+			calendarTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+		}
+		playbackEnabled = enabled;
 		resetPlaybackView();
 	}
 
-	function setPreset(next: RangePreset) {
-		if (next === preset) {
+	function setArchiveDate(value: string) {
+		const selectedRange = rangeForLocalDate(value);
+		if (!selectedRange) {
 			return;
 		}
-		preset = next;
-		range = rangeForPreset(next);
+		archiveDate = value;
+		calendarMonth = calendarMonthForValue(value) ?? calendarMonth;
+		range = selectedRange;
 		resetPlaybackView();
 	}
 
+	function setCalendarMonth(month: CalendarMonth) {
+		calendarMonth = month;
+	}
 
 	function handleSeek(time: Date) {
 		if (!playbackEnabled || enabledCameras.length === 0) {
@@ -304,11 +346,17 @@
 					from={range.from}
 					to={range.to}
 					{selectedTime}
-					{preset}
+					{archiveDate}
+					{maxArchiveDate}
+					{calendarMonth}
+					{calendarAvailability}
+					calendarLoading={recordingDaysQuery.isPending}
+					calendarError={recordingDaysQuery.isError}
 					loading={recordingsQuery.isPending}
 					error={recordingsError}
 					disabled={playbackDisabled}
-					onPresetChange={setPreset}
+					onArchiveDateChange={setArchiveDate}
+					onCalendarMonthChange={setCalendarMonth}
 					onSeek={handleSeek}
 					onRetry={() => recordingsQuery.refetch()}
 				/>

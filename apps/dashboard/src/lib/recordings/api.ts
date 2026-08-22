@@ -1,4 +1,4 @@
-import type { PlaybackSession, RecordingList } from "@nvr/api-client";
+import type { PlaybackSession, RecordingDayList, RecordingList } from "@nvr/api-client";
 import { getActiveBaseUrl, getApiClient } from "$lib/connection";
 
 export class RecordingApiError extends Error {
@@ -51,6 +51,22 @@ export async function listRecordings(
 		return data;
 	}
 	throwRecordingError(error, response.status, "Failed to load recordings");
+}
+
+/** GET /recordings/days?from=&to=&timeZone= */
+export async function listRecordingDays(
+	from: string,
+	to: string,
+	timeZone: string,
+): Promise<RecordingDayList> {
+	const api = getApiClient();
+	const { data, error, response } = await api.GET("/recordings/days", {
+		params: { query: { from, to, timeZone } },
+	});
+	if (data) {
+		return data;
+	}
+	throwRecordingError(error, response.status, "Failed to load recording days");
 }
 
 /** POST /cameras/{id}/playback — mint a short-lived VOD session. */

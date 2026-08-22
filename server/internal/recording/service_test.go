@@ -102,6 +102,81 @@ func TestIndexSegmentAndListRange(t *testing.T) {
 	}
 }
 
+func TestListDaysGroupsLocalAndDriveRecordingsInRequestedTimeZone(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+
+	local, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/local.mp4",
+		time.Date(2026, 8, 18, 19, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driveSameDay, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/drive-same-day.mp4",
+		time.Date(2026, 8, 19, 5, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driveNextDay, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/drive-next-day.mp4",
+		time.Date(2026, 8, 19, 19, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if local.ArchiveLocation != nil {
+		t.Fatalf("local segment unexpectedly archived: %+v", local)
+	}
+	for _, segment := range []Segment{driveSameDay, driveNextDay} {
+		if err := svc.MarkArchived(ctx, segment.ID, "gdrive:"+segment.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		time.Date(2026, 8, 18, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 2 {
+		t.Fatalf("ListDays returned %d days: %+v", len(days), days)
+	}
+	if days[0] != (DayAvailability{Date: "2026-08-19", Source: DaySourceMixed}) {
+		t.Fatalf("first day = %+v", days[0])
+	}
+	if days[1] != (DayAvailability{Date: "2026-08-20", Source: DaySourceGDrive}) {
+		t.Fatalf("second day = %+v", days[1])
+	}
+}
+
 func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

@@ -48,19 +48,26 @@ export function buildTimelineTicks(from: Date, to: Date, trackWidth: number): Ti
 	const toMs = to.getTime();
 	const rangeMs = Math.max(1, toMs - fromMs);
 	const interval = timelineTickInterval(rangeMs, trackWidth);
-	const firstTick = Math.ceil(fromMs / interval) * interval;
-	const ticks: TimelineTick[] = [];
+	const ticks: TimelineTick[] = [timelineTick(from, from, to, rangeMs)];
 
-	for (let at = firstTick; at <= toMs; at += interval) {
+	for (let at = fromMs + interval; at < toMs; at += interval) {
 		const date = new Date(at);
-		ticks.push({
-			at: date,
-			fraction: fractionAtTime(from, to, date),
-			label: formatTimelineLabel(date, rangeMs),
-		});
+		ticks.push(timelineTick(date, from, to, rangeMs));
+	}
+
+	if (toMs > fromMs) {
+		ticks.push(timelineTick(to, from, to, rangeMs));
 	}
 
 	return ticks;
+}
+
+function timelineTick(at: Date, from: Date, to: Date, rangeMs: number): TimelineTick {
+	return {
+		at,
+		fraction: fractionAtTime(from, to, at),
+		label: formatTimelineLabel(at, rangeMs),
+	};
 }
 
 export function coverageBarRects(

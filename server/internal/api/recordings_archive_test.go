@@ -94,7 +94,34 @@ func setupArchivePlaybackServer(t *testing.T) (*Server, recording.Segment) {
 		t.Fatal(err)
 	}
 	mediaSvc := media.NewService(media.Config{PlaybackURL: "https://playback.example.test"}, archiveCameraReader{})
-	return &Server{Recording: recordingSvc, Media: mediaSvc}, segment
+	return &Server{
+		Camera:    camera.NewService(db, ""),
+		Recording: recordingSvc,
+		Media:     mediaSvc,
+	}, segment
+}
+
+func TestListRecordingDaysReturnsDriveAvailabilityInRequestedTimeZone(t *testing.T) {
+	server, _ := setupArchivePlaybackServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recordings/days", nil)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.ListRecordingDays(rr, req, ListRecordingDaysParams{
+		From:     time.Date(2026, 8, 11, 18, 30, 0, 0, time.UTC),
+		To:       time.Date(2026, 8, 12, 18, 29, 59, 0, time.UTC),
+		TimeZone: "Asia/Kolkata",
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var response RecordingDayList
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Days) != 1 || response.Days[0].Date.Format(time.DateOnly) != "2026-08-12" || response.Days[0].Source != RecordingDaySourceGdrive {
+		t.Fatalf("unexpected recording days: %+v", response.Days)
+	}
 }
 
 func TestPlaybackFallsBackToDriveWhenLocalFileIsGone(t *testing.T) {

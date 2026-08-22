@@ -11,6 +11,11 @@ export function defaultTimeRange(now: Date = new Date()): TimeRange {
 	return rangeForPreset("24h", now);
 }
 
+/** The local calendar day containing `now`. */
+export function currentLocalDayRange(now: Date = new Date()): TimeRange {
+	return localDayRange(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 /** Inclusive window ending at `now` for a preset duration. */
 export function rangeForPreset(preset: RangePreset, now: Date = new Date()): TimeRange {
 	const to = now;
@@ -39,8 +44,14 @@ export function rangeForLocalDate(value: string): TimeRange | null {
 	if (from.getFullYear() !== year || from.getMonth() !== month || from.getDate() !== day) {
 		return null;
 	}
-	const to = new Date(year, month, day + 1);
-	return { from, to };
+	return localDayRange(year, month, day);
+}
+
+function localDayRange(year: number, month: number, day: number): TimeRange {
+	return {
+		from: new Date(year, month, day),
+		to: new Date(year, month, day + 1, 0, 0, 0, -1),
+	};
 }
 
 export function toIso(date: Date): string {
@@ -99,6 +110,14 @@ const shortDateTimeFmt = new Intl.DateTimeFormat(undefined, {
 	hour12: false,
 });
 
+const calendarDayFmt = new Intl.DateTimeFormat(undefined, {
+	month: "short",
+	day: "numeric",
+	hour: "numeric",
+	minute: "2-digit",
+	hour12: true,
+});
+
 const dayFmt = new Intl.DateTimeFormat(undefined, {
 	month: "short",
 	day: "numeric",
@@ -113,7 +132,7 @@ export function formatTimelineLabel(date: Date, rangeMs: number): string {
 		return timeFmt.format(date);
 	}
 	if (rangeMs <= 2 * 24 * 60 * 60 * 1000) {
-		return shortDateTimeFmt.format(date);
+		return calendarDayFmt.format(date);
 	}
 	return dayFmt.format(date);
 }

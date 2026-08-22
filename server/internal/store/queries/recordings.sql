@@ -7,6 +7,14 @@ WHERE camera_id = sqlc.arg(camera_id)
   AND started_at <= sqlc.arg(to_ts)
 ORDER BY started_at ASC;
 
+-- name: ListRecordingStorageByCameraRange :many
+SELECT started_at, archive_location
+FROM recordings
+WHERE camera_id = sqlc.arg(camera_id)
+  AND started_at >= sqlc.arg(from_ts)
+  AND started_at <= sqlc.arg(to_ts)
+ORDER BY started_at ASC;
+
 -- name: GetRecording :one
 SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
        thumbnail_path, archived_at, archive_location, created_at

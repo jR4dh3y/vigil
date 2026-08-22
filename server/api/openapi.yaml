@@ -494,6 +494,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /recordings/days:
+    get:
+      operationId: listRecordingDays
+      tags: [recordings]
+      summary: List recording availability by local calendar day
+      description: |
+        Returns days containing recordings for enabled cameras, classified by local or Google Drive storage.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Range start (inclusive)
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+          description: Range end (inclusive)
+        - name: timeZone
+          in: query
+          required: true
+          schema:
+            type: string
+          description: IANA time zone used to group recordings into calendar days
+      responses:
+        "200":
+          description: Recording availability grouped by local calendar day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordingDayList"
+        "400":
+          description: Invalid time zone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /cameras/{id}/recordings:
     parameters:
       - name: id
@@ -1499,6 +1548,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CoverageBar"
+    RecordingDaySource:
+      type: string
+      enum: [local, gdrive, mixed]
+      x-enum-varnames:
+        - RecordingDaySourceLocal
+        - RecordingDaySourceGdrive
+        - RecordingDaySourceMixed
+    RecordingDayAvailability:
+      type: object
+      required: [date, source]
+      properties:
+        date:
+          type: string
+          format: date
+          description: Calendar date in the requested time zone
+        source:
+          $ref: "#/components/schemas/RecordingDaySource"
+    RecordingDayList:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecordingDayAvailability"
     PlaybackRequest:
       type: object
       required: [start]

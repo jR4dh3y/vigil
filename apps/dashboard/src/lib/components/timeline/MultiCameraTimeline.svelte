@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+	import type { Snippet } from "svelte";
 	import { mergeCoverageBars } from "$lib/recordings";
 	import ScrollableTimeline from "./ScrollableTimeline.svelte";
 
@@ -20,6 +21,7 @@
 		to: Date;
 		selectedTime: Date | null;
 		disabled?: boolean;
+		controls?: Snippet;
 		onSeek: (time: Date) => void;
 		class?: string;
 	};
@@ -30,6 +32,7 @@
 		to,
 		selectedTime,
 		disabled = false,
+		controls,
 		onSeek,
 		class: className = "",
 	}: Props = $props();
@@ -37,16 +40,15 @@
 	const coverage = $derived(mergeCoverageBars(tracks.flatMap((track) => track.coverage)));
 </script>
 
-{#key `${from.getTime()}-${to.getTime()}`}
-	<ScrollableTimeline
-		{coverage}
-		{from}
-		{to}
-		{selectedTime}
-		{disabled}
-		tone="violet"
-		ariaLabel="Recording scrub bar for all cameras"
-		{onSeek}
-		class={className}
-	/>
-{/key}
+<ScrollableTimeline
+	{coverage}
+	{from}
+	{to}
+	{selectedTime}
+	{disabled}
+	tone="violet"
+	ariaLabel="Recording scrub bar for all cameras"
+	{controls}
+	{onSeek}
+	class={className}
+/>
