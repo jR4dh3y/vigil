@@ -8,11 +8,11 @@ WHERE camera_id = sqlc.arg(camera_id)
 ORDER BY started_at ASC;
 
 -- name: ListRecordingStorageByCameraRange :many
-SELECT started_at, archive_location
+SELECT started_at, duration_sec, archive_location
 FROM recordings
 WHERE camera_id = sqlc.arg(camera_id)
-  AND started_at >= sqlc.arg(from_ts)
   AND started_at <= sqlc.arg(to_ts)
+  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(sqlc.arg(from_ts))
 ORDER BY started_at ASC;
 
 -- name: GetRecording :one

@@ -6,6 +6,7 @@ import {
 } from "../apps/dashboard/src/lib/recordings/calendar";
 import {
 	currentLocalDayRange,
+	isFutureTime,
 	rangeForLocalDate,
 } from "../apps/dashboard/src/lib/recordings/range";
 import {
@@ -59,6 +60,13 @@ describe("recording timeline browsing", () => {
 
 		expect(range.from).toEqual(new Date(2026, 7, 19, 0, 0, 0, 0));
 		expect(range.to).toEqual(new Date(2026, 7, 19, 23, 59, 59, 999));
+	});
+
+	test("rejects playback seeks later than the current time", () => {
+		const now = new Date("2026-08-22T05:30:00Z");
+
+		expect(isFutureTime(new Date("2026-08-22T05:30:01Z"), now)).toBe(true);
+		expect(isFutureTime(new Date("2026-08-22T05:30:00Z"), now)).toBe(false);
 	});
 
 	test("builds a stable six-week calendar around the visible month", () => {

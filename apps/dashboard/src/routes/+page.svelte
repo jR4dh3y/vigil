@@ -15,6 +15,7 @@
 		calendarMonthForDate,
 		calendarMonthForValue,
 		currentLocalDayRange,
+		isFutureTime,
 		listRecordingDays,
 		listRecordings,
 		localDateValue,
@@ -198,7 +199,7 @@
 	}
 
 	function handleSeek(time: Date) {
-		if (!playbackEnabled || enabledCameras.length === 0) {
+		if (!playbackEnabled || enabledCameras.length === 0 || isFutureTime(time)) {
 			return;
 		}
 		selectedTime = time;

@@ -80,7 +80,7 @@
 	}
 
 	function selectDay(day: CalendarDay) {
-		if (day.isFuture) {
+		if (disabled || day.isFuture) {
 			return;
 		}
 		onChange(day.value);
@@ -125,7 +125,8 @@
 			<div class="mb-2 flex items-center justify-between">
 				<button
 					type="button"
-					class="inline-flex size-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500/70"
+					class="inline-flex size-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500/70 disabled:cursor-not-allowed disabled:opacity-30"
+					disabled={disabled}
 					aria-label="Previous month"
 					onclick={() => onMonthChange(shiftCalendarMonth(month, -1))}
 				>
@@ -135,7 +136,7 @@
 				<button
 					type="button"
 					class="inline-flex size-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-500/70 disabled:cursor-not-allowed disabled:opacity-30"
-					disabled={nextMonthDisabled}
+					disabled={disabled || nextMonthDisabled}
 					aria-label="Next month"
 					onclick={() => onMonthChange(shiftCalendarMonth(month, 1))}
 				>
@@ -164,7 +165,7 @@
 							{day.inMonth ? '' : 'opacity-40'}
 							{day.value === value ? 'ring-1 ring-inset ring-zinc-100' : ''}
 							disabled:cursor-not-allowed disabled:opacity-20"
-						disabled={day.isFuture}
+						disabled={disabled || day.isFuture}
 						aria-label={dayLabel(day)}
 						aria-current={day.value === value ? "date" : undefined}
 						title={dayLabel(day)}

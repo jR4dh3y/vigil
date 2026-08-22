@@ -226,27 +226,28 @@ func (q *Queries) InsertRecording(ctx context.Context, arg InsertRecordingParams
 }
 
 const listRecordingStorageByCameraRange = `-- name: ListRecordingStorageByCameraRange :many
-SELECT started_at, archive_location
+SELECT started_at, duration_sec, archive_location
 FROM recordings
 WHERE camera_id = ?1
-  AND started_at >= ?2
-  AND started_at <= ?3
+  AND started_at <= ?2
+  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(?3)
 ORDER BY started_at ASC
 `
 
 type ListRecordingStorageByCameraRangeParams struct {
-	CameraID string `json:"camera_id"`
-	FromTs   string `json:"from_ts"`
-	ToTs     string `json:"to_ts"`
+	CameraID string      `json:"camera_id"`
+	ToTs     string      `json:"to_ts"`
+	FromTs   interface{} `json:"from_ts"`
 }
 
 type ListRecordingStorageByCameraRangeRow struct {
 	StartedAt       string         `json:"started_at"`
+	DurationSec     float64        `json:"duration_sec"`
 	ArchiveLocation sql.NullString `json:"archive_location"`
 }
 
 func (q *Queries) ListRecordingStorageByCameraRange(ctx context.Context, arg ListRecordingStorageByCameraRangeParams) ([]ListRecordingStorageByCameraRangeRow, error) {
-	rows, err := q.db.QueryContext(ctx, listRecordingStorageByCameraRange, arg.CameraID, arg.FromTs, arg.ToTs)
+	rows, err := q.db.QueryContext(ctx, listRecordingStorageByCameraRange, arg.CameraID, arg.ToTs, arg.FromTs)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +255,7 @@ func (q *Queries) ListRecordingStorageByCameraRange(ctx context.Context, arg Lis
 	items := []ListRecordingStorageByCameraRangeRow{}
 	for rows.Next() {
 		var i ListRecordingStorageByCameraRangeRow
-		if err := rows.Scan(&i.StartedAt, &i.ArchiveLocation); err != nil {
+		if err := rows.Scan(&i.StartedAt, &i.DurationSec, &i.ArchiveLocation); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

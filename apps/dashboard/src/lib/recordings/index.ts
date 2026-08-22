@@ -15,6 +15,7 @@ export {
 	formatSelectedTime,
 	formatTimelineLabel,
 	fractionAtTime,
+	isFutureTime,
 	localDateValue,
 	parseIso,
 	RANGE_PRESET_LABELS,

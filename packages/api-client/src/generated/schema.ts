@@ -299,6 +299,7 @@ export interface paths {
         /**
          * List recording availability by local calendar day
          * @description Returns days containing recordings for enabled cameras, classified by local or Google Drive storage.
+         *     The requested range must not exceed 43 days, enough for the six-week calendar grid across daylight-saving changes.
          */
         get: operations["listRecordingDays"];
         put?: never;
@@ -1652,7 +1653,7 @@ export interface operations {
                     "application/json": components["schemas"]["RecordingDayList"];
                 };
             };
-            /** @description Invalid time zone */
+            /** @description Invalid time zone or a range longer than 43 days */
             400: {
                 headers: {
                     [name: string]: unknown;

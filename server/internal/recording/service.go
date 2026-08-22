@@ -244,13 +244,35 @@ func (s *Service) ListDays(
 			if err != nil {
 				return nil, fmt.Errorf("parse recording day started_at %q: %w", row.StartedAt, err)
 			}
-			date := startedAt.In(location).Format("2006-01-02")
+			endedAt := startedAt.Add(time.Duration(max(0, row.DurationSec) * float64(time.Second)))
+			intervalStart := startedAt
+			if intervalStart.Before(from) {
+				intervalStart = from
+			}
+			intervalEnd := endedAt
+			if intervalEnd.After(to) {
+				intervalEnd = to
+			}
+			if intervalEnd.Before(intervalStart) {
+				continue
+			}
 			archiveLocation := strings.TrimSpace(row.ArchiveLocation.String)
 			archiveFileID, isDriveArchive := strings.CutPrefix(archiveLocation, "gdrive:")
+			source := hasLocal
 			if row.ArchiveLocation.Valid && isDriveArchive && strings.TrimSpace(archiveFileID) != "" {
-				sourcesByDay[date] |= hasGDrive
-			} else {
-				sourcesByDay[date] |= hasLocal
+				source = hasGDrive
+			}
+
+			startLocal := intervalStart.In(location)
+			endLocal := intervalEnd.In(location)
+			for day := time.Date(
+				startLocal.Year(),
+				startLocal.Month(),
+				startLocal.Day(),
+				0, 0, 0, 0,
+				location,
+			); !day.After(endLocal); day = day.AddDate(0, 0, 1) {
+				sourcesByDay[day.Format(time.DateOnly)] |= source
 			}
 		}
 	}

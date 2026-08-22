@@ -124,6 +124,22 @@ func TestListRecordingDaysReturnsDriveAvailabilityInRequestedTimeZone(t *testing
 	}
 }
 
+func TestListRecordingDaysRejectsOversizedRangeBeforeServices(t *testing.T) {
+	server := &Server{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recordings/days", nil)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.ListRecordingDays(rr, req, ListRecordingDaysParams{
+		From:     time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		To:       time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+		TimeZone: "UTC",
+	})
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestPlaybackFallsBackToDriveWhenLocalFileIsGone(t *testing.T) {
 	server, segment := setupArchivePlaybackServer(t)
 	server.DrivePlayback = &fakeDrivePlayback{}

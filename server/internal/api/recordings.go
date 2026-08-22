@@ -19,6 +19,8 @@ import (
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
 )
 
+const maxRecordingDayRange = 43 * 24 * time.Hour
+
 // ListCameraRecordings returns recording segments and coverage for a time range.
 // Any authenticated user; 404 if the camera does not exist.
 func (s *Server) ListCameraRecordings(w http.ResponseWriter, r *http.Request, id openapi_types.UUID, params ListCameraRecordingsParams) {
@@ -59,14 +61,21 @@ func (s *Server) ListRecordingDays(w http.ResponseWriter, r *http.Request, param
 		writeError(w, http.StatusUnauthorized, "unauthenticated", "unauthorized")
 		return
 	}
-	if s.Recording == nil || s.Camera == nil {
-		writeError(w, http.StatusInternalServerError, "recording service unavailable", "internal")
-		return
-	}
-
 	location, err := time.LoadLocation(strings.TrimSpace(params.TimeZone))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "timeZone must be a valid IANA time zone", "validation")
+		return
+	}
+	from, to := params.From, params.To
+	if from.After(to) {
+		from, to = to, from
+	}
+	if to.Sub(from) > maxRecordingDayRange {
+		writeError(w, http.StatusBadRequest, "recording day range must not exceed 43 days", "validation")
+		return
+	}
+	if s.Recording == nil || s.Camera == nil {
+		writeError(w, http.StatusInternalServerError, "recording service unavailable", "internal")
 		return
 	}
 	cameras, err := s.Camera.List(r.Context())
@@ -82,7 +91,7 @@ func (s *Server) ListRecordingDays(w http.ResponseWriter, r *http.Request, param
 		}
 	}
 
-	days, err := s.Recording.ListDays(r.Context(), cameraIDs, params.From, params.To, location)
+	days, err := s.Recording.ListDays(r.Context(), cameraIDs, from, to, location)
 	if err != nil {
 		slog.Error("list recording days", "err", err)
 		writeError(w, http.StatusInternalServerError, "internal error", "internal")

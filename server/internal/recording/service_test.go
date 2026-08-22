@@ -177,6 +177,59 @@ func TestListDaysGroupsLocalAndDriveRecordingsInRequestedTimeZone(t *testing.T) 
 	}
 }
 
+func TestListDaysIncludesEveryLocalDateTouchedByAnOverlappingSegment(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	startedAt := time.Date(2026, 8, 19, 18, 29, 30, 0, time.UTC)
+	if _, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/cross-midnight.mp4",
+		startedAt,
+		60,
+		100,
+		"h264",
+	); err != nil {
+		t.Fatal(err)
+	}
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		startedAt,
+		startedAt.Add(time.Minute),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 2 || days[0].Date != "2026-08-19" || days[1].Date != "2026-08-20" {
+		t.Fatalf("cross-midnight days = %+v", days)
+	}
+
+	overlapOnly, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		time.Date(2026, 8, 19, 18, 30, 0, 0, time.UTC),
+		time.Date(2026, 8, 19, 18, 31, 0, 0, time.UTC),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overlapOnly) != 1 || overlapOnly[0] != (DayAvailability{
+		Date:   "2026-08-20",
+		Source: DaySourceLocal,
+	}) {
+		t.Fatalf("overlapping range days = %+v", overlapOnly)
+	}
+}
+
 func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

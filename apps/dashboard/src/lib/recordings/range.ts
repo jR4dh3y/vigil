@@ -66,6 +66,11 @@ export function parseIso(value: string): Date | null {
 	return new Date(t);
 }
 
+/** Whether a playback timestamp is later than the current browser time. */
+export function isFutureTime(time: Date, now: Date = new Date()): boolean {
+	return time.getTime() > now.getTime();
+}
+
 /** Clamp a Date into [from, to]. */
 export function clampDate(value: Date, from: Date, to: Date): Date {
 	const t = value.getTime();
