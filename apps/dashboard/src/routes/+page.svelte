@@ -14,8 +14,8 @@
 		calendarGridRange,
 		calendarMonthForDate,
 		calendarMonthForValue,
+		clampPlaybackTime,
 		currentLocalDayRange,
-		isFutureTime,
 		listRecordingDays,
 		listRecordings,
 		localDateValue,
@@ -199,15 +199,16 @@
 	}
 
 	function handleSeek(time: Date) {
-		if (!playbackEnabled || enabledCameras.length === 0 || isFutureTime(time)) {
+		if (!playbackEnabled || enabledCameras.length === 0) {
 			return;
 		}
-		selectedTime = time;
+		const playbackTime = clampPlaybackTime(time, range);
+		selectedTime = playbackTime;
 		playbackStarted = true;
 		playbackErrors.clear();
 		const requestId = latestRequestId + 1;
 		latestRequestId = requestId;
-		void playbackMutation.mutateAsync({ start: toIso(time), requestId });
+		void playbackMutation.mutateAsync({ start: toIso(playbackTime), requestId });
 	}
 
 	async function handlePlaybackEnded(endedSession: PlaybackSession) {

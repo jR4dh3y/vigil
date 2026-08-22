@@ -10,12 +10,12 @@ export {
 export { recordingKeys } from "./keys";
 export {
 	clampDate,
+	clampPlaybackTime,
 	currentLocalDayRange,
 	defaultTimeRange,
 	formatSelectedTime,
 	formatTimelineLabel,
 	fractionAtTime,
-	isFutureTime,
 	localDateValue,
 	parseIso,
 	RANGE_PRESET_LABELS,
