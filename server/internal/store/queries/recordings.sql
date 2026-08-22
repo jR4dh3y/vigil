@@ -4,7 +4,7 @@ SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
 FROM recordings
 WHERE camera_id = sqlc.arg(camera_id)
   AND started_at <= sqlc.arg(to_ts)
-  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(CAST(sqlc.arg(from_ts) AS TEXT))
+  AND julianday(started_at) + duration_sec / 86400.0 > julianday(CAST(sqlc.arg(from_ts) AS TEXT))
 ORDER BY started_at ASC;
 
 -- name: ListRecordingStorageByCameraRange :many
@@ -12,7 +12,7 @@ SELECT started_at, duration_sec, archive_location
 FROM recordings
 WHERE camera_id = sqlc.arg(camera_id)
   AND started_at <= sqlc.arg(to_ts)
-  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(CAST(sqlc.arg(from_ts) AS TEXT))
+  AND julianday(started_at) + duration_sec / 86400.0 > julianday(CAST(sqlc.arg(from_ts) AS TEXT))
 ORDER BY started_at ASC;
 
 -- name: GetRecording :one

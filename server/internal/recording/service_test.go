@@ -265,6 +265,51 @@ func TestListDaysIncludesEveryLocalDateTouchedByAnOverlappingSegment(t *testing.
 	}
 }
 
+func TestMidnightBoundaryDoesNotExposeEmptyDay(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	startedAt := time.Date(2026, 8, 19, 23, 59, 30, 0, time.UTC)
+	if _, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/ends-at-midnight.mp4",
+		startedAt,
+		30,
+		100,
+		"h264",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		startedAt,
+		time.Date(2026, 8, 20, 23, 59, 59, 0, time.UTC),
+		time.UTC,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 1 || days[0].Date != "2026-08-19" {
+		t.Fatalf("midnight-boundary days = %+v", days)
+	}
+
+	nextDay, err := svc.List(
+		ctx,
+		camID,
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 20, 23, 59, 59, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nextDay.Segments) != 0 || len(nextDay.Coverage) != 0 {
+		t.Fatalf("midnight-boundary playback = %+v", nextDay)
+	}
+}
+
 func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

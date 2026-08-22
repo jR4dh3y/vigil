@@ -230,7 +230,7 @@ SELECT started_at, duration_sec, archive_location
 FROM recordings
 WHERE camera_id = ?1
   AND started_at <= ?2
-  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(CAST(?3 AS TEXT))
+  AND julianday(started_at) + duration_sec / 86400.0 > julianday(CAST(?3 AS TEXT))
 ORDER BY started_at ASC
 `
 
@@ -275,7 +275,7 @@ SELECT id, camera_id, started_at, duration_sec, size_bytes, path, codec,
 FROM recordings
 WHERE camera_id = ?1
   AND started_at <= ?2
-  AND julianday(started_at) + duration_sec / 86400.0 >= julianday(CAST(?3 AS TEXT))
+  AND julianday(started_at) + duration_sec / 86400.0 > julianday(CAST(?3 AS TEXT))
 ORDER BY started_at ASC
 `
 

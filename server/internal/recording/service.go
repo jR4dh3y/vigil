@@ -253,7 +253,7 @@ func (s *Service) ListDays(
 			if intervalEnd.After(to) {
 				intervalEnd = to
 			}
-			if intervalEnd.Before(intervalStart) {
+			if !intervalEnd.After(intervalStart) {
 				continue
 			}
 			archiveLocation := strings.TrimSpace(row.ArchiveLocation.String)
@@ -271,7 +271,7 @@ func (s *Service) ListDays(
 				startLocal.Day(),
 				0, 0, 0, 0,
 				location,
-			); !day.After(endLocal); day = day.AddDate(0, 0, 1) {
+			); day.Before(endLocal); day = day.AddDate(0, 0, 1) {
 				sourcesByDay[day.Format(time.DateOnly)] |= source
 			}
 		}
