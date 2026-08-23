@@ -8,6 +8,9 @@ WORKDIR /src
 COPY package.json bun.lock turbo.json ./
 COPY packages ./packages
 COPY apps/dashboard ./apps/dashboard
+# The api-client build regenerates from the OpenAPI spec, so the spec must be
+# present in the build context for the turbo dependency build.
+COPY server/api ./server/api
 RUN bun install --frozen-lockfile
 RUN bun run build --filter=@nvr/dashboard
 
