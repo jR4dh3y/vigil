@@ -50,4 +50,7 @@ func TestIssuePlaybackReturnsBrowserCompatibleMP4(t *testing.T) {
 	if query.Get("token") == "" {
 		t.Fatal("playback token is missing")
 	}
+	if remaining := time.Until(session.ExpiresAt); remaining < PlaybackTokenTTL-time.Second {
+		t.Fatalf("playback token lifetime = %s, want about %s", remaining, PlaybackTokenTTL)
+	}
 }

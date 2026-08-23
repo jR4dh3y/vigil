@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -54,8 +55,8 @@ func (s *Server) ListCameraRecordings(w http.ResponseWriter, r *http.Request, id
 	writeJSON(w, http.StatusOK, mapRecordingList(result))
 }
 
-// ListRecordingDays returns recording storage availability grouped in the
-// browser's local calendar days across all enabled cameras.
+// ListRecordingDays returns recording storage availability grouped into the
+// caller's local calendar days for one requested camera or all enabled cameras.
 func (s *Server) ListRecordingDays(w http.ResponseWriter, r *http.Request, params ListRecordingDaysParams) {
 	if auth.UserFromContext(r.Context()) == nil {
 		writeError(w, http.StatusUnauthorized, "unauthenticated", "unauthorized")
@@ -78,16 +79,31 @@ func (s *Server) ListRecordingDays(w http.ResponseWriter, r *http.Request, param
 		writeError(w, http.StatusInternalServerError, "recording service unavailable", "internal")
 		return
 	}
-	cameras, err := s.Camera.List(r.Context())
-	if err != nil {
-		slog.Error("list cameras for recording days", "err", err)
-		writeError(w, http.StatusInternalServerError, "internal error", "internal")
-		return
-	}
-	cameraIDs := make([]string, 0, len(cameras))
-	for _, camera := range cameras {
-		if camera.Enabled {
-			cameraIDs = append(cameraIDs, camera.ID)
+	var cameraIDs []string
+	if params.CameraId != nil {
+		cameraID := params.CameraId.String()
+		if _, err := s.Camera.Get(r.Context(), cameraID); err != nil {
+			if errors.Is(err, camera.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "camera not found", "not_found")
+				return
+			}
+			slog.Error("get camera for recording days", "err", err, "camera_id", cameraID)
+			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+			return
+		}
+		cameraIDs = []string{cameraID}
+	} else {
+		cameras, err := s.Camera.List(r.Context())
+		if err != nil {
+			slog.Error("list cameras for recording days", "err", err)
+			writeError(w, http.StatusInternalServerError, "internal error", "internal")
+			return
+		}
+		cameraIDs = make([]string, 0, len(cameras))
+		for _, camera := range cameras {
+			if camera.Enabled {
+				cameraIDs = append(cameraIDs, camera.ID)
+			}
 		}
 	}
 
@@ -161,14 +177,6 @@ func (s *Server) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id o
 		session, err = s.Media.IssuePlayback(r.Context(), id.String(), body.Start, durationSec)
 		source = Local
 	} else if driveFileID(segment.ArchiveLocation) != "" && s.DrivePlayback != nil {
-		next, nextErr := s.Recording.NextAfter(r.Context(), id.String(), segment.StartedAt)
-		if nextErr == nil {
-			nextRecordingStart = &next.StartedAt
-		} else if !errors.Is(nextErr, recording.ErrNotFound) {
-			slog.Error("find next recording for playback", "err", nextErr, "recording_id", segment.ID)
-			writeError(w, http.StatusInternalServerError, "internal error", "internal")
-			return
-		}
 		session, err = s.Media.IssueArchivedPlayback(r.Context(), id.String(), segment.ID)
 		source = Gdrive
 		offset = float32(max(0, body.Start.Sub(segment.StartedAt).Seconds()))
@@ -185,6 +193,19 @@ func (s *Server) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id o
 		writeError(w, http.StatusInternalServerError, "internal error", "internal")
 		return
 	}
+	nextRecordingStart, err = s.nextPlaybackStart(
+		r.Context(),
+		id.String(),
+		segment,
+		source,
+		body.Start,
+		durationSec,
+	)
+	if err != nil {
+		slog.Error("find next playback start", "err", err, "recording_id", segment.ID)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
 
 	writeJSON(w, http.StatusOK, PlaybackSession{
 		CameraId:           session.CameraID,
@@ -196,6 +217,40 @@ func (s *Server) PostCameraPlayback(w http.ResponseWriter, r *http.Request, id o
 		StartOffsetSec:     offset,
 		NextRecordingStart: nextRecordingStart,
 	})
+}
+
+func (s *Server) nextPlaybackStart(
+	ctx context.Context,
+	cameraID string,
+	segment recording.Segment,
+	source PlaybackSessionSource,
+	start time.Time,
+	durationSec float64,
+) (*time.Time, error) {
+	after := segment.StartedAt
+	if source == Local {
+		after = start.Add(time.Duration(durationSec * float64(time.Second)))
+		candidate, err := s.Recording.FindAt(ctx, cameraID, after)
+		if err == nil {
+			candidateEnd := candidate.StartedAt.Add(
+				time.Duration(candidate.DurationSec * float64(time.Second)),
+			)
+			if after.Before(candidateEnd) {
+				return &after, nil
+			}
+		} else if !errors.Is(err, recording.ErrNotFound) && !errors.Is(err, recording.ErrOutsideRecording) {
+			return nil, err
+		}
+	}
+
+	next, err := s.Recording.NextAfter(ctx, cameraID, after)
+	if err == nil {
+		return &next.StartedAt, nil
+	}
+	if errors.Is(err, recording.ErrNotFound) {
+		return nil, nil
+	}
+	return nil, err
 }
 
 // GetRecordingContent proxies a Drive-archived MP4 into the native timeline

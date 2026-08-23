@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -124,6 +125,69 @@ func TestListRecordingDaysReturnsDriveAvailabilityInRequestedTimeZone(t *testing
 	}
 }
 
+func TestListRecordingDaysScopesRetainedHistoryForDisabledCamera(t *testing.T) {
+	server, _ := setupArchivePlaybackServer(t)
+	disabled := false
+	if _, err := server.Camera.Update(context.Background(), archiveTestCameraID, camera.UpdateInput{Enabled: &disabled}); err != nil {
+		t.Fatal(err)
+	}
+	cameraID := uuid.MustParse(archiveTestCameraID)
+	params := ListRecordingDaysParams{
+		From:     time.Date(2026, 8, 11, 18, 30, 0, 0, time.UTC),
+		To:       time.Date(2026, 8, 12, 18, 29, 59, 0, time.UTC),
+		TimeZone: "Asia/Kolkata",
+		CameraId: &cameraID,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recordings/days", nil)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.ListRecordingDays(rr, req, params)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var response RecordingDayList
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Days) != 1 || response.Days[0].Date.Format(time.DateOnly) != "2026-08-12" {
+		t.Fatalf("unexpected scoped recording days: %+v", response.Days)
+	}
+
+	params.CameraId = nil
+	unscoped := httptest.NewRecorder()
+	server.ListRecordingDays(unscoped, req, params)
+	if unscoped.Code != http.StatusOK {
+		t.Fatalf("unscoped status=%d body=%s", unscoped.Code, unscoped.Body.String())
+	}
+	if err := json.Unmarshal(unscoped.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Days) != 0 {
+		t.Fatalf("disabled camera leaked into unscoped days: %+v", response.Days)
+	}
+}
+
+func TestListRecordingDaysReturnsNotFoundForMissingCamera(t *testing.T) {
+	server, _ := setupArchivePlaybackServer(t)
+	cameraID := uuid.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/recordings/days", nil)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.ListRecordingDays(rr, req, ListRecordingDaysParams{
+		From:     time.Date(2026, 8, 11, 18, 30, 0, 0, time.UTC),
+		To:       time.Date(2026, 8, 12, 18, 29, 59, 0, time.UTC),
+		TimeZone: "Asia/Kolkata",
+		CameraId: &cameraID,
+	})
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestListRecordingDaysRejectsOversizedRangeBeforeServices(t *testing.T) {
 	server := &Server{}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/recordings/days", nil)
@@ -163,6 +227,39 @@ func TestPlaybackFallsBackToDriveWhenLocalFileIsGone(t *testing.T) {
 	}
 	if session.PlaybackUrl == "" || session.Token == "" {
 		t.Fatalf("missing Drive playback credentials: %+v", session)
+	}
+}
+
+func TestLocalPlaybackContinuesFromWindowEnd(t *testing.T) {
+	server, segment := setupArchivePlaybackServer(t)
+	localPath, err := server.Recording.AbsolutePath(segment.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localPath, []byte("local recording"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	body := bytes.NewBufferString(`{"start":"2026-08-12T14:00:10Z","durationSec":20}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cameras/"+archiveTestCameraID+"/playback", body)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.PostCameraPlayback(rr, req, uuid.MustParse(archiveTestCameraID))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var session PlaybackSession
+	if err := json.Unmarshal(rr.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 8, 12, 14, 0, 30, 0, time.UTC)
+	if session.Source != Local || session.NextRecordingStart == nil || !session.NextRecordingStart.Equal(want) {
+		t.Fatalf("unexpected local continuation: %+v", session)
 	}
 }
 

@@ -24,9 +24,14 @@ var (
 	ErrSnapshotFailed = errors.New("snapshot failed")
 )
 
-// ArchivedPlaybackTokenTTL allows a browser to make follow-up range requests
-// while seeking through a Drive-backed one-minute segment.
-const ArchivedPlaybackTokenTTL = 15 * time.Minute
+const (
+	// PlaybackTokenTTL keeps a local playback window valid without rotating its
+	// signed URL while the player is using it.
+	PlaybackTokenTTL = 15 * time.Minute
+	// ArchivedPlaybackTokenTTL allows follow-up range requests while seeking
+	// through a Drive-backed segment.
+	ArchivedPlaybackTokenTTL = 15 * time.Minute
+)
 
 // LiveStream is the live playback bundle returned to API clients.
 type LiveStream struct {
@@ -282,7 +287,7 @@ func (s *Service) IssuePlayback(ctx context.Context, cameraID string, start time
 	}
 
 	path := PathName(cam.ID)
-	token, expires, err := s.tokens.MintToken(cam.ID, path, DefaultTokenTTL)
+	token, expires, err := s.tokens.MintToken(cam.ID, path, PlaybackTokenTTL)
 	if err != nil {
 		return PlaybackStream{}, fmt.Errorf("mint stream token: %w", err)
 	}
