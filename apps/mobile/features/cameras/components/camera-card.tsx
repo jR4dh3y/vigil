@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { StatusDot } from "@/components/status-dot";
 import { cameraKeys, getLiveStream, liveRefetchInterval } from "@/features/cameras/api";
 import { LiveStreamPlayer } from "@/features/cameras/components/live-stream-player";
-import { resolveMediaUrl } from "@/lib/api/config";
+import { resolveLiveStream } from "@/features/cameras/media";
 import { colors, swatches } from "@/theme/colors";
 
 type CameraCardProps = {
@@ -22,12 +22,7 @@ export function CameraCard({ camera, active }: CameraCardProps) {
 		refetchInterval: (query) => liveRefetchInterval(query.state.data?.expiresAt),
 	});
 
-	const hlsUrl = streamQuery.data
-		? resolveMediaUrl(streamQuery.data.hlsUrl, streamQuery.data.token)
-		: undefined;
-	const whepUrl = streamQuery.data
-		? resolveMediaUrl(streamQuery.data.whepUrl, streamQuery.data.token)
-		: undefined;
+	const media = resolveLiveStream(streamQuery.data);
 
 	return (
 		<Link href={{ pathname: "/camera/[id]", params: { id: camera.id } }} asChild>
@@ -38,8 +33,8 @@ export function CameraCard({ camera, active }: CameraCardProps) {
 				style={({ pressed }) => [styles.container, pressed ? styles.pressed : null]}
 			>
 				<View style={styles.preview}>
-					{active && hlsUrl && whepUrl ? (
-						<LiveStreamPlayer hlsUri={hlsUrl} whepUri={whepUrl} />
+					{active && camera.status === "online" && camera.enabled && media.kind === "ready" ? (
+						<LiveStreamPlayer hlsUri={media.hlsUrl} whepUri={media.whepUrl} />
 					) : active && camera.status === "online" && camera.enabled && streamQuery.isPending ? (
 						<View style={styles.loading}>
 							<ActivityIndicator color={swatches.white} />
@@ -47,11 +42,15 @@ export function CameraCard({ camera, active }: CameraCardProps) {
 					) : (
 						<View style={styles.empty}>
 							<Text style={styles.emptyLabel}>
-								{active
-									? camera.enabled
-										? "Preview unavailable"
-										: "Camera disabled"
-									: "Preview paused"}
+								{!active
+									? "Preview paused"
+									: !camera.enabled
+										? "Camera disabled"
+										: camera.status !== "online"
+											? "Camera offline"
+											: media.kind === "error"
+												? "Stream address unavailable"
+												: "Preview unavailable"}
 							</Text>
 						</View>
 					)}
