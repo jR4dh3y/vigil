@@ -237,7 +237,7 @@ func main() {
 	r.Get("/api/v1/ws", apiServer.HandleWS)
 
 	// OpenAPI routes under /api/v1
-	api.HandlerFromMuxWithBaseURL(apiServer, r, "/api/v1")
+	api.RegisterOpenAPIRoutes(apiServer, r, "/api/v1")
 
 	// Static SPA (full) or connection page (slim) for everything else
 	r.NotFound(ui.Handler(ui.Config{

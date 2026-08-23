@@ -45,10 +45,17 @@ type EventInput struct {
 	Metadata  map[string]any
 }
 
+// Cursor identifies one event's position in the newest-first list order.
+type Cursor struct {
+	StartedAt time.Time
+	ID        string
+}
+
 // ListFilter controls ListEvents query options.
 type ListFilter struct {
 	Limit              int
 	Before             *time.Time
+	Cursor             *Cursor
 	CameraID           *string
 	Type               *string
 	UnacknowledgedOnly bool

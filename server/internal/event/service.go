@@ -133,6 +133,13 @@ func (s *Service) List(ctx context.Context, filter ListFilter) ([]Event, error) 
 	if filter.Before != nil && !filter.Before.IsZero() {
 		params.Before = sql.NullString{String: formatTime(filter.Before.UTC()), Valid: true}
 	}
+	if filter.Cursor != nil {
+		params.CursorStartedAt = sql.NullString{
+			String: formatTime(filter.Cursor.StartedAt.UTC()),
+			Valid:  true,
+		}
+		params.CursorID = sql.NullString{String: filter.Cursor.ID, Valid: true}
+	}
 	if filter.UnacknowledgedOnly {
 		params.UnackedOnly = sql.NullInt64{Int64: 1, Valid: true}
 	}
