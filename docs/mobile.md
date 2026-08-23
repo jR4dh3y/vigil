@@ -4,7 +4,7 @@ This document describes the mobile app. The app is in `apps/mobile/`. It is an E
 
 ## Overview
 
-The mobile app is the check-on-my-house client for Vigil. It provides live view, event playback, and event alerts. It is not an admin surface. It does not manage users or storage.
+The mobile app is the check-on-my-house client for Vigil. It provides live view, retained recording playback, event playback, and foreground event alerts. It is not an admin surface. It does not manage users or storage.
 
 The app is built with Expo SDK 57. It uses Expo Router for navigation. It uses TanStack Query for server state. It uses Zustand for local state.
 
@@ -33,6 +33,9 @@ The app uses these Expo plugins:
 - `expo-router`.
 - `expo-secure-store`.
 - `expo-notifications`.
+- `expo-video`, with picture-in-picture support.
+- `expo-splash-screen`.
+- `@config-plugins/react-native-webrtc` for the WHEP native module.
 - `expo-build-properties` with Android cleartext traffic enabled.
 
 The cleartext setting allows HTTP connections to local recorders.
@@ -49,7 +52,7 @@ run the recorder behind an HTTPS tunnel and point the app at that HTTPS URL.
 
 | Variable | Purpose |
 |---|---|
-| `EXPO_PUBLIC_API_URL` | The initial recorder API URL. The default is `http://127.0.0.1:8080/api/v1`. |
+| `EXPO_PUBLIC_API_URL` | An optional initial recorder API URL. Without it, first launch opens the recorder address form. |
 | `EXPO_OS` | Platform checks for keyboard and notifications. |
 
 ## The routes
@@ -63,10 +66,11 @@ The app uses Expo Router file-based routing. The routes are in `apps/mobile/app/
 | `/setup` | First-time admin setup form. |
 | `/server` | Recorder address form sheet. |
 | `/(tabs)/(live)` | Live camera list and camera detail. |
+| `/(tabs)/(history)` | Retained recording calendar, per-camera timelines, and playback. |
 | `/(tabs)/(events)` | Recent activity and event detail. |
 | `/(tabs)/(settings)` | Settings. |
 
-The root layout hydrates the recorder URL, the session token, and the local preferences before it mounts the app.
+The root layout hydrates the recorder URL, the session token, and the local preferences before it mounts the app. A notification event route is retained while authentication is restored, then opened after login or setup.
 
 ## Authentication
 
@@ -79,7 +83,7 @@ The app uses the browser-style session flow:
 
 The token storage is in `apps/mobile/lib/api/session.ts`. The storage key is `nvr_session`.
 
-There is no refresh-token endpoint. The app updates the token from the `X-Session-Token` response header. A `401` response clears the token, except for the login, setup, and status requests.
+There is no refresh-token endpoint. The app updates the token from the `X-Session-Token` response header. A protected `401` response clears the token and query cache, then returns the user to login. Login, setup, and status requests handle their own authentication responses.
 
 ## The API client
 
@@ -102,29 +106,41 @@ The user enters the recorder URL in the server form. The app normalizes the URL:
 - Rejects non-HTTP URLs and embedded credentials.
 - Ensures the path ends in `/api/v1`.
 
-The app tests the recorder with `GET /health`. On success, it saves the URL, clears the session and the query cache, and returns to the start.
+The app tests the recorder with `GET /health` with an eight-second timeout. On success, it saves the URL, clears the session and the query cache, and returns to the start.
 
 The URL storage key is `vigil_recorder_url`.
 
 ## Live view
 
-The live camera list polls the cameras every 30 seconds. Each camera card requests a live stream only when it is focused and the camera is online.
+The live camera list polls the cameras every 30 seconds. A camera card requests a live stream only when at least 40 percent of it is visible, the tab is focused, and the camera is enabled and online.
 
 The live session comes from `POST /cameras/{id}/live`. The app refreshes the session before the token expires.
 
-The player chooses WHEP first. The WHEP hook creates a WebRTC peer connection with no STUN servers. It negotiates over HTTP. On failure, the player falls back to HLS.
+The player chooses WHEP first in a custom native build. The WHEP hook creates a WebRTC peer connection with no STUN servers. It negotiates over HTTP. On failure, the player falls back to HLS. Expo Go cannot load the WebRTC native module, so its live preview reaches the HLS fallback instead.
 
-The HLS player uses `expo-video`. It replaces the video URI and starts playback.
+The HLS player uses `expo-video`. It replaces the video URI and starts playback. HTTP media URLs returned with loopback hostnames are rewritten to the configured recorder host. HTTPS responses with loopback media hosts fail visibly because rewriting them would invalidate TLS.
+
+## Recording history
+
+The History tab provides direct access to retained recordings:
+
+- A month calendar marks days with indexed recording coverage.
+- After choosing a camera, the selected day shows its time-scaled coverage timeline.
+- Timeline coverage is proportional to time, so gaps remain visible.
+- Selecting a recording opens playback at that exact point.
+- Playback advances to the next available playback window when the current window or archived segment ends.
+
+Calendar markers and recording queries use the same local-day range and strict-overlap rules. The app asks for availability and recordings per camera, so a disabled camera can still be inspected when addressed directly by the API.
 
 ## Event playback
 
-The event detail route loads the event, the camera, and the playback session. The playback session comes from `POST /cameras/{id}/playback`. Drive recordings do not loop one segment. When Expo Video emits `playToEnd`, the app requests `nextRecordingStart` and replaces the player source with the following indexed segment.
+The event detail route loads the event directly by ID, then loads its camera and playback session. The playback session comes from `POST /cameras/{id}/playback`. The player applies the returned start offset once. When Expo Video emits `playToEnd`, the app requests `nextRecordingStart` and replaces the player source with the next available playback window.
 
 The app exposes the playback URL only while the route is focused.
 
 ## Notifications
 
-The app uses local notifications. It does not register a remote push token.
+The app uses local foreground notifications. It does not register a remote push token and cannot receive alerts after the operating system suspends or terminates it.
 
 The notification service:
 
@@ -132,7 +148,7 @@ The notification service:
 - Requests permission.
 - Schedules local notifications for new events.
 
-The events tab polls every 15 seconds. When monitoring is armed and notifications are enabled, the app schedules local notifications for unacknowledged warning and critical events.
+While the authenticated app is open, it polls every 15 seconds. When alerts are enabled, it schedules local notifications for new unacknowledged warning and critical events.
 
 A notification response routes to the event detail page.
 
@@ -143,20 +159,17 @@ The notification module is disabled on web and in Expo Go.
 The settings screen shows:
 
 - The account.
-- The armed monitoring switch.
-- The notification permission switch.
+- The foreground alert permission switch.
 - The recorder health summary.
 - The recorder URL link.
 - The app metadata.
-
-The armed switch is a local preference. It does not call the recorder API.
 
 ## State management
 
 The app uses three kinds of state:
 
 - **Server state**: TanStack Query. The query client has a 30-second stale time and one retry.
-- **Local state**: Zustand in `apps/mobile/lib/store.ts`. It stores the armed flag, the notification flag, and the event watermark.
+- **Local state**: Zustand in `apps/mobile/lib/store.ts`. It stores the notification flag and the event watermark. Its migration discards the removed local-only armed preference.
 - **Component state**: React state for forms and errors.
 
 The Zustand store persists through SecureStore. The storage key is `vigil_preferences`.
@@ -166,3 +179,9 @@ The Zustand store persists through SecureStore. The storage key is `vigil_prefer
 The app uses Expo Router theme providers. It selects the light or dark theme from the device color scheme.
 
 The colors are in `apps/mobile/theme/colors.ts`. They use platform-specific values: iOS system colors, Android Material colors, and web defaults.
+
+## Source verification
+
+`.github/workflows/mobile.yml` verifies the mobile and supporting API source on relevant pull requests and pushes. It installs the Bun workspace with a hoisted linker, regenerates both API clients and rejects drift, checks formatting and types, runs the Bun and Go tests, resolves the Expo config, and checks Expo dependency versions. It accepts only Expo Doctor's three known `npm explain` failures in this Bun workspace; any other Doctor finding fails the workflow.
+
+This workflow does not build a native binary or prove simulator, device, network, notification, WebRTC, HLS, or picture-in-picture behavior. Those checks require an owned application identifier, signing configuration, recorder, and physical or simulated device environment.
