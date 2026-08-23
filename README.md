@@ -83,6 +83,10 @@ cd deploy && docker compose up --build
 docker build --target runtime-slim -f deploy/Dockerfile -t nvr-slim ..
 ```
 
+Release tags also publish ready-to-pull images to GHCR as separate packages:
+`ghcr.io/jr4dh3y/vigil` (full) and `ghcr.io/jr4dh3y/vigil-slim` (headless).
+See [`docs/operations.md`](docs/operations.md).
+
 ## Codegen & Check
 
 ```bash

@@ -49,6 +49,22 @@ image. To build the headless image for a hosted dashboard:
 cd deploy && docker build --target runtime-slim -t nvr-slim ..
 ```
 
+### Published Images
+
+Release tags (`v*`) publish two multi-platform images (amd64, arm64) to GHCR as
+separate packages, one per build type:
+
+- Full (embedded dashboard): `ghcr.io/jr4dh3y/vigil`
+- Slim / headless: `ghcr.io/jr4dh3y/vigil-slim`
+
+Each package gets `<version>`, `<major>.<minor>`, and `latest` tags; prerelease
+tags such as `v0.2.0-rc.1` publish versioned images without moving `latest`.
+
+```bash
+docker pull ghcr.io/jr4dh3y/vigil:latest
+docker pull ghcr.io/jr4dh3y/vigil-slim:0.3
+```
+
 The preferred deployment is MediaMTX as a sidecar service. The Dockerfile
 comments say baking MediaMTX into the image is optional.
 
