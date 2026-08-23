@@ -24,6 +24,7 @@ export default function EventDetailScreen() {
 				onRetryPlayback={() => detail.retryPlayback()}
 				playbackError={detail.playbackError}
 				playbackPending={detail.playbackPending}
+				playbackStartOffsetSec={detail.playbackStartOffsetSec}
 				playbackUrl={isFocused ? detail.playbackUrl : undefined}
 			/>
 		</>
