@@ -1,5 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+	calendarGridDays,
+	calendarGridRange,
+	shiftCalendarMonth,
+} from "../apps/dashboard/src/lib/recordings/calendar";
+import {
+	clampPlaybackTime,
+	currentLocalDayRange,
+	rangeForLocalDate,
+} from "../apps/dashboard/src/lib/recordings/range";
+import {
 	buildTimelineTicks,
 	mergeCoverageBars,
 	timelineTrackWidth,
@@ -21,6 +31,81 @@ describe("recording timeline scale", () => {
 		expect(ticks[1]?.at.getTime() - (ticks[0]?.at.getTime() ?? 0)).toBeLessThanOrEqual(
 			2 * 60 * 60 * 1000,
 		);
+	});
+
+	test("anchors the scale to both ends of the selected day", () => {
+		const from = new Date(2026, 7, 19, 0, 0, 0, 0);
+		const to = new Date(2026, 7, 19, 23, 59, 59, 999);
+		const ticks = buildTimelineTicks(from, to, 1200);
+
+		expect(ticks[0]?.at).toEqual(from);
+		expect(ticks.at(-1)?.at).toEqual(to);
+	});
+});
+
+describe("recording timeline browsing", () => {
+	test("opens an older calendar day", () => {
+		const range = rangeForLocalDate("2026-08-14");
+
+		expect(range?.from.getFullYear()).toBe(2026);
+		expect(range?.from.getMonth()).toBe(7);
+		expect(range?.from.getDate()).toBe(14);
+		expect(range?.to.getDate()).toBe(14);
+		expect(range?.to.getHours()).toBe(23);
+		expect(range?.to.getMinutes()).toBe(59);
+	});
+
+	test("defaults to midnight through the end of the current local day", () => {
+		const range = currentLocalDayRange(new Date(2026, 7, 19, 14, 30));
+
+		expect(range.from).toEqual(new Date(2026, 7, 19, 0, 0, 0, 0));
+		expect(range.to).toEqual(new Date(2026, 7, 19, 23, 59, 59, 999));
+	});
+
+	test("clamps current-day future seeks to the current time", () => {
+		const now = new Date("2026-08-22T05:30:00Z");
+		const range = {
+			from: new Date("2026-08-22T00:00:00Z"),
+			to: new Date("2026-08-22T23:59:59.999Z"),
+		};
+
+		expect(clampPlaybackTime(range.to, range, now)).toEqual(now);
+		expect(clampPlaybackTime(range.from, range, now)).toEqual(range.from);
+		expect(
+			clampPlaybackTime(
+				new Date("2026-08-21T23:59:59.999Z"),
+				{
+					from: new Date("2026-08-21T00:00:00Z"),
+					to: new Date("2026-08-21T23:59:59.999Z"),
+				},
+				now,
+			),
+		).toEqual(new Date("2026-08-21T23:59:59.999Z"));
+	});
+
+	test("builds a stable six-week calendar around the visible month", () => {
+		const month = { year: 2026, month: 7 };
+		const days = calendarGridDays(month, "2026-08-22");
+		const gridRange = calendarGridRange(month);
+
+		expect(days).toHaveLength(42);
+		expect(days[0]).toMatchObject({ value: "2026-07-26", inMonth: false });
+		expect(days[27]).toMatchObject({
+			value: "2026-08-22",
+			inMonth: true,
+			isFuture: false,
+		});
+		expect(days[28]).toMatchObject({ value: "2026-08-23", isFuture: true });
+		expect(days.at(-1)?.value).toBe("2026-09-05");
+		expect(gridRange.from).toEqual(new Date(2026, 6, 26, 0, 0, 0, 0));
+		expect(gridRange.to).toEqual(new Date(2026, 8, 5, 23, 59, 59, 999));
+	});
+
+	test("moves calendar months across year boundaries", () => {
+		expect(shiftCalendarMonth({ year: 2026, month: 0 }, -1)).toEqual({
+			year: 2025,
+			month: 11,
+		});
 	});
 });
 

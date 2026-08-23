@@ -112,7 +112,7 @@ The live query refreshes before the token expires. The refresh interval is about
 
 ## Timeline playback
 
-The timeline route shows the recording coverage for a camera. The presets are 1 hour, 24 hours, and 7 days, and the date control opens any older calendar day without loading the entire archive at once. The default range is the last 24 hours.
+The live playback timeline opens one local calendar day at 100% zoom, from midnight through 11:59 PM. Its date control sits beside the zoom controls and opens any older retained day. The calendar requests `GET /recordings/days` for its visible six-week grid. Days with local recordings are purple, days archived to Google Drive are green, and mixed days show both markers; the text legend and accessible day labels carry the same meaning without relying on color alone.
 
 The route queries `GET /cameras/{id}/recordings`. The response has the segments and the coverage bars.
 

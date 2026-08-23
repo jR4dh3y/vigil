@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 	"github.com/nvr/nvr/server/internal/recording"
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
 )
+
+const maxRecordingDayRange = 43 * 24 * time.Hour
 
 // ListCameraRecordings returns recording segments and coverage for a time range.
 // Any authenticated user; 404 if the camera does not exist.
@@ -49,6 +52,58 @@ func (s *Server) ListCameraRecordings(w http.ResponseWriter, r *http.Request, id
 	}
 
 	writeJSON(w, http.StatusOK, mapRecordingList(result))
+}
+
+// ListRecordingDays returns recording storage availability grouped in the
+// browser's local calendar days across all enabled cameras.
+func (s *Server) ListRecordingDays(w http.ResponseWriter, r *http.Request, params ListRecordingDaysParams) {
+	if auth.UserFromContext(r.Context()) == nil {
+		writeError(w, http.StatusUnauthorized, "unauthenticated", "unauthorized")
+		return
+	}
+	location, err := time.LoadLocation(strings.TrimSpace(params.TimeZone))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "timeZone must be a valid IANA time zone", "validation")
+		return
+	}
+	from, to := params.From, params.To
+	if from.After(to) {
+		from, to = to, from
+	}
+	if to.Sub(from) > maxRecordingDayRange {
+		writeError(w, http.StatusBadRequest, "recording day range must not exceed 43 days", "validation")
+		return
+	}
+	if s.Recording == nil || s.Camera == nil {
+		writeError(w, http.StatusInternalServerError, "recording service unavailable", "internal")
+		return
+	}
+	cameras, err := s.Camera.List(r.Context())
+	if err != nil {
+		slog.Error("list cameras for recording days", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
+	cameraIDs := make([]string, 0, len(cameras))
+	for _, camera := range cameras {
+		if camera.Enabled {
+			cameraIDs = append(cameraIDs, camera.ID)
+		}
+	}
+
+	days, err := s.Recording.ListDays(r.Context(), cameraIDs, from, to, location)
+	if err != nil {
+		slog.Error("list recording days", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
+	response, err := mapRecordingDays(days, location)
+	if err != nil {
+		slog.Error("map recording days", "err", err)
+		writeError(w, http.StatusInternalServerError, "internal error", "internal")
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 // PostCameraPlayback mints a short-lived playback session for recorded video.
@@ -269,4 +324,19 @@ func mapRecordingList(result recording.ListResult) RecordingList {
 		})
 	}
 	return out
+}
+
+func mapRecordingDays(days []recording.DayAvailability, location *time.Location) (RecordingDayList, error) {
+	out := RecordingDayList{Days: make([]RecordingDayAvailability, 0, len(days))}
+	for _, day := range days {
+		date, err := time.ParseInLocation(time.DateOnly, day.Date, location)
+		if err != nil {
+			return RecordingDayList{}, fmt.Errorf("parse recording day %q: %w", day.Date, err)
+		}
+		out.Days = append(out.Days, RecordingDayAvailability{
+			Date:   openapi_types.Date{Time: date},
+			Source: RecordingDaySource(day.Source),
+		})
+	}
+	return out, nil
 }

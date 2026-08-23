@@ -26,6 +26,9 @@ export type LiveStream = components["schemas"]["LiveStream"];
 export type CoverageBar = components["schemas"]["CoverageBar"];
 export type RecordingSegment = components["schemas"]["RecordingSegment"];
 export type RecordingList = components["schemas"]["RecordingList"];
+export type RecordingDayAvailability = components["schemas"]["RecordingDayAvailability"];
+export type RecordingDayList = components["schemas"]["RecordingDayList"];
+export type RecordingDaySource = RecordingDayAvailability["source"];
 export type PlaybackRequest = components["schemas"]["PlaybackRequest"];
 export type PlaybackSession = components["schemas"]["PlaybackSession"];
 

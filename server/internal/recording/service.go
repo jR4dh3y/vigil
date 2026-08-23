@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +49,21 @@ type CoverageBar struct {
 type ListResult struct {
 	Segments []Segment
 	Coverage []CoverageBar
+}
+
+// DaySource identifies where a calendar day's recordings can be played from.
+type DaySource string
+
+const (
+	DaySourceLocal  DaySource = "local"
+	DaySourceGDrive DaySource = "gdrive"
+	DaySourceMixed  DaySource = "mixed"
+)
+
+// DayAvailability summarizes recording storage for one local calendar day.
+type DayAvailability struct {
+	Date   string
+	Source DaySource
 }
 
 // CleanupStats summarizes a pass that removes local files whose Drive archive
@@ -190,6 +206,97 @@ func (s *Service) List(ctx context.Context, cameraID string, from, to time.Time)
 		coverage = append(coverage, CoverageBar{Start: seg.StartedAt, End: end})
 	}
 	return ListResult{Segments: segments, Coverage: coverage}, nil
+}
+
+// ListDays groups the supplied cameras' recordings into calendar days in location.
+func (s *Service) ListDays(
+	ctx context.Context,
+	cameraIDs []string,
+	from, to time.Time,
+	location *time.Location,
+) ([]DayAvailability, error) {
+	if location == nil {
+		return nil, fmt.Errorf("location is required")
+	}
+	if from.After(to) {
+		from, to = to, from
+	}
+
+	const (
+		hasLocal = 1 << iota
+		hasGDrive
+	)
+	sourcesByDay := make(map[string]int)
+	for _, cameraID := range cameraIDs {
+		rows, err := s.q.ListRecordingStorageByCameraRange(
+			ctx,
+			store.ListRecordingStorageByCameraRangeParams{
+				CameraID: strings.TrimSpace(cameraID),
+				FromTs:   formatTime(from),
+				ToTs:     formatTime(to),
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("list recording days for camera %q: %w", cameraID, err)
+		}
+		for _, row := range rows {
+			startedAt, err := parseTime(row.StartedAt)
+			if err != nil {
+				return nil, fmt.Errorf("parse recording day started_at %q: %w", row.StartedAt, err)
+			}
+			endedAt := startedAt.Add(time.Duration(max(0, row.DurationSec) * float64(time.Second)))
+			intervalStart := startedAt
+			if intervalStart.Before(from) {
+				intervalStart = from
+			}
+			intervalEnd := endedAt
+			if intervalEnd.After(to) {
+				intervalEnd = to
+			}
+			if !intervalEnd.After(intervalStart) {
+				continue
+			}
+			archiveLocation := strings.TrimSpace(row.ArchiveLocation.String)
+			archiveFileID, isDriveArchive := strings.CutPrefix(archiveLocation, "gdrive:")
+			source := hasLocal
+			if row.ArchiveLocation.Valid && isDriveArchive && strings.TrimSpace(archiveFileID) != "" {
+				source = hasGDrive
+			}
+
+			startLocal := intervalStart.In(location)
+			endLocal := intervalEnd.In(location)
+			for day := time.Date(
+				startLocal.Year(),
+				startLocal.Month(),
+				startLocal.Day(),
+				0, 0, 0, 0,
+				location,
+			); day.Before(endLocal); day = day.AddDate(0, 0, 1) {
+				sourcesByDay[day.Format(time.DateOnly)] |= source
+			}
+		}
+	}
+
+	dates := make([]string, 0, len(sourcesByDay))
+	for date := range sourcesByDay {
+		dates = append(dates, date)
+	}
+	slices.Sort(dates)
+
+	days := make([]DayAvailability, 0, len(dates))
+	for _, date := range dates {
+		var source DaySource
+		switch sourcesByDay[date] {
+		case hasLocal:
+			source = DaySourceLocal
+		case hasGDrive:
+			source = DaySourceGDrive
+		default:
+			source = DaySourceMixed
+		}
+		days = append(days, DayAvailability{Date: date, Source: source})
+	}
+	return days, nil
 }
 
 // IndexSegment inserts a recording row. path should be relative to RecordingsDir when possible.

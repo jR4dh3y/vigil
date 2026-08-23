@@ -102,6 +102,214 @@ func TestIndexSegmentAndListRange(t *testing.T) {
 	}
 }
 
+func TestListIncludesSegmentOverlappingRangeStart(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	startedAt := time.Date(2026, 8, 19, 23, 59, 30, 0, time.UTC)
+	segment, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/cross-midnight-playback.mp4",
+		startedAt,
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := svc.List(
+		ctx,
+		camID,
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 20, 23, 59, 59, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Segments) != 1 || result.Segments[0].ID != segment.ID {
+		t.Fatalf("overlapping segments = %+v", result.Segments)
+	}
+	if len(result.Coverage) != 1 || !result.Coverage[0].Start.Equal(startedAt) {
+		t.Fatalf("overlapping coverage = %+v", result.Coverage)
+	}
+}
+
+func TestListDaysGroupsLocalAndDriveRecordingsInRequestedTimeZone(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+
+	local, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/local.mp4",
+		time.Date(2026, 8, 18, 19, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driveSameDay, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/drive-same-day.mp4",
+		time.Date(2026, 8, 19, 5, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	driveNextDay, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/drive-next-day.mp4",
+		time.Date(2026, 8, 19, 19, 0, 0, 0, time.UTC),
+		60,
+		100,
+		"h264",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if local.ArchiveLocation != nil {
+		t.Fatalf("local segment unexpectedly archived: %+v", local)
+	}
+	for _, segment := range []Segment{driveSameDay, driveNextDay} {
+		if err := svc.MarkArchived(ctx, segment.ID, "gdrive:"+segment.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		time.Date(2026, 8, 18, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 2 {
+		t.Fatalf("ListDays returned %d days: %+v", len(days), days)
+	}
+	if days[0] != (DayAvailability{Date: "2026-08-19", Source: DaySourceMixed}) {
+		t.Fatalf("first day = %+v", days[0])
+	}
+	if days[1] != (DayAvailability{Date: "2026-08-20", Source: DaySourceGDrive}) {
+		t.Fatalf("second day = %+v", days[1])
+	}
+}
+
+func TestListDaysIncludesEveryLocalDateTouchedByAnOverlappingSegment(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	startedAt := time.Date(2026, 8, 19, 18, 29, 30, 0, time.UTC)
+	if _, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/cross-midnight.mp4",
+		startedAt,
+		60,
+		100,
+		"h264",
+	); err != nil {
+		t.Fatal(err)
+	}
+	location, err := time.LoadLocation("Asia/Kolkata")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		startedAt,
+		startedAt.Add(time.Minute),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 2 || days[0].Date != "2026-08-19" || days[1].Date != "2026-08-20" {
+		t.Fatalf("cross-midnight days = %+v", days)
+	}
+
+	overlapOnly, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		time.Date(2026, 8, 19, 18, 30, 0, 0, time.UTC),
+		time.Date(2026, 8, 19, 18, 31, 0, 0, time.UTC),
+		location,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(overlapOnly) != 1 || overlapOnly[0] != (DayAvailability{
+		Date:   "2026-08-20",
+		Source: DaySourceLocal,
+	}) {
+		t.Fatalf("overlapping range days = %+v", overlapOnly)
+	}
+}
+
+func TestMidnightBoundaryDoesNotExposeEmptyDay(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	startedAt := time.Date(2026, 8, 19, 23, 59, 30, 0, time.UTC)
+	if _, err := svc.IndexSegment(
+		ctx,
+		camID,
+		"cam/ends-at-midnight.mp4",
+		startedAt,
+		30,
+		100,
+		"h264",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	days, err := svc.ListDays(
+		ctx,
+		[]string{camID},
+		startedAt,
+		time.Date(2026, 8, 20, 23, 59, 59, 0, time.UTC),
+		time.UTC,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 1 || days[0].Date != "2026-08-19" {
+		t.Fatalf("midnight-boundary days = %+v", days)
+	}
+
+	nextDay, err := svc.List(
+		ctx,
+		camID,
+		time.Date(2026, 8, 20, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 20, 23, 59, 59, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nextDay.Segments) != 0 || len(nextDay.Coverage) != 0 {
+		t.Fatalf("midnight-boundary playback = %+v", nextDay)
+	}
+}
+
 func TestIndexSegmentIsIdempotentByPath(t *testing.T) {
 	svc, _ := setupTestService(t)
 	ctx := context.Background()

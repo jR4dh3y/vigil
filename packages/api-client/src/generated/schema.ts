@@ -289,6 +289,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/recordings/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List recording availability by local calendar day
+         * @description Returns days containing recordings for enabled cameras, classified by local or Google Drive storage.
+         *     The requested range must not exceed 43 days, enough for the six-week calendar grid across daylight-saving changes.
+         */
+        get: operations["listRecordingDays"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/{id}/recordings": {
         parameters: {
             query?: never;
@@ -806,6 +827,19 @@ export interface components {
         RecordingList: {
             recordings: components["schemas"]["RecordingSegment"][];
             coverage: components["schemas"]["CoverageBar"][];
+        };
+        /** @enum {string} */
+        RecordingDaySource: "local" | "gdrive" | "mixed";
+        RecordingDayAvailability: {
+            /**
+             * Format: date
+             * @description Calendar date in the requested time zone
+             */
+            date: string;
+            source: components["schemas"]["RecordingDaySource"];
+        };
+        RecordingDayList: {
+            days: components["schemas"]["RecordingDayAvailability"][];
         };
         PlaybackRequest: {
             /** Format: date-time */
@@ -1585,6 +1619,51 @@ export interface operations {
             };
             /** @description Camera or snapshot not available */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listRecordingDays: {
+        parameters: {
+            query: {
+                /** @description Range start (inclusive) */
+                from: string;
+                /** @description Range end (inclusive) */
+                to: string;
+                /** @description IANA time zone used to group recordings into calendar days */
+                timeZone: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recording availability grouped by local calendar day */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordingDayList"];
+                };
+            };
+            /** @description Invalid time zone or a range longer than 43 days */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

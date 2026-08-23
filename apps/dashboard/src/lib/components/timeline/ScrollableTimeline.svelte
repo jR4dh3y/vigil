@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from "svelte";
+	import { tick, type Snippet } from "svelte";
 	import type { CoverageBar } from "$lib/recordings";
 	import {
 		buildTimelineTicks,
@@ -21,6 +21,7 @@
 		ariaLabel: string;
 		onPreview?: (time: Date) => void;
 		onSeek: (time: Date) => void;
+		controls?: Snippet;
 		class?: string;
 	};
 
@@ -34,6 +35,7 @@
 		ariaLabel,
 		onPreview,
 		onSeek,
+		controls,
 		class: className = "",
 	}: Props = $props();
 
@@ -237,7 +239,7 @@
 	>
 		<span>Scroll to zoom · swipe to pan</span>
 		<div class="flex items-center gap-2">
-			<output class="font-medium text-zinc-300 tabular-nums">
+			<output class="w-40 truncate text-right font-medium text-zinc-300 tabular-nums">
 				{exactTime ? formatSelectedTime(exactTime) : "Point to a timestamp"}
 			</output>
 			<div class="inline-flex items-center rounded border border-zinc-800 bg-zinc-900/80">
@@ -258,9 +260,10 @@
 					disabled={disabled || zoom >= MAX_ZOOM}
 					aria-label="Zoom timeline in"
 					onclick={() => zoomFromButton("in")}
-				>+</button
+					>+</button
 				>
 			</div>
+			{@render controls?.()}
 		</div>
 	</div>
 
@@ -324,7 +327,12 @@
 			<div class="relative h-4 px-1">
 				{#each ticks as tick (tick.at.getTime())}
 					<span
-						class="absolute whitespace-nowrap -translate-x-1/2 text-[10px] text-zinc-500 tabular-nums"
+						class="absolute whitespace-nowrap text-[10px] text-zinc-500 tabular-nums
+							{tick.fraction === 0
+								? ''
+								: tick.fraction === 1
+									? '-translate-x-full'
+									: '-translate-x-1/2'}"
 						style:left="{tick.fraction * 100}%"
 					>
 						{tick.label}

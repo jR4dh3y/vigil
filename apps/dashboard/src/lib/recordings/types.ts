@@ -2,6 +2,9 @@ export type {
 	CoverageBar,
 	PlaybackRequest,
 	PlaybackSession,
+	RecordingDayAvailability,
+	RecordingDayList,
+	RecordingDaySource,
 	RecordingList,
 	RecordingSegment,
 } from "@nvr/api-client";
