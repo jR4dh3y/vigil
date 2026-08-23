@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	eventIdFromPathname,
+	peekPendingEventRoute,
 	setPendingEventRoute,
 	takePendingEventRoute,
 } from "@/features/notifications/pending-event-route";
@@ -28,5 +29,14 @@ describe("pending event route", () => {
 		setPendingEventRoute("event-123");
 		useRecorder("http://recorder-b.example/api/v1");
 		expect(takePendingEventRoute()).toBeNull();
+	});
+
+	test("does not resurrect a dropped pending event when returning to its recorder", () => {
+		useRecorder("http://recorder-a.example/api/v1");
+		setPendingEventRoute("event-123");
+		useRecorder("http://recorder-b.example/api/v1");
+		expect(peekPendingEventRoute()).toBeNull();
+		useRecorder("http://recorder-a.example/api/v1");
+		expect(peekPendingEventRoute()).toBeNull();
 	});
 });

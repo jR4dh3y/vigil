@@ -1,11 +1,12 @@
 import { useSyncExternalStore } from "react";
-import { getApiBaseUrl } from "@/lib/api/config-state";
+import { getApiBaseUrl, subscribeToApiBaseUrl } from "@/lib/api/config-state";
 
 let pendingEventRoute: { eventId: string; recorderBaseUrl: string } | null = null;
 const listeners = new Set<() => void>();
 
-/** The route is scoped to the recorder it was raised for so switching
- * recorders cannot open a stale event against a different recorder. */
+/** The route is scoped to the recorder it was raised for and dropped as soon
+ * as that recorder stops being active, so switching recorders can neither open
+ * a stale event against another recorder nor resurrect it when switching back. */
 export function setPendingEventRoute(eventId: string): void {
 	const recorderBaseUrl = getApiBaseUrl();
 	if (
@@ -25,6 +26,11 @@ export function takePendingEventRoute(): string | null {
 		notifyListeners();
 	}
 	return eventId;
+}
+
+/** Observe the pending event without consuming it. */
+export function peekPendingEventRoute(): string | null {
+	return currentPendingEventId();
 }
 
 export function usePendingEventRoute(): string | null {
@@ -58,6 +64,16 @@ function subscribe(listener: () => void): () => void {
 	listeners.add(listener);
 	return () => listeners.delete(listener);
 }
+
+// A route kept while its recorder is inactive must never survive a recorder
+// switch, so drop it the moment the active configuration moves elsewhere.
+subscribeToApiBaseUrl(() => {
+	if (!pendingEventRoute || pendingEventRoute.recorderBaseUrl === getApiBaseUrl()) {
+		return;
+	}
+	pendingEventRoute = null;
+	notifyListeners();
+});
 
 function notifyListeners(): void {
 	for (const listener of listeners) {
