@@ -20,12 +20,12 @@ export function SettingsLinkRow({ href, label, value, last = false }: SettingsLi
 					pressed ? styles.pressed : null,
 				]}
 			>
-				<Text selectable style={styles.label}>
+				<Text numberOfLines={1} style={styles.label}>
 					{label}
 				</Text>
 				<View style={styles.trailing}>
 					{value ? (
-						<Text selectable numberOfLines={1} style={styles.value}>
+						<Text ellipsizeMode="tail" numberOfLines={1} style={styles.value}>
 							{value}
 						</Text>
 					) : null}
@@ -40,38 +40,52 @@ const styles = StyleSheet.create({
 	container: {
 		alignItems: "center",
 		flexDirection: "row",
-		gap: 16,
+		gap: 12,
+		justifyContent: "space-between",
 		marginLeft: 16,
-		minHeight: 58,
-		paddingRight: 16,
-		paddingVertical: 11,
+		minHeight: 56,
+		paddingRight: 12,
+		paddingVertical: 12,
 	},
 	divider: {
 		borderBottomColor: colors.separator,
 		borderBottomWidth: StyleSheet.hairlineWidth,
 	},
 	pressed: {
-		opacity: 0.65,
+		opacity: 0.6,
 	},
 	label: {
 		color: colors.label,
-		flex: 1,
+		flexShrink: 1,
 		fontSize: 16,
+		lineHeight: 20,
+		minWidth: 0,
 	},
 	trailing: {
 		alignItems: "center",
 		flexDirection: "row",
-		gap: 8,
-		maxWidth: "60%",
+		flexShrink: 1,
+		gap: 4,
+		justifyContent: "flex-end",
+		maxWidth: "68%",
+		minWidth: 0,
 	},
 	value: {
 		color: colors.secondaryLabel,
 		flexShrink: 1,
 		fontSize: 14,
+		includeFontPadding: false,
+		lineHeight: 18,
+		minWidth: 0,
+		textAlign: "right",
 	},
 	chevron: {
 		color: colors.secondaryLabel,
-		fontSize: 24,
-		fontWeight: "300",
+		flexShrink: 0,
+		fontSize: 20,
+		includeFontPadding: false,
+		lineHeight: 20,
+		textAlign: "center",
+		width: 12,
 	},
 });
