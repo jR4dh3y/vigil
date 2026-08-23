@@ -12,15 +12,12 @@ import { SettingsLinkRow } from "@/features/settings/components/settings-link-ro
 import { SettingsRow } from "@/features/settings/components/settings-row";
 import { getSystemStatus, systemKeys } from "@/features/system/api";
 import { SystemSummary } from "@/features/system/components/system-summary";
-import { useAppStore } from "@/lib/store";
 import { colors } from "@/theme/colors";
 
 export default function SettingsScreen() {
 	const queryClient = useQueryClient();
 	const auth = useAuthStatus();
 	const user = auth.data?.user;
-	const armed = useAppStore((state) => state.armed);
-	const setArmed = useAppStore((state) => state.setArmed);
 	const notificationPreference = useNotificationPreference();
 	const apiBaseUrl = useApiBaseUrl();
 	const statusQuery = useQuery({
@@ -53,20 +50,14 @@ export default function SettingsScreen() {
 			</SettingsGroup>
 
 			<SettingsGroup
-				footer="On-device alerts are checked while Vigil is running. Remote push requires notification support from the recorder."
-				title="Monitoring"
+				footer="Vigil checks every 15 seconds while the app is open. Remote push is not available."
+				title="Alerts"
 			>
 				<SettingsRow
 					control={
-						<Switch onValueChange={setArmed} trackColor={{ true: colors.green }} value={armed} />
-					}
-					detail={armed ? "Camera alerts are active" : "Alerts are paused"}
-					label="Armed"
-				/>
-				<SettingsRow
-					control={
 						<Switch
-							disabled={notificationPreference.requesting}
+							accessibilityLabel="Alerts while app is open"
+							disabled={!notificationPreference.available || notificationPreference.requesting}
 							onValueChange={(enabled) => {
 								void notificationPreference.update(enabled).then((granted) => {
 									if (enabled && !granted) {
@@ -81,8 +72,12 @@ export default function SettingsScreen() {
 							value={notificationPreference.enabled}
 						/>
 					}
-					detail="Warning and critical events"
-					label="Notifications"
+					detail={
+						notificationPreference.available
+							? "Warning and critical system alerts"
+							: "Unavailable in Expo Go and on web"
+					}
+					label="Alerts while open"
 					last
 				/>
 			</SettingsGroup>
@@ -103,7 +98,7 @@ export default function SettingsScreen() {
 			<SettingsGroup title="About">
 				<SettingsRow label="App" value="Vigil" />
 				<SettingsRow label="Version" value={Constants.expoConfig?.version ?? "—"} />
-				<SettingsRow label="Scope" last value="Live · Events · Alerts" />
+				<SettingsRow label="Scope" last value="Live · Events · History" />
 			</SettingsGroup>
 
 			<Pressable

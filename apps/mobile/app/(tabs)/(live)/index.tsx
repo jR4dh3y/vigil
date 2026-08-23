@@ -1,17 +1,33 @@
 import type { Camera } from "@nvr/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { useIsFocused } from "expo-router/react-navigation";
-import { useCallback } from "react";
-import { FlatList, type ListRenderItem, RefreshControl, StyleSheet, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import {
+	FlatList,
+	type ListRenderItem,
+	RefreshControl,
+	StyleSheet,
+	View,
+	type ViewToken,
+} from "react-native";
 import { SectionHeading } from "@/components/section-heading";
 import { StatePanel } from "@/components/state-panel";
 import { cameraKeys, listCameras } from "@/features/cameras/api";
-import { ArmCard } from "@/features/cameras/components/arm-card";
 import { CameraCard } from "@/features/cameras/components/camera-card";
 import { colors } from "@/theme/colors";
 
 export default function LiveScreen() {
 	const isFocused = useIsFocused();
+	const [visibleCameraIds, setVisibleCameraIds] = useState<ReadonlySet<string>>(() => new Set());
+	const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40 }).current;
+	const onViewableItemsChanged = useRef(
+		({ viewableItems }: { viewableItems: ViewToken<Camera>[] }) => {
+			const next = new Set(
+				viewableItems.flatMap(({ item, isViewable }) => (isViewable ? [item.id] : [])),
+			);
+			setVisibleCameraIds((current) => (sameIds(current, next) ? current : next));
+		},
+	).current;
 	const camerasQuery = useQuery({
 		queryKey: cameraKeys.all,
 		queryFn: listCameras,
@@ -21,8 +37,8 @@ export default function LiveScreen() {
 	const cameras = camerasQuery.data ?? [];
 	const onlineCount = cameras.filter((camera) => camera.status === "online").length;
 	const renderCamera = useCallback<ListRenderItem<Camera>>(
-		({ item }) => <CameraCard active={isFocused} camera={item} />,
-		[isFocused],
+		({ item }) => <CameraCard active={isFocused && visibleCameraIds.has(item.id)} camera={item} />,
+		[isFocused, visibleCameraIds],
 	);
 
 	return (
@@ -51,7 +67,6 @@ export default function LiveScreen() {
 			}
 			ListHeaderComponent={
 				<View style={styles.header}>
-					<ArmCard />
 					<SectionHeading
 						detail={cameras.length > 0 ? `${onlineCount} of ${cameras.length} online` : undefined}
 						title="Cameras"
@@ -66,9 +81,23 @@ export default function LiveScreen() {
 				/>
 			}
 			renderItem={renderCamera}
+			onViewableItemsChanged={onViewableItemsChanged}
 			style={styles.screen}
+			viewabilityConfig={viewabilityConfig}
 		/>
 	);
+}
+
+function sameIds(current: ReadonlySet<string>, next: ReadonlySet<string>): boolean {
+	if (current.size !== next.size) {
+		return false;
+	}
+	for (const id of current) {
+		if (!next.has(id)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 function cameraKey(camera: Camera): string {
@@ -89,7 +118,6 @@ const styles = StyleSheet.create({
 		paddingBottom: 40,
 	},
 	header: {
-		gap: 28,
 		paddingBottom: 14,
 	},
 	separator: {

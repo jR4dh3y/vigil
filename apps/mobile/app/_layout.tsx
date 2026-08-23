@@ -4,6 +4,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-naviga
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
+import { useProtectedSessionRouting } from "@/features/auth/use-protected-session-routing";
 import { useNotificationRouting } from "@/features/notifications/use-notification-routing";
 import { hydrateApiConfig } from "@/lib/api/config";
 import { hydrateSession } from "@/lib/api/session";
@@ -14,7 +15,8 @@ import { colors } from "@/theme/colors";
 export default function RootLayout() {
 	const colorScheme = useColorScheme();
 	const [sessionReady, setSessionReady] = useState(false);
-	useNotificationRouting();
+	useProtectedSessionRouting();
+	useNotificationRouting(sessionReady);
 
 	useEffect(() => {
 		void Promise.all([hydrateApiConfig(), hydrateSession(), hydrateAppPreferences()]).finally(() =>

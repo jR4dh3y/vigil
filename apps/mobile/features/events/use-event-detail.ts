@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cameraKeys, getCamera, getPlayback } from "@/features/cameras/api";
+import { resolvePlayback } from "@/features/cameras/media";
 import { acknowledgeEvent, eventKeys, getEvent } from "@/features/events/api";
-import { resolveMediaUrl } from "@/lib/api/config";
 
 export function useEventDetail(id: string, active: boolean) {
 	const queryClient = useQueryClient();
@@ -44,16 +44,10 @@ export function useEventDetail(id: string, active: boolean) {
 			await queryClient.invalidateQueries({ queryKey: eventKeys.all });
 		},
 	});
-	const playbackUrl = playbackQuery.data
-		? resolveMediaUrl(playbackQuery.data.playbackUrl, playbackQuery.data.token)
-		: undefined;
+	const playback = resolvePlayback(playbackQuery.data);
 	const continuePlayback = () => {
 		const session = playbackQuery.data;
-		if (
-			session?.source !== "gdrive" ||
-			!session.nextRecordingStart ||
-			continuePlaybackMutation.isPending
-		) {
+		if (!session?.nextRecordingStart || continuePlaybackMutation.isPending) {
 			return;
 		}
 		continuePlaybackMutation.mutate({
@@ -63,6 +57,12 @@ export function useEventDetail(id: string, active: boolean) {
 		});
 	};
 	const retryPlayback = () => {
+		const failedContinuation = continuePlaybackMutation.variables;
+		if (continuePlaybackMutation.isError && failedContinuation) {
+			continuePlaybackMutation.reset();
+			continuePlaybackMutation.mutate(failedContinuation);
+			return;
+		}
 		continuePlaybackMutation.reset();
 		return playbackQuery.refetch();
 	};
@@ -70,11 +70,15 @@ export function useEventDetail(id: string, active: boolean) {
 	return {
 		event,
 		camera: cameraQuery.data,
-		playbackUrl,
+		playbackUrl: playback.kind === "ready" ? playback.url : undefined,
+		playbackStartOffsetSec: playback.kind === "ready" ? playback.startOffsetSec : 0,
 		eventPending: eventQuery.isPending,
 		eventError: eventQuery.error,
 		playbackPending: playbackQuery.isPending || continuePlaybackMutation.isPending,
-		playbackError: continuePlaybackMutation.error ?? playbackQuery.error,
+		playbackError:
+			continuePlaybackMutation.error ??
+			playbackQuery.error ??
+			(playback.kind === "error" ? playback.error : null),
 		acknowledging: acknowledgeMutation.isPending,
 		acknowledgeError: acknowledgeMutation.error,
 		retryEvent: eventQuery.refetch,

@@ -131,20 +131,30 @@ WHERE (cast(?1 AS TEXT) IS NULL OR camera_id = ?1)
   AND (cast(?2 AS TEXT) IS NULL OR type = ?2)
   AND (cast(?3 AS TEXT) IS NULL OR started_at < ?3)
   AND (
-    cast(?4 AS INTEGER) IS NULL
-    OR ?4 = 0
+    cast(?4 AS TEXT) IS NULL
+    OR started_at < ?4
+    OR (
+      started_at = ?4
+      AND id < ?5
+    )
+  )
+  AND (
+    cast(?6 AS INTEGER) IS NULL
+    OR ?6 = 0
     OR acknowledged = 0
   )
 ORDER BY started_at DESC, id DESC
-LIMIT ?5
+LIMIT ?7
 `
 
 type ListEventsParams struct {
-	CameraID    sql.NullString `json:"camera_id"`
-	EventType   sql.NullString `json:"event_type"`
-	Before      sql.NullString `json:"before"`
-	UnackedOnly sql.NullInt64  `json:"unacked_only"`
-	LimitCount  int64          `json:"limit_count"`
+	CameraID        sql.NullString `json:"camera_id"`
+	EventType       sql.NullString `json:"event_type"`
+	Before          sql.NullString `json:"before"`
+	CursorStartedAt sql.NullString `json:"cursor_started_at"`
+	CursorID        sql.NullString `json:"cursor_id"`
+	UnackedOnly     sql.NullInt64  `json:"unacked_only"`
+	LimitCount      int64          `json:"limit_count"`
 }
 
 func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event, error) {
@@ -152,6 +162,8 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Event
 		arg.CameraID,
 		arg.EventType,
 		arg.Before,
+		arg.CursorStartedAt,
+		arg.CursorID,
 		arg.UnackedOnly,
 		arg.LimitCount,
 	)

@@ -1,23 +1,30 @@
-import type { Event } from "@nvr/api-client";
+import type { Event, EventCursor } from "@nvr/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { eventKeys, listEvents } from "@/features/events/api";
+import { eventPageProgress } from "@/features/notifications/event-pagination";
+import {
+	type EventWatermark,
+	eventWatermarkAt,
+	hasUnseenEventsAtWatermark,
+} from "@/features/notifications/event-watermark";
+import { canUseLocalNotifications } from "@/features/notifications/runtime";
 import { notifyAboutEvent } from "@/features/notifications/service";
 import { getApiClient } from "@/lib/api/client";
 import { useAppStore } from "@/lib/store";
 
 export function useEventAlerts(enabled: boolean): number {
-	const armed = useAppStore((state) => state.armed);
+	const notificationsAvailable = canUseLocalNotifications();
 	const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
 	const lastSeenEventAt = useAppStore((state) => state.lastSeenEventAt);
 	const setLastSeenEventAt = useAppStore((state) => state.setLastSeenEventAt);
-	const [isProcessing, setIsProcessing] = useState(false);
+	const processing = useRef(false);
 	// Ids already accounted for at the current watermark second. The recorder
 	// timestamp has second precision, so events sharing the watermark second
 	// can still arrive after it is stored and must not be dropped — nor
 	// re-alerted — based on the timestamp alone.
-	const seenAtWatermark = useRef<{ at: string | null; ids: Set<string> }>({
-		at: null,
+	const seenAtWatermark = useRef<EventWatermark>({
+		at: "",
 		ids: new Set(),
 	});
 	const eventsQuery = useQuery({
@@ -33,7 +40,7 @@ export function useEventAlerts(enabled: boolean): number {
 			seenAtWatermark.current = {
 				at: timestamp,
 				ids: new Set(
-					events.filter((event) => event.createdAt === timestamp).map((event) => event.id),
+					events.filter((event) => event.startedAt === timestamp).map((event) => event.id),
 				),
 			};
 			setLastSeenEventAt(timestamp);
@@ -44,27 +51,34 @@ export function useEventAlerts(enabled: boolean): number {
 			return;
 		}
 		if (!lastSeenEventAt) {
-			markSeenThrough(newest.createdAt);
+			markSeenThrough(newest.startedAt);
 			return;
 		}
 
 		const lastSeenTime = Date.parse(lastSeenEventAt);
-		const newestTime = Date.parse(newest.createdAt);
+		const newestTime = Date.parse(newest.startedAt);
 		if (Number.isNaN(lastSeenTime) || Number.isNaN(newestTime)) {
-			markSeenThrough(newest.createdAt);
+			markSeenThrough(newest.startedAt);
 			return;
 		}
-		if (newestTime < lastSeenTime || isProcessing) {
+		if (seenAtWatermark.current.at !== lastSeenEventAt) {
+			seenAtWatermark.current = eventWatermarkAt(events, lastSeenEventAt);
+		}
+		if (
+			newestTime < lastSeenTime ||
+			processing.current ||
+			(newestTime === lastSeenTime && !hasUnseenEventsAtWatermark(events, seenAtWatermark.current))
+		) {
 			return;
 		}
 
-		if (!armed || !notificationsEnabled) {
-			markSeenThrough(newest.createdAt);
+		if (!notificationsAvailable || !notificationsEnabled) {
+			markSeenThrough(newest.startedAt);
 			return;
 		}
 
 		const processNewEvents = async () => {
-			setIsProcessing(true);
+			processing.current = true;
 			try {
 				const seenIds =
 					seenAtWatermark.current.at === lastSeenEventAt
@@ -72,14 +86,19 @@ export function useEventAlerts(enabled: boolean): number {
 						: new Set<string>();
 				const allNewEvents: Event[] = [];
 				const api = getApiClient();
-				let before: string | undefined;
+				let cursor: EventCursor | undefined;
 				const limit = 100;
 
 				while (allNewEvents.length < 1000) {
 					const { data } = await api.GET("/events", {
-						params: { query: { limit, before } },
+						params: { query: { limit, cursor } },
 					});
-					if (!data?.events.length) {
+					if (!data) {
+						// The page sequence is incomplete; keep the current watermark
+						// so the next poll retries the whole window.
+						return;
+					}
+					if (!data.events.length) {
 						break;
 					}
 
@@ -88,7 +107,7 @@ export function useEventAlerts(enabled: boolean): number {
 					for (const event of batch) {
 						// Events arrive newest-first; the first event strictly older
 						// than the watermark means every later page is accounted for.
-						if (Date.parse(event.createdAt) < lastSeenTime) {
+						if (Date.parse(event.startedAt) < lastSeenTime) {
 							reachedSeenEvents = true;
 							break;
 						}
@@ -97,17 +116,14 @@ export function useEventAlerts(enabled: boolean): number {
 						}
 					}
 
-					if (reachedSeenEvents || batch.length < limit) {
+					const progress = eventPageProgress(data, limit, reachedSeenEvents);
+					if (progress.kind === "complete") {
 						break;
 					}
-
-					before = batch[batch.length - 1]?.createdAt;
-					if (!before) {
-						break;
-					}
+					cursor = progress.cursor;
 				}
 
-				allNewEvents.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+				allNewEvents.sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
 				const alertEvents = allNewEvents
 					.filter(
 						(event) =>
@@ -124,27 +140,27 @@ export function useEventAlerts(enabled: boolean): number {
 					const actualNewest = allNewEvents[allNewEvents.length - 1];
 					if (actualNewest) {
 						const ids = new Set<string>();
-						if (actualNewest.createdAt === lastSeenEventAt) {
+						if (actualNewest.startedAt === lastSeenEventAt) {
 							for (const id of seenIds) {
 								ids.add(id);
 							}
 						}
 						for (const event of allNewEvents) {
-							if (event.createdAt === actualNewest.createdAt) {
+							if (event.startedAt === actualNewest.startedAt) {
 								ids.add(event.id);
 							}
 						}
-						seenAtWatermark.current = { at: actualNewest.createdAt, ids };
-						setLastSeenEventAt(actualNewest.createdAt);
+						seenAtWatermark.current = { at: actualNewest.startedAt, ids };
+						setLastSeenEventAt(actualNewest.startedAt);
 					}
 				}
 			} finally {
-				setIsProcessing(false);
+				processing.current = false;
 			}
 		};
 
 		void processNewEvents();
-	}, [armed, events, lastSeenEventAt, notificationsEnabled, setLastSeenEventAt, isProcessing]);
+	}, [events, lastSeenEventAt, notificationsAvailable, notificationsEnabled, setLastSeenEventAt]);
 
 	return events.reduce((count, event) => count + (event.acknowledged ? 0 : 1), 0);
 }

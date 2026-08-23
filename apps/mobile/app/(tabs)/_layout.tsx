@@ -3,11 +3,18 @@ import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
 import { useEventAlerts } from "@/features/notifications/use-event-alerts";
+import { useApiConfiguration } from "@/features/server/use-api-base-url";
 import { colors } from "@/theme/colors";
 
 export default function TabsLayout() {
-	const auth = useAuthStatus();
+	const configuration = useApiConfiguration();
+	const configured = configuration.kind === "configured";
+	const auth = useAuthStatus(configured);
 	const unacknowledgedCount = useEventAlerts(Boolean(auth.data?.user));
+
+	if (!configured) {
+		return <Redirect href="/server" />;
+	}
 
 	if (auth.isPending) {
 		return (
@@ -18,7 +25,7 @@ export default function TabsLayout() {
 	}
 
 	if (auth.isError) {
-		return <Redirect href="/login" />;
+		return <Redirect href="/server" />;
 	}
 
 	if (auth.data.setupRequired) {
@@ -43,6 +50,10 @@ export default function TabsLayout() {
 						{unacknowledgedCount > 99 ? "99+" : String(unacknowledgedCount)}
 					</NativeTabs.Trigger.Badge>
 				) : null}
+			</NativeTabs.Trigger>
+			<NativeTabs.Trigger name="(history)">
+				<NativeTabs.Trigger.Icon sf="clock.arrow.circlepath" md="history" />
+				<NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
 			</NativeTabs.Trigger>
 			<NativeTabs.Trigger name="(settings)">
 				<NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />

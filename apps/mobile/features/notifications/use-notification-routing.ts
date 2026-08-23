@@ -1,6 +1,7 @@
 import type { NotificationResponse } from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
+import { setPendingEventRoute } from "@/features/notifications/pending-event-route";
 import {
 	loadNotificationsModule,
 	type NotificationsModule,
@@ -9,11 +10,16 @@ import {
 	configureNotifications,
 	eventIdFromNotificationResponse,
 } from "@/features/notifications/service";
+import { getApiConfiguration } from "@/lib/api/config";
+import { getSessionToken } from "@/lib/api/session";
 
-export function useNotificationRouting(): void {
+export function useNotificationRouting(enabled: boolean): void {
 	const { push } = useRouter();
 
 	useEffect(() => {
+		if (!enabled) {
+			return;
+		}
 		let disposed = false;
 		let subscription: ReturnType<
 			NotificationsModule["addNotificationResponseReceivedListener"]
@@ -27,17 +33,27 @@ export function useNotificationRouting(): void {
 
 			await configureNotifications().catch(() => undefined);
 
-			const openResponse = (response: NotificationResponse) => {
+			const openResponse = async (response: NotificationResponse) => {
 				const eventId = eventIdFromNotificationResponse(response);
-				if (eventId) {
-					push({ pathname: "/event/[id]", params: { id: eventId } });
+				if (!eventId) {
+					return;
 				}
+				const token = await getSessionToken();
+				if (disposed) {
+					return;
+				}
+				if (getApiConfiguration().kind === "configured" && token) {
+					push({ pathname: "/event/[id]", params: { id: eventId } });
+					return;
+				}
+				setPendingEventRoute(eventId);
+				push("/");
 			};
 
 			try {
 				const lastResponse = notifications.getLastNotificationResponse();
 				if (lastResponse) {
-					openResponse(lastResponse);
+					void openResponse(lastResponse);
 					notifications.clearLastNotificationResponse();
 				}
 			} catch {
@@ -45,7 +61,9 @@ export function useNotificationRouting(): void {
 			}
 
 			if (!disposed) {
-				subscription = notifications.addNotificationResponseReceivedListener(openResponse);
+				subscription = notifications.addNotificationResponseReceivedListener((response) => {
+					void openResponse(response);
+				});
 			}
 		};
 
@@ -54,5 +72,5 @@ export function useNotificationRouting(): void {
 			disposed = true;
 			subscription?.remove();
 		};
-	}, [push]);
+	}, [enabled, push]);
 }

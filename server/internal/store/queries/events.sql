@@ -23,6 +23,14 @@ WHERE (cast(sqlc.narg('camera_id') AS TEXT) IS NULL OR camera_id = sqlc.narg('ca
   AND (cast(sqlc.narg('event_type') AS TEXT) IS NULL OR type = sqlc.narg('event_type'))
   AND (cast(sqlc.narg('before') AS TEXT) IS NULL OR started_at < sqlc.narg('before'))
   AND (
+    cast(sqlc.narg('cursor_started_at') AS TEXT) IS NULL
+    OR started_at < sqlc.narg('cursor_started_at')
+    OR (
+      started_at = sqlc.narg('cursor_started_at')
+      AND id < sqlc.narg('cursor_id')
+    )
+  )
+  AND (
     cast(sqlc.narg('unacked_only') AS INTEGER) IS NULL
     OR sqlc.narg('unacked_only') = 0
     OR acknowledged = 0

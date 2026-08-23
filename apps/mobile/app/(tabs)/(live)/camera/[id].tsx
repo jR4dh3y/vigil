@@ -6,7 +6,7 @@ import { StatePanel } from "@/components/state-panel";
 import { StatusDot } from "@/components/status-dot";
 import { cameraKeys, getCamera, getLiveStream, liveRefetchInterval } from "@/features/cameras/api";
 import { LiveStreamPlayer } from "@/features/cameras/components/live-stream-player";
-import { resolveMediaUrl } from "@/lib/api/config";
+import { resolveLiveStream } from "@/features/cameras/media";
 import { colors, swatches } from "@/theme/colors";
 
 export default function CameraScreen() {
@@ -16,6 +16,7 @@ export default function CameraScreen() {
 		queryKey: cameraKeys.detail(id),
 		queryFn: () => getCamera(id),
 		enabled: Boolean(id) && isFocused,
+		refetchInterval: 30_000,
 	});
 	const streamQuery = useQuery({
 		queryKey: cameraKeys.live(id),
@@ -29,12 +30,7 @@ export default function CameraScreen() {
 		refetchInterval: (query) => liveRefetchInterval(query.state.data?.expiresAt),
 	});
 	const camera = cameraQuery.data;
-	const hlsUrl = streamQuery.data
-		? resolveMediaUrl(streamQuery.data.hlsUrl, streamQuery.data.token)
-		: undefined;
-	const whepUrl = streamQuery.data
-		? resolveMediaUrl(streamQuery.data.whepUrl, streamQuery.data.token)
-		: undefined;
+	const media = resolveLiveStream(streamQuery.data);
 
 	return (
 		<ScrollView
@@ -56,16 +52,24 @@ export default function CameraScreen() {
 			) : camera ? (
 				<View style={styles.camera}>
 					<View style={styles.stage}>
-						{isFocused && hlsUrl && whepUrl ? (
-							<LiveStreamPlayer hlsUri={hlsUrl} nativeControls whepUri={whepUrl} />
+						{!camera.enabled ? (
+							<View style={styles.offline}>
+								<Text style={styles.offlineText}>Disabled</Text>
+							</View>
 						) : camera.status !== "online" ? (
 							<View style={styles.offline}>
 								<Text style={styles.offlineText}>Offline</Text>
 							</View>
-						) : streamQuery.isError ? (
+						) : isFocused && media.kind === "ready" ? (
+							<LiveStreamPlayer hlsUri={media.hlsUrl} nativeControls whepUri={media.whepUrl} />
+						) : streamQuery.isError || media.kind === "error" ? (
 							<StatePanel
 								actionLabel="Retry"
-								detail={streamQuery.error.message}
+								detail={
+									media.kind === "error"
+										? media.error.message
+										: (streamQuery.error?.message ?? "The stream is unavailable")
+								}
 								onAction={() => streamQuery.refetch()}
 								title="Stream unavailable"
 							/>

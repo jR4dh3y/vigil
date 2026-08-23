@@ -1,28 +1,34 @@
 # syntax=docker/dockerfile:1
 
 # --- Dashboard (SvelteKit static SPA) ---
-FROM oven/bun:1 AS dashboard
+# Static assets are architecture-independent, so this stage runs on the
+# builder's native platform instead of emulating the target arch.
+FROM --platform=$BUILDPLATFORM oven/bun:1 AS dashboard
 WORKDIR /src
 COPY package.json bun.lock turbo.json ./
 COPY packages ./packages
 COPY apps/dashboard ./apps/dashboard
-RUN bun install --frozen-lockfile || bun install
+RUN bun install --frozen-lockfile
 RUN bun run build --filter=@nvr/dashboard
 
 # --- Go build stage (full, embeds the dashboard) ---
-FROM golang:1.24-bookworm AS server
+# CGO_ENABLED=0 lets us cross-compile natively for the target arch via
+# TARGETARCH instead of running the whole toolchain under QEMU.
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS server
+ARG TARGETARCH
 WORKDIR /src/server
 COPY server/ ./
 # Embed built SPA so one process serves API + UI.
 COPY --from=dashboard /src/apps/dashboard/build/ ./internal/ui/dist/
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /out/nvrd ./cmd/nvrd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o /out/nvrd ./cmd/nvrd
 
 # --- Go build stage (slim/headless, no dashboard) ---
 # Does not depend on the dashboard build.
-FROM golang:1.24-bookworm AS server-slim
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS server-slim
+ARG TARGETARCH
 WORKDIR /src/server
 COPY server/ ./
-RUN CGO_ENABLED=0 go build -tags slim -ldflags="-s -w" -o /out/nvrd ./cmd/nvrd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -tags slim -ldflags="-s -w" -o /out/nvrd ./cmd/nvrd
 
 # --- Runtime (slim/headless) ---
 # Build with: docker build --target runtime-slim

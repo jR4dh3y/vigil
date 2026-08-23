@@ -48,7 +48,7 @@ paths:
       summary: Initial admin setup
       description: |
         Creates the first admin user when no users exist.
-        On success, a session cookie `nvr_session` is set via Set-Cookie.
+        On success, a session cookie `nvr_session` is set via Set-Cookie and the same session token is returned in X-Session-Token.
       requestBody:
         required: true
         content:
@@ -61,6 +61,10 @@ paths:
           headers:
             Set-Cookie:
               description: Session cookie `nvr_session`
+              schema:
+                type: string
+            X-Session-Token:
+              description: Session token for native and API clients that cannot read Set-Cookie
               schema:
                 type: string
           content:
@@ -86,7 +90,7 @@ paths:
       summary: Log in
       description: |
         Authenticates with username and password.
-        On success, a session cookie `nvr_session` is set via Set-Cookie.
+        On success, a session cookie `nvr_session` is set via Set-Cookie and the same session token is returned in X-Session-Token.
       requestBody:
         required: true
         content:
@@ -99,6 +103,10 @@ paths:
           headers:
             Set-Cookie:
               description: Session cookie `nvr_session`
+              schema:
+                type: string
+            X-Session-Token:
+              description: Session token for native and API clients that cannot read Set-Cookie
               schema:
                 type: string
           content:
@@ -134,6 +142,8 @@ paths:
       description: Returns the authenticated user for the current session.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -154,6 +164,8 @@ paths:
       summary: List cameras
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -179,6 +191,8 @@ paths:
       summary: Create camera
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -216,6 +230,8 @@ paths:
         Discovery does not persist credentials or results.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -257,6 +273,8 @@ paths:
         URLs. Credentials are used only for this request and are not persisted.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -292,6 +310,8 @@ paths:
       description: Probes an RTSP URL for reachability and stream metadata without creating a camera.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -332,6 +352,8 @@ paths:
       summary: Get camera
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -357,6 +379,8 @@ paths:
       summary: Update camera
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -394,6 +418,8 @@ paths:
       summary: Delete camera
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "204":
           description: Camera deleted
@@ -427,6 +453,8 @@ paths:
         Pass the token as query `?token=` (or as documented by the media layer).
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: Live stream endpoints
@@ -474,6 +502,8 @@ paths:
       description: Returns a JPEG snapshot of the camera if available.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: JPEG snapshot
@@ -500,10 +530,13 @@ paths:
       tags: [recordings]
       summary: List recording availability by local calendar day
       description: |
-        Returns days containing recordings for enabled cameras, classified by local or Google Drive storage.
+        Returns days containing recordings, classified by local or Google Drive storage.
+        Without `cameraId`, availability covers all enabled cameras. With `cameraId`, it covers that camera's retained history even when the camera is disabled.
         The requested range must not exceed 43 days, enough for the six-week calendar grid across daylight-saving changes.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       parameters:
         - name: from
           in: query
@@ -525,6 +558,13 @@ paths:
           schema:
             type: string
           description: IANA time zone used to group recordings into calendar days
+        - name: cameraId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Limit availability to one camera, including a disabled camera's retained recordings
       responses:
         "200":
           description: Recording availability grouped by local calendar day
@@ -533,13 +573,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/RecordingDayList"
         "400":
-          description: Invalid time zone or a range longer than 43 days
+          description: Invalid camera ID, time zone, or range longer than 43 days
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "401":
           description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Camera not found
           content:
             application/json:
               schema:
@@ -561,6 +607,8 @@ paths:
         Returns recording segments and coverage bars for a camera within the given time range.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       parameters:
         - name: from
           in: query
@@ -612,6 +660,8 @@ paths:
         Creates a short-lived playback session for recorded video starting at the given time.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -713,6 +763,8 @@ paths:
       summary: List events
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       parameters:
         - name: limit
           in: query
@@ -728,7 +780,16 @@ paths:
           schema:
             type: string
             format: date-time
-          description: Cursor — return events before this timestamp
+          deprecated: true
+          description: Timestamp filter for older clients; use cursor for lossless pagination
+        - name: cursor
+          in: query
+          required: false
+          style: deepObject
+          explode: true
+          schema:
+            $ref: "#/components/schemas/EventCursor"
+          description: Return events after this position in the newest-first `(startedAt, id)` order
         - name: cameraId
           in: query
           required: false
@@ -755,8 +816,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EventList"
+        "400":
+          description: Invalid or conflicting pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Event ID
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get an event
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
+      responses:
+        "200":
+          description: Event found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          description: Invalid event ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Event not found
           content:
             application/json:
               schema:
@@ -776,6 +885,8 @@ paths:
       summary: Acknowledge an event
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: Event acknowledged
@@ -802,6 +913,8 @@ paths:
       summary: Disk usage
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -822,6 +935,8 @@ paths:
       summary: System status overview
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -842,6 +957,8 @@ paths:
       summary: Get settings
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -862,6 +979,8 @@ paths:
       description: Admin only. Returns 403 if the caller is not an admin.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -901,6 +1020,8 @@ paths:
       description: Authenticated users. Returns OAuth configuration and connection status (never tokens).
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -925,6 +1046,8 @@ paths:
         Saving a new configuration clears any existing Drive connection.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -964,6 +1087,8 @@ paths:
       description: Admin only. Returns the Google authorization URL to open in a browser.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: Authorization URL ready
@@ -1030,6 +1155,8 @@ paths:
       description: Admin only. Clears stored tokens and best-effort revokes with Google.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "204":
           description: Disconnected
@@ -1055,6 +1182,8 @@ paths:
         Google Drive account (same work as the recurring background archive job).
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: false
         content:
@@ -1100,6 +1229,8 @@ paths:
       description: Admin only.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "200":
           description: OK
@@ -1132,6 +1263,8 @@ paths:
       description: Admin only.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       requestBody:
         required: true
         content:
@@ -1185,6 +1318,8 @@ paths:
         Admin only. Returns 409 if deleting the last admin or if self-deletion is not allowed.
       security:
         - cookieAuth: []
+        - bearerAuth: []
+        - sessionHeaderAuth: []
       responses:
         "204":
           description: User deleted
@@ -1219,6 +1354,15 @@ components:
       in: cookie
       name: nvr_session
       description: Session cookie issued on login or setup.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Session token issued in X-Session-Token on login or setup.
+    sessionHeaderAuth:
+      type: apiKey
+      in: header
+      name: X-Session-Token
+      description: Session token header for native and API clients.
   schemas:
     Health:
       type: object
@@ -1610,7 +1754,7 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: Start time of the next indexed segment; omitted when this is the last known segment
+          description: Start time for the next playback window; omitted when there is no later indexed video
     Event:
       type: object
       required:
@@ -1652,6 +1796,17 @@ components:
         createdAt:
           type: string
           format: date-time
+    EventCursor:
+      type: object
+      required: [startedAt, id]
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+      description: Composite position in the event order; pass through values returned by the API
     EventList:
       type: object
       required: [events]
@@ -1660,6 +1815,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Event"
+        nextCursor:
+          $ref: "#/components/schemas/EventCursor"
     DiskInfo:
       type: object
       required: [path, totalBytes, usedBytes, freeBytes, usedPercent]

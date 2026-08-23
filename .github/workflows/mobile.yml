@@ -1,0 +1,133 @@
+name: Mobile
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mobile.yml"
+      - "apps/mobile/**"
+      - "packages/api-client/**"
+      - "server/api/openapi.yaml"
+      - "server/internal/api/**"
+      - "server/internal/event/**"
+      - "server/internal/recording/**"
+      - "server/internal/store/**"
+      - "server/go.mod"
+      - "server/go.sum"
+      - "tests/**"
+      - "docs/mobile.md"
+      - "bun.lock"
+      - "package.json"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mobile.yml"
+      - "apps/mobile/**"
+      - "packages/api-client/**"
+      - "server/api/openapi.yaml"
+      - "server/internal/api/**"
+      - "server/internal/event/**"
+      - "server/internal/recording/**"
+      - "server/internal/store/**"
+      - "server/go.mod"
+      - "server/go.sum"
+      - "tests/**"
+      - "docs/mobile.md"
+      - "bun.lock"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify mobile source
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --linker hoisted
+
+      - name: Install pinned Go generators
+        run: |
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+      - name: Verify generated API source
+        run: |
+          bun run gen:server
+          bun run gen:api
+          git diff --exit-code -- server/internal/api/generated.go server/internal/store packages/api-client/src/generated/schema.ts
+
+      - name: Lint repository source
+        run: bun run lint
+
+      - name: Check mobile types
+        working-directory: apps/mobile
+        run: bun run check-types
+
+      - name: Check API client types
+        working-directory: packages/api-client
+        run: bun run check-types
+
+      - name: Run Bun tests
+        run: bun test
+
+      - name: Run server tests
+        working-directory: server
+        run: go test ./...
+
+      - name: Resolve Expo config
+        working-directory: apps/mobile
+        run: bunx expo config --type public
+
+      - name: Check Expo dependency versions
+        working-directory: apps/mobile
+        run: bunx expo install --check
+
+      - name: Run Expo Doctor
+        working-directory: apps/mobile
+        shell: bash
+        run: |
+          set +e
+          bunx expo-doctor@1.20.2 2>&1 | tee /tmp/vigil-expo-doctor.log
+          doctor_status=${PIPESTATUS[0]}
+          set -e
+
+          if (( doctor_status == 0 )); then
+            exit 0
+          fi
+
+          known_checks=(
+            "Check that native modules do not use incompatible support packages"
+            "Check for legacy global CLI installed locally"
+            "Check that @expo/vector-icons package is not installed together with other potentially conflicting icon packages."
+          )
+          for check in "${known_checks[@]}"; do
+            grep -Fq "Unexpected error while running '$check' check:" /tmp/vigil-expo-doctor.log
+          done
+
+          # expo-doctor@1.20.x reports unexpected check errors without per-check
+          # lines or a passed summary; require exactly the three known failures.
+          test "$(grep -c '^Unexpected error while running' /tmp/vigil-expo-doctor.log)" -eq 3
+          test "$(grep -c 'checks passed' /tmp/vigil-expo-doctor.log)" -eq 0
+          grep -Fq "3 checks failed, indicating possible issues with the project." /tmp/vigil-expo-doctor.log
+          echo "Expo Doctor hit only the three known npm-explain failures in this Bun workspace."

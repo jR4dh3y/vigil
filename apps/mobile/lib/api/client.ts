@@ -1,9 +1,19 @@
 import { createApiClient, type Middleware } from "@nvr/api-client";
 import { fetch as expoFetch } from "expo/fetch";
 import { getApiBaseUrl } from "@/lib/api/config";
-import { clearSessionToken, getSessionToken, setSessionToken } from "@/lib/api/session";
+import {
+	getSessionGeneration,
+	getSessionToken,
+	invalidateProtectedSession,
+	setSessionToken,
+} from "@/lib/api/session";
 
 const SESSION_HEADER = "X-Session-Token";
+
+// openapi-fetch hands onResponse the same Request instance that fetch ran
+// with, so this maps each response back to the session generation its
+// request started with.
+const requestGenerations = new WeakMap<Request, number>();
 
 const sessionMiddleware: Middleware = {
 	async onRequest({ request }) {
@@ -16,7 +26,9 @@ const sessionMiddleware: Middleware = {
 		// Must return a *new* Request when modifying (openapi-fetch identity check).
 		const headers = new Headers(request.headers);
 		headers.set("Authorization", `Bearer ${token}`);
-		return new Request(request, { headers });
+		const authenticated = new Request(request, { headers });
+		requestGenerations.set(authenticated, getSessionGeneration());
+		return authenticated;
 	},
 	async onResponse({ response, request }) {
 		// Ignore responses from a recorder that is no longer active: a request
@@ -26,17 +38,20 @@ const sessionMiddleware: Middleware = {
 			return undefined;
 		}
 
-		const issued = response.headers.get(SESSION_HEADER);
-		if (issued) {
-			await setSessionToken(issued);
-		}
-
-		// Clear local token when the server rejects it (not on login/setup/status).
+		// Invalidate once when a protected endpoint rejects the active session.
 		const path = new URL(request.url).pathname;
 		const isAuthForm =
 			path.endsWith("/auth/login") || path.endsWith("/auth/setup") || path.endsWith("/auth/status");
 		if (response.status === 401 && !isAuthForm) {
-			await clearSessionToken();
+			await invalidateProtectedSession();
+			return undefined;
+		}
+
+		const issued = response.headers.get(SESSION_HEADER);
+		if (issued) {
+			// Auth-form requests carry no recorded generation and are always
+			// accepted; protected requests must not predate an invalidation.
+			await setSessionToken(issued, requestGenerations.get(request));
 		}
 
 		// Side effects only. Do not return the same Response — on React Native it often

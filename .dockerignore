@@ -1,0 +1,17 @@
+# Keep the build context small: only what deploy/Dockerfile COPYs is needed.
+*
+
+# Source required by the Dockerfile
+!package.json
+!bun.lock
+!turbo.json
+!packages/
+!apps/dashboard/
+!server/
+
+# Prune inside included trees
+**/node_modules
+**/.svelte-kit
+**/build
+**/dist
+**/*_test.go
