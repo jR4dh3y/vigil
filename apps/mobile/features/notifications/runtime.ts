@@ -1,10 +1,13 @@
 import { isRunningInExpoGo } from "expo";
 import type * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
 
 export type NotificationsModule = typeof Notifications;
 
 let notificationsModulePromise: Promise<NotificationsModule> | null = null;
+
+export function canUseLocalNotifications(): boolean {
+	return process.env.EXPO_OS !== "web" && !isRunningInExpoGo();
+}
 
 /**
  * Expo Go on Android cannot load expo-notifications' remote notification
@@ -12,7 +15,7 @@ let notificationsModulePromise: Promise<NotificationsModule> | null = null;
  * app routes when running in Expo Go.
  */
 export async function loadNotificationsModule(): Promise<NotificationsModule | null> {
-	if (Platform.OS === "web" || isRunningInExpoGo()) {
+	if (!canUseLocalNotifications()) {
 		return null;
 	}
 

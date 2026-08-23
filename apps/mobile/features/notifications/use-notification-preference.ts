@@ -1,13 +1,19 @@
 import { useState } from "react";
+import { canUseLocalNotifications } from "@/features/notifications/runtime";
 import { requestNotificationPermission } from "@/features/notifications/service";
 import { useAppStore } from "@/lib/store";
 
 export function useNotificationPreference() {
+	const available = canUseLocalNotifications();
 	const enabled = useAppStore((state) => state.notificationsEnabled);
 	const setEnabled = useAppStore((state) => state.setNotificationsEnabled);
 	const [requesting, setRequesting] = useState(false);
 
 	const update = async (next: boolean): Promise<boolean> => {
+		if (!available) {
+			setEnabled(false);
+			return false;
+		}
 		if (!next) {
 			setEnabled(false);
 			return true;
@@ -26,5 +32,5 @@ export function useNotificationPreference() {
 		}
 	};
 
-	return { enabled, requesting, update };
+	return { available, enabled: available && enabled, requesting, update };
 }

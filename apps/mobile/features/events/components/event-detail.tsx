@@ -11,6 +11,7 @@ type EventDetailProps = {
 	event?: Event;
 	camera?: Camera;
 	playbackUrl?: string;
+	playbackStartOffsetSec: number;
 	eventPending: boolean;
 	eventError: Error | null;
 	playbackPending: boolean;
@@ -27,6 +28,7 @@ export function EventDetail({
 	event,
 	camera,
 	playbackUrl,
+	playbackStartOffsetSec,
 	eventPending,
 	eventError,
 	playbackPending,
@@ -103,19 +105,21 @@ export function EventDetail({
 						)}
 					</View>
 					<View style={styles.player}>
-						{playbackUrl ? (
-							<LivePlayer
-								loop={false}
-								nativeControls
-								onPlaybackEnded={onPlaybackEnded}
-								uri={playbackUrl}
-							/>
-						) : playbackError ? (
+						{playbackError ? (
 							<StatePanel
 								actionLabel="Retry"
 								detail={playbackError.message}
 								onAction={onRetryPlayback}
 								title="Playback unavailable"
+							/>
+						) : playbackUrl ? (
+							<LivePlayer
+								loop={false}
+								nativeControls
+								onPlaybackEnded={onPlaybackEnded}
+								onRetry={onRetryPlayback}
+								startOffsetSec={playbackStartOffsetSec}
+								uri={playbackUrl}
 							/>
 						) : (
 							<StatePanel
@@ -125,11 +129,6 @@ export function EventDetail({
 							/>
 						)}
 					</View>
-					{playbackUrl && playbackError ? (
-						<Text selectable style={styles.error}>
-							Playback could not continue. {playbackError.message}
-						</Text>
-					) : null}
 					<Link href={{ pathname: "/camera/[id]", params: { id: event.cameraId } }} asChild>
 						<Pressable
 							accessibilityRole="button"
