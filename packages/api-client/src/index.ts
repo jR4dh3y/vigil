@@ -33,6 +33,7 @@ export type PlaybackRequest = components["schemas"]["PlaybackRequest"];
 export type PlaybackSession = components["schemas"]["PlaybackSession"];
 
 export type Event = components["schemas"]["Event"];
+export type EventCursor = components["schemas"]["EventCursor"];
 export type EventList = components["schemas"]["EventList"];
 export type EventSeverity = Event["severity"];
 export type DiskInfo = components["schemas"]["DiskInfo"];

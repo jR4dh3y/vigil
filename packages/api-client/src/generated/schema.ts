@@ -68,7 +68,7 @@ export interface paths {
         /**
          * Initial admin setup
          * @description Creates the first admin user when no users exist.
-         *     On success, a session cookie `nvr_session` is set via Set-Cookie.
+         *     On success, a session cookie `nvr_session` is set via Set-Cookie and the same session token is returned in X-Session-Token.
          */
         post: operations["postAuthSetup"];
         delete?: never;
@@ -89,7 +89,7 @@ export interface paths {
         /**
          * Log in
          * @description Authenticates with username and password.
-         *     On success, a session cookie `nvr_session` is set via Set-Cookie.
+         *     On success, a session cookie `nvr_session` is set via Set-Cookie and the same session token is returned in X-Session-Token.
          */
         post: operations["postAuthLogin"];
         delete?: never;
@@ -298,7 +298,8 @@ export interface paths {
         };
         /**
          * List recording availability by local calendar day
-         * @description Returns days containing recordings for enabled cameras, classified by local or Google Drive storage.
+         * @description Returns days containing recordings, classified by local or Google Drive storage.
+         *     Without `cameraId`, availability covers all enabled cameras. With `cameraId`, it covers that camera's retained history even when the camera is disabled.
          *     The requested range must not exceed 43 days, enough for the six-week calendar grid across daylight-saving changes.
          */
         get: operations["listRecordingDays"];
@@ -387,6 +388,26 @@ export interface paths {
         };
         /** List events */
         get: operations["listEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Event ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Get an event */
+        get: operations["getEvent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -863,7 +884,7 @@ export interface components {
             startOffsetSec: number;
             /**
              * Format: date-time
-             * @description Start time of the next indexed segment; omitted when this is the last known segment
+             * @description Start time for the next playback window; omitted when there is no later indexed video
              */
             nextRecordingStart?: string | null;
         };
@@ -886,8 +907,16 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @description Composite position in the event order; pass through values returned by the API */
+        EventCursor: {
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: uuid */
+            id: string;
+        };
         EventList: {
             events: components["schemas"]["Event"][];
+            nextCursor?: components["schemas"]["EventCursor"];
         };
         DiskInfo: {
             path: string;
@@ -1069,6 +1098,8 @@ export interface operations {
                 headers: {
                     /** @description Session cookie `nvr_session` */
                     "Set-Cookie"?: string;
+                    /** @description Session token for native and API clients that cannot read Set-Cookie */
+                    "X-Session-Token"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1113,6 +1144,8 @@ export interface operations {
                 headers: {
                     /** @description Session cookie `nvr_session` */
                     "Set-Cookie"?: string;
+                    /** @description Session token for native and API clients that cannot read Set-Cookie */
+                    "X-Session-Token"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1637,6 +1670,8 @@ export interface operations {
                 to: string;
                 /** @description IANA time zone used to group recordings into calendar days */
                 timeZone: string;
+                /** @description Limit availability to one camera, including a disabled camera's retained recordings */
+                cameraId?: string;
             };
             header?: never;
             path?: never;
@@ -1653,7 +1688,7 @@ export interface operations {
                     "application/json": components["schemas"]["RecordingDayList"];
                 };
             };
-            /** @description Invalid time zone or a range longer than 43 days */
+            /** @description Invalid camera ID, time zone, or range longer than 43 days */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1664,6 +1699,15 @@ export interface operations {
             };
             /** @description Unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Camera not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1849,8 +1893,13 @@ export interface operations {
             query?: {
                 /** @description Maximum number of events to return */
                 limit?: number;
-                /** @description Cursor — return events before this timestamp */
+                /**
+                 * @deprecated
+                 * @description Timestamp filter for older clients; use cursor for lossless pagination
+                 */
                 before?: string;
+                /** @description Return events after this position in the newest-first `(startedAt, id)` order */
+                cursor?: components["schemas"]["EventCursor"];
                 /** @description Filter by camera ID */
                 cameraId?: string;
                 /** @description Filter by event type */
@@ -1873,8 +1922,67 @@ export interface operations {
                     "application/json": components["schemas"]["EventList"];
                 };
             };
+            /** @description Invalid or conflicting pagination parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             /** @description Unauthenticated */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Event ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            /** @description Invalid event ID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Event not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
