@@ -1,5 +1,7 @@
 import {
 	ActivityIndicator,
+	KeyboardAvoidingView,
+	Platform,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -27,12 +29,17 @@ export function ServerConnectionScreen({
 	const canConnect = value.trim().length > 0 && !connecting;
 
 	return (
-		<ScrollView
-			contentInsetAdjustmentBehavior="automatic"
-			contentContainerStyle={styles.content}
-			keyboardShouldPersistTaps="handled"
+		<KeyboardAvoidingView
+			behavior={Platform.OS === "ios" ? "padding" : undefined}
 			style={styles.screen}
 		>
+			<ScrollView
+				automaticallyAdjustKeyboardInsets
+				contentInsetAdjustmentBehavior="automatic"
+				contentContainerStyle={styles.content}
+				keyboardShouldPersistTaps="handled"
+				style={styles.screen}
+			>
 			<View style={styles.hero}>
 				<Text selectable style={styles.title}>
 					Connect to your recorder
@@ -85,6 +92,7 @@ export function ServerConnectionScreen({
 				</Pressable>
 			</View>
 		</ScrollView>
+		</KeyboardAvoidingView>
 	);
 }
 
@@ -94,10 +102,9 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	content: {
-		flexGrow: 1,
 		gap: 24,
 		padding: 20,
-		paddingBottom: 40,
+		paddingBottom: 32,
 	},
 	hero: {
 		gap: 8,

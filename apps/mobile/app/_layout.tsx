@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router/react-navigation";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, useColorScheme, View } from "react-native";
 import { useProtectedSessionRouting } from "@/features/auth/use-protected-session-routing";
 import { useNotificationRouting } from "@/features/notifications/use-notification-routing";
 import { hydrateApiConfig } from "@/lib/api/config";
@@ -45,8 +45,9 @@ export default function RootLayout() {
 						options={{
 							headerShown: true,
 							presentation: "formSheet",
-							sheetAllowedDetents: [0.75, 1],
+							sheetAllowedDetents: Platform.OS === "ios" ? [0.75, 1] : "fitToContents",
 							sheetGrabberVisible: true,
+							sheetCornerRadius: 24,
 						}}
 					/>
 					<Stack.Screen name="+not-found" options={{ headerShown: true, title: "Not found" }} />
