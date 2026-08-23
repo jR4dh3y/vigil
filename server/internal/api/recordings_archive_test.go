@@ -263,6 +263,42 @@ func TestLocalPlaybackContinuesFromWindowEnd(t *testing.T) {
 	}
 }
 
+func TestLocalPlaybackSkipsGapAfterShortSegments(t *testing.T) {
+	server, segment := setupArchivePlaybackServer(t)
+	localPath, err := server.Recording.AbsolutePath(segment.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(localPath, []byte("local recording"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// The playing segment covers 14:00–14:01 and the next starts at 14:01.
+	// The requested window ends at 14:10 where no segment exists, so the
+	// continuation must still find the 14:01 segment.
+	body := bytes.NewBufferString(`{"start":"2026-08-12T14:00:10Z","durationSec":600}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cameras/"+archiveTestCameraID+"/playback", body)
+	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	rr := httptest.NewRecorder()
+
+	server.PostCameraPlayback(rr, req, uuid.MustParse(archiveTestCameraID))
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var session PlaybackSession
+	if err := json.Unmarshal(rr.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 8, 12, 14, 1, 0, 0, time.UTC)
+	if session.Source != Local || session.NextRecordingStart == nil || !session.NextRecordingStart.Equal(want) {
+		t.Fatalf("unexpected local continuation across gap: %+v", session)
+	}
+}
+
 func TestRecordingContentStreamsDriveRange(t *testing.T) {
 	server, segment := setupArchivePlaybackServer(t)
 	drive := &fakeDrivePlayback{}

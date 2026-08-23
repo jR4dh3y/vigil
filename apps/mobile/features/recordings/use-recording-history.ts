@@ -102,7 +102,10 @@ export function useRecordingHistory(cameraId: string, active: boolean) {
 			),
 		[daysQuery.data],
 	);
-	const playback = resolvePlayback(playbackQuery.data);
+	// TanStack Query keeps cached playback data while the route is unfocused;
+	// gate it so LivePlayer unmounts and stops playing off-screen.
+	const activeSession = active ? playbackQuery.data : undefined;
+	const playback = resolvePlayback(activeSession);
 
 	const selectDay = (value: string) => {
 		setSelectedDay(value);
@@ -162,10 +165,10 @@ export function useRecordingHistory(cameraId: string, active: boolean) {
 		retryRecordings: recordingsQuery.refetch,
 		selectedTime: selectedTime ? new Date(selectedTime) : null,
 		seek,
-		playbackSession: playbackQuery.data,
+		playbackSession: activeSession,
 		playbackUrl: playback.url,
 		playbackUrlError: playback.error,
-		playbackPending: playbackQuery.isPending || continuePlaybackMutation.isPending,
+		playbackPending: active && (playbackQuery.isPending || continuePlaybackMutation.isPending),
 		playbackError: continuePlaybackMutation.error ?? playbackQuery.error,
 		retryPlayback,
 		continuePlayback,

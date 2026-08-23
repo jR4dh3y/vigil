@@ -93,7 +93,12 @@ export function useEventAlerts(enabled: boolean): number {
 					const { data } = await api.GET("/events", {
 						params: { query: { limit, cursor } },
 					});
-					if (!data?.events.length) {
+					if (!data) {
+						// The page sequence is incomplete; keep the current watermark
+						// so the next poll retries the whole window.
+						return;
+					}
+					if (!data.events.length) {
 						break;
 					}
 

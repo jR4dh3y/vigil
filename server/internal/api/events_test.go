@@ -42,8 +42,12 @@ func setupEventServer(t *testing.T) (*Server, event.Event) {
 
 func TestGetEventReturnsEvent(t *testing.T) {
 	server, emitted := setupEventServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/events/"+emitted.ID, nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	req := httptest.NewRequestWithContext(
+		auth.WithUser(t.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}),
+		http.MethodGet,
+		"/api/v1/events/"+emitted.ID,
+		nil,
+	)
 	rr := httptest.NewRecorder()
 
 	server.GetEvent(rr, req, uuid.MustParse(emitted.ID))
@@ -63,8 +67,12 @@ func TestGetEventReturnsEvent(t *testing.T) {
 func TestGetEventReturnsNotFound(t *testing.T) {
 	server, _ := setupEventServer(t)
 	id := uuid.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/events/"+id.String(), nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	req := httptest.NewRequestWithContext(
+		auth.WithUser(t.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}),
+		http.MethodGet,
+		"/api/v1/events/"+id.String(),
+		nil,
+	)
 	rr := httptest.NewRecorder()
 
 	server.GetEvent(rr, req, id)
@@ -76,7 +84,7 @@ func TestGetEventReturnsNotFound(t *testing.T) {
 
 func TestGetEventRequiresAuthentication(t *testing.T) {
 	server, emitted := setupEventServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/events/"+emitted.ID, nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/v1/events/"+emitted.ID, nil)
 	rr := httptest.NewRecorder()
 
 	server.GetEvent(rr, req, uuid.MustParse(emitted.ID))
@@ -88,8 +96,12 @@ func TestGetEventRequiresAuthentication(t *testing.T) {
 
 func TestListEventsReturnsCompositeCursor(t *testing.T) {
 	server, emitted := setupEventServer(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/events", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	req := httptest.NewRequestWithContext(
+		auth.WithUser(t.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}),
+		http.MethodGet,
+		"/api/v1/events",
+		nil,
+	)
 	recorder := httptest.NewRecorder()
 
 	server.ListEvents(recorder, req, ListEventsParams{})
@@ -109,8 +121,12 @@ func TestListEventsReturnsCompositeCursor(t *testing.T) {
 func TestListEventsRejectsConflictingPagination(t *testing.T) {
 	server, _ := setupEventServer(t)
 	before := time.Date(2026, 8, 23, 8, 30, 0, 0, time.UTC)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/events", nil)
-	req = req.WithContext(auth.WithUser(req.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}))
+	req := httptest.NewRequestWithContext(
+		auth.WithUser(t.Context(), &auth.User{ID: "user", Role: auth.RoleViewer}),
+		http.MethodGet,
+		"/api/v1/events",
+		nil,
+	)
 	recorder := httptest.NewRecorder()
 
 	server.ListEvents(recorder, req, ListEventsParams{

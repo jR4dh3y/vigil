@@ -240,6 +240,11 @@ func (s *Server) nextPlaybackStart(
 			}
 		} else if !errors.Is(err, recording.ErrNotFound) && !errors.Is(err, recording.ErrOutsideRecording) {
 			return nil, err
+		} else {
+			// Nothing covers the requested window end. Continue from the
+			// segment right after the playing one so short segments that end
+			// before the window are not skipped.
+			after = segment.StartedAt
 		}
 	}
 

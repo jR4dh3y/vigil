@@ -48,15 +48,17 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
@@ -106,7 +108,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          bunx expo-doctor 2>&1 | tee /tmp/vigil-expo-doctor.log
+          bunx expo-doctor@1.20.2 2>&1 | tee /tmp/vigil-expo-doctor.log
           doctor_status=${PIPESTATUS[0]}
           set -e
 
@@ -121,10 +123,11 @@ jobs:
           )
           for check in "${known_checks[@]}"; do
             grep -Fq "Unexpected error while running '$check' check:" /tmp/vigil-expo-doctor.log
-            grep -Fq "✖ $check" /tmp/vigil-expo-doctor.log
           done
 
+          # expo-doctor@1.20.x reports unexpected check errors without per-check
+          # lines or a passed summary; require exactly the three known failures.
           test "$(grep -c '^Unexpected error while running' /tmp/vigil-expo-doctor.log)" -eq 3
-          test "$(grep -c '^✖ ' /tmp/vigil-expo-doctor.log)" -eq 3
-          grep -Fq "18/21 checks passed" /tmp/vigil-expo-doctor.log
+          test "$(grep -c 'checks passed' /tmp/vigil-expo-doctor.log)" -eq 0
+          grep -Fq "3 checks failed, indicating possible issues with the project." /tmp/vigil-expo-doctor.log
           echo "Expo Doctor hit only the three known npm-explain failures in this Bun workspace."
