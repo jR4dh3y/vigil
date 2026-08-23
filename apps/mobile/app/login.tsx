@@ -5,12 +5,16 @@ import { login } from "@/features/auth/api";
 import { AuthScreen } from "@/features/auth/components/auth-screen";
 import { authKeys } from "@/features/auth/keys";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
+import { takePendingEventRoute } from "@/features/notifications/pending-event-route";
 import { RecorderLink } from "@/features/server/components/recorder-link";
+import { useApiConfiguration } from "@/features/server/use-api-base-url";
 import { ApiError } from "@/lib/api/error";
 
 export default function LoginScreen() {
 	const queryClient = useQueryClient();
-	const auth = useAuthStatus();
+	const configuration = useApiConfiguration();
+	const configured = configuration.kind === "configured";
+	const auth = useAuthStatus(configured);
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -20,7 +24,10 @@ export default function LoginScreen() {
 		onSuccess: async () => {
 			setError(null);
 			await queryClient.invalidateQueries({ queryKey: authKeys.all });
-			router.replace("/(tabs)/(live)");
+			const eventId = takePendingEventRoute();
+			router.replace(
+				eventId ? { pathname: "/event/[id]", params: { id: eventId } } : "/(tabs)/(live)",
+			);
 		},
 		onError: (err: unknown) => {
 			if (err instanceof ApiError) {
@@ -30,6 +37,10 @@ export default function LoginScreen() {
 			setError(err instanceof Error ? err.message : "Login failed");
 		},
 	});
+
+	if (!configured) {
+		return <Redirect href="/server" />;
+	}
 
 	if (auth.isSuccess && auth.data.setupRequired) {
 		return <Redirect href="/setup" />;

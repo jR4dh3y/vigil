@@ -4,6 +4,8 @@ const STORAGE_KEY = "nvr_session";
 
 /** In-memory cache; `undefined` means not hydrated from SecureStore yet. */
 let memoryToken: string | null | undefined;
+let protectedSessionInvalidated = false;
+const invalidationListeners = new Set<() => void>();
 
 export async function hydrateSession(): Promise<void> {
 	if (memoryToken !== undefined) {
@@ -23,6 +25,7 @@ export async function getSessionToken(): Promise<string | null> {
 
 export async function setSessionToken(token: string): Promise<void> {
 	memoryToken = token;
+	protectedSessionInvalidated = false;
 	try {
 		await SecureStore.setItemAsync(STORAGE_KEY, token);
 	} catch {
@@ -31,6 +34,27 @@ export async function setSessionToken(token: string): Promise<void> {
 }
 
 export async function clearSessionToken(): Promise<void> {
+	protectedSessionInvalidated = false;
+	await deleteSessionToken();
+}
+
+export async function invalidateProtectedSession(): Promise<void> {
+	if (protectedSessionInvalidated) {
+		return;
+	}
+	protectedSessionInvalidated = true;
+	await deleteSessionToken();
+	for (const listener of invalidationListeners) {
+		listener();
+	}
+}
+
+export function subscribeToProtectedSessionInvalidation(listener: () => void): () => void {
+	invalidationListeners.add(listener);
+	return () => invalidationListeners.delete(listener);
+}
+
+async function deleteSessionToken(): Promise<void> {
 	memoryToken = null;
 	try {
 		await SecureStore.deleteItemAsync(STORAGE_KEY);

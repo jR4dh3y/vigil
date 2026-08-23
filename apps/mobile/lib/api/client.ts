@@ -1,7 +1,7 @@
 import { createApiClient, type Middleware } from "@nvr/api-client";
 import { fetch as expoFetch } from "expo/fetch";
 import { getApiBaseUrl } from "@/lib/api/config";
-import { clearSessionToken, getSessionToken, setSessionToken } from "@/lib/api/session";
+import { getSessionToken, invalidateProtectedSession, setSessionToken } from "@/lib/api/session";
 
 const SESSION_HEADER = "X-Session-Token";
 
@@ -26,17 +26,18 @@ const sessionMiddleware: Middleware = {
 			return undefined;
 		}
 
-		const issued = response.headers.get(SESSION_HEADER);
-		if (issued) {
-			await setSessionToken(issued);
-		}
-
-		// Clear local token when the server rejects it (not on login/setup/status).
+		// Invalidate once when a protected endpoint rejects the active session.
 		const path = new URL(request.url).pathname;
 		const isAuthForm =
 			path.endsWith("/auth/login") || path.endsWith("/auth/setup") || path.endsWith("/auth/status");
 		if (response.status === 401 && !isAuthForm) {
-			await clearSessionToken();
+			await invalidateProtectedSession();
+			return undefined;
+		}
+
+		const issued = response.headers.get(SESSION_HEADER);
+		if (issued) {
+			await setSessionToken(issued);
 		}
 
 		// Side effects only. Do not return the same Response — on React Native it often

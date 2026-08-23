@@ -7,7 +7,6 @@
 		"icon": "./assets/icon.png",
 		"scheme": "vigil",
 		"userInterfaceStyle": "automatic",
-		"newArchEnabled": true,
 		"ios": {
 			"supportsTablet": true,
 			"bundleIdentifier": "com.nvr.app",
@@ -19,6 +18,11 @@
 			}
 		},
 		"android": {
+			"blockedPermissions": [
+				"android.permission.CAMERA",
+				"android.permission.RECORD_AUDIO",
+				"android.permission.SYSTEM_ALERT_WINDOW"
+			],
 			"adaptiveIcon": {
 				"backgroundColor": "#0a0a0a",
 				"foregroundImage": "./assets/android-icon-foreground.png",
@@ -36,7 +40,7 @@
 			[
 				"expo-notifications",
 				{
-					"icon": "./assets/icon.png"
+					"icon": "./assets/android-icon-monochrome.png"
 				}
 			],
 			[
@@ -46,7 +50,22 @@
 						"usesCleartextTraffic": true
 					}
 				}
-			]
+			],
+			[
+				"expo-video",
+				{
+					"supportsPictureInPicture": true
+				}
+			],
+			[
+				"expo-splash-screen",
+				{
+					"backgroundColor": "#0a0a0a",
+					"image": "./assets/splash-icon.png",
+					"resizeMode": "contain"
+				}
+			],
+			"@config-plugins/react-native-webrtc"
 		],
 		"experiments": {
 			"typedRoutes": true

@@ -1,11 +1,13 @@
 import { Stack } from "expo-router";
 import { ServerConnectionScreen } from "@/features/server/components/server-connection-screen";
-import { useApiBaseUrl } from "@/features/server/use-api-base-url";
+import { useApiConfiguration } from "@/features/server/use-api-base-url";
 import { useServerConnection } from "@/features/server/use-server-connection";
 
 export default function ServerScreen() {
-	const baseUrl = useApiBaseUrl();
-	const connection = useServerConnection(baseUrl);
+	const configuration = useApiConfiguration();
+	const connection = useServerConnection(
+		configuration.kind === "configured" ? configuration.baseUrl : "",
+	);
 
 	return (
 		<>
