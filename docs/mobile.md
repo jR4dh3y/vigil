@@ -67,7 +67,7 @@ The app uses Expo Router file-based routing. The routes are in `apps/mobile/app/
 | `/server` | Recorder address form sheet. |
 | `/(tabs)/(live)` | Live camera list and camera detail. |
 | `/(tabs)/(history)` | Retained recording calendar, per-camera timelines, and playback. |
-| `/(tabs)/(events)` | Recent activity and event detail. |
+| `/event/[id]` | Event detail and recorded playback, opened from a notification. |
 | `/(tabs)/(settings)` | Settings. |
 
 The root layout hydrates the recorder URL, the session token, and the local preferences before it mounts the app. A notification event route is retained while authentication is restored, then opened after login or setup.
@@ -116,7 +116,7 @@ The live camera list polls the cameras every 30 seconds. A camera card requests 
 
 The live session comes from `POST /cameras/{id}/live`. The app refreshes the session before the token expires.
 
-The player chooses WHEP first in a custom native build. The WHEP hook creates a WebRTC peer connection with no STUN servers. It negotiates over HTTP. On failure, the player falls back to HLS. Expo Go cannot load the WebRTC native module, so its live preview reaches the HLS fallback instead.
+The player chooses WHEP first in a custom native build. The WHEP hook creates a WebRTC peer connection with no STUN servers. It negotiates over HTTP. On failure, the player falls back to HLS. Expo Go cannot load the WebRTC native module, so it skips WHEP and uses HLS directly.
 
 The HLS player uses `expo-video`. It replaces the video URI and starts playback. HTTP media URLs returned with loopback hostnames are rewritten to the configured recorder host. HTTPS responses with loopback media hosts fail visibly because rewriting them would invalidate TLS.
 

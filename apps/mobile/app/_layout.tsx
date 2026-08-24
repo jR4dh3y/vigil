@@ -38,6 +38,16 @@ export default function RootLayout() {
 				<StatusBar style="auto" />
 				<Stack screenOptions={{ headerShown: false }}>
 					<Stack.Screen name="(tabs)" />
+					<Stack.Screen
+						name="event/[id]"
+						options={{
+							contentStyle: { backgroundColor: colors.background },
+							headerLargeTitle: false,
+							headerShown: true,
+							headerShadowVisible: false,
+							headerStyle: { backgroundColor: colors.background },
+						}}
+					/>
 					<Stack.Screen name="login" options={{ animation: "fade" }} />
 					<Stack.Screen name="setup" options={{ animation: "fade" }} />
 					<Stack.Screen

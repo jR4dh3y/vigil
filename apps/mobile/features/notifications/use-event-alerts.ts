@@ -13,7 +13,7 @@ import { notifyAboutEvent } from "@/features/notifications/service";
 import { getApiClient } from "@/lib/api/client";
 import { useAppStore } from "@/lib/store";
 
-export function useEventAlerts(enabled: boolean): number {
+export function useEventAlerts(enabled: boolean): void {
 	const notificationsAvailable = canUseLocalNotifications();
 	const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
 	const lastSeenEventAt = useAppStore((state) => state.lastSeenEventAt);
@@ -161,6 +161,4 @@ export function useEventAlerts(enabled: boolean): number {
 
 		void processNewEvents();
 	}, [events, lastSeenEventAt, notificationsAvailable, notificationsEnabled, setLastSeenEventAt]);
-
-	return events.reduce((count, event) => count + (event.acknowledged ? 0 : 1), 0);
 }

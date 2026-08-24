@@ -10,7 +10,7 @@ export default function TabsLayout() {
 	const configuration = useApiConfiguration();
 	const configured = configuration.kind === "configured";
 	const auth = useAuthStatus(configured);
-	const unacknowledgedCount = useEventAlerts(Boolean(auth.data?.user));
+	useEventAlerts(Boolean(auth.data?.user));
 
 	if (!configured) {
 		return <Redirect href="/server" />;
@@ -41,15 +41,6 @@ export default function TabsLayout() {
 			<NativeTabs.Trigger name="(live)">
 				<NativeTabs.Trigger.Icon sf="rectangle.grid.2x2.fill" md="dashboard" />
 				<NativeTabs.Trigger.Label>Live</NativeTabs.Trigger.Label>
-			</NativeTabs.Trigger>
-			<NativeTabs.Trigger name="(events)">
-				<NativeTabs.Trigger.Icon sf="bell.fill" md="notifications" />
-				<NativeTabs.Trigger.Label>Events</NativeTabs.Trigger.Label>
-				{unacknowledgedCount > 0 ? (
-					<NativeTabs.Trigger.Badge>
-						{unacknowledgedCount > 99 ? "99+" : String(unacknowledgedCount)}
-					</NativeTabs.Trigger.Badge>
-				) : null}
 			</NativeTabs.Trigger>
 			<NativeTabs.Trigger name="(history)">
 				<NativeTabs.Trigger.Icon sf="clock.arrow.circlepath" md="history" />
