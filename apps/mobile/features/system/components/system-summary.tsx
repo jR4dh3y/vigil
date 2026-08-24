@@ -16,11 +16,9 @@ export function SystemSummary({ status }: SystemSummaryProps) {
 		<SettingsGroup title="Recorder health">
 			<SettingsRow
 				control={
-					<View style={[styles.badge, degraded ? styles.warning : styles.healthy]}>
-						<Text style={[styles.badgeLabel, degraded ? styles.warningLabel : styles.healthyLabel]}>
-							{degraded ? "Degraded" : "Healthy"}
-						</Text>
-					</View>
+				<Text style={[styles.badgeLabel, degraded ? styles.warningLabel : styles.healthyLabel]}>
+					{degraded ? "Degraded" : "Healthy"}
+				</Text>
 				}
 				label="Status"
 			/>
