@@ -23,8 +23,8 @@
 				"android.permission.RECORD_AUDIO",
 				"android.permission.SYSTEM_ALERT_WINDOW"
 			],
-			"adaptiveIcon": {
-				"backgroundColor": "#0a0a0a",
+		"adaptiveIcon": {
+			"backgroundColor": "#e8f4ff",
 				"foregroundImage": "./assets/android-icon-foreground.png",
 				"backgroundImage": "./assets/android-icon-background.png",
 				"monochromeImage": "./assets/android-icon-monochrome.png"
@@ -60,7 +60,7 @@
 			[
 				"expo-splash-screen",
 				{
-					"backgroundColor": "#0a0a0a",
+					"backgroundColor": "#e8f4ff",
 					"image": "./assets/splash-icon.png",
 					"resizeMode": "contain"
 				}
