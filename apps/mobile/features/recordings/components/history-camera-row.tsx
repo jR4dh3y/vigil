@@ -24,9 +24,6 @@ export function HistoryCameraRow({ id, name, host, enabled, status }: HistoryCam
 					<Text selectable numberOfLines={1} style={styles.name}>
 						{name}
 					</Text>
-					<Text selectable numberOfLines={1} style={styles.host}>
-						{host}
-					</Text>
 				</View>
 				<View style={styles.trailing}>
 					<StatusDot

@@ -61,15 +61,6 @@ export function CameraCard({ camera, active }: CameraCardProps) {
 						</Text>
 					</View>
 				</View>
-				<View style={styles.footer}>
-					<StatusDot
-						label={camera.enabled ? camera.status : "disabled"}
-						tone={camera.status === "unknown" || !camera.enabled ? "neutral" : camera.status}
-					/>
-					<Text numberOfLines={1} style={styles.host}>
-						{camera.host}
-					</Text>
-				</View>
 			</Pressable>
 		</Link>
 	);

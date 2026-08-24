@@ -38,15 +38,6 @@ export function RecordingHistory({ history }: RecordingHistoryProps) {
 
 	return (
 		<HistoryScroll>
-			<View style={styles.intro}>
-				<Text selectable style={styles.title}>
-					{formatCalendarDate(history.selectedDay)}
-				</Text>
-				<Text selectable style={styles.detail}>
-					Tap any marked date, then seek anywhere inside the day’s recorded coverage.
-				</Text>
-			</View>
-
 			<RecordingCalendar
 				availability={history.availability}
 				error={history.daysError}
