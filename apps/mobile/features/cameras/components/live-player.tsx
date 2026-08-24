@@ -96,7 +96,22 @@ export function LivePlayer({
 		setError(null);
 		setRetrying(false);
 		player.loop = loop;
-		player.replace(uri);
+		let cancelled = false;
+		void player
+			.replaceAsync(uri)
+			.then(() => {
+				if (!cancelled) {
+					player.play();
+				}
+			})
+			.catch((cause: unknown) => {
+				if (!cancelled) {
+					setError(cause instanceof Error ? cause.message : "The video could not be played.");
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
 	}, [loop, player, sourceKey, startOffsetSec, uri]);
 
 	return (
