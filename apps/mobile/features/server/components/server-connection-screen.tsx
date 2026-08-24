@@ -43,10 +43,6 @@ export function ServerConnectionScreen({
 				<Text selectable style={styles.title}>
 					Connect to your recorder
 				</Text>
-				<Text selectable style={styles.description}>
-					Enter the LAN or HTTPS address you use to reach Vigil. The API path is added
-					automatically.
-				</Text>
 			</View>
 
 			<View style={styles.card}>
@@ -66,9 +62,6 @@ export function ServerConnectionScreen({
 						value={value}
 					/>
 				</View>
-				<Text selectable style={styles.hint}>
-					Use HTTPS outside your trusted local network. Credentials never belong in this URL.
-				</Text>
 				{error ? (
 					<Text selectable style={styles.error}>
 						{error}
