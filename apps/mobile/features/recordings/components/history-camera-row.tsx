@@ -1,6 +1,6 @@
 import { type Href, router } from "expo-router";
 import { Pressable, StyleSheet, Text } from "react-native";
-import { StatusDot } from "@/components/status-dot";
+import { Status } from "@/components/status-without-dot";
 import { colors } from "@/theme/colors";
 
 type HistoryCameraRowProps = {
@@ -22,7 +22,7 @@ export function HistoryCameraRow({ id, name, enabled, status }: HistoryCameraRow
 			<Text ellipsizeMode="tail" numberOfLines={1} style={styles.name}>
 				{name}
 			</Text>
-			<StatusDot
+			<Status
 				label={enabled ? status : "disabled"}
 				tone={status === "unknown" || !enabled ? "neutral" : status}
 			/>
