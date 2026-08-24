@@ -98,7 +98,6 @@ export default function SettingsScreen() {
 			<SettingsGroup title="About">
 				<SettingsRow label="App" value="Vigil" />
 				<SettingsRow label="Version" value={Constants.expoConfig?.version ?? "—"} />
-				<SettingsRow label="Scope" last value="Live · Events · History" />
 			</SettingsGroup>
 
 			<Pressable
