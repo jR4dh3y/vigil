@@ -1,7 +1,6 @@
 import type { Camera } from "@nvr/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
-import { FlatList, type ListRenderItem, RefreshControl, StyleSheet, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet } from "react-native";
 import { StatePanel } from "@/components/state-panel";
 import { cameraKeys, listCameras } from "@/features/cameras/api";
 import { HistoryCameraRow } from "@/features/recordings/components/history-camera-row";
@@ -9,51 +8,12 @@ import { colors } from "@/theme/colors";
 
 export default function HistoryScreen() {
 	const camerasQuery = useQuery({ queryKey: cameraKeys.all, queryFn: listCameras });
-	const renderCamera = useCallback<ListRenderItem<Camera>>(
-		({ item }) => (
-			<HistoryCameraRow
-				enabled={item.enabled}
-				host={item.host}
-				id={item.id}
-				name={item.name}
-				status={item.status}
-			/>
-		),
-		[],
-	);
+	const cameras = camerasQuery.data ?? [];
 
 	return (
-		<FlatList
+		<ScrollView
 			contentInsetAdjustmentBehavior="automatic"
 			contentContainerStyle={styles.content}
-			data={camerasQuery.data ?? []}
-			ItemSeparatorComponent={CameraSeparator}
-			keyExtractor={cameraKey}
-			ListEmptyComponent={
-				camerasQuery.isPending ? (
-					<StatePanel detail="Loading cameras…" loading title="Checking history" />
-				) : camerasQuery.isError ? (
-					<StatePanel
-						actionLabel="Try again"
-						detail={camerasQuery.error.message}
-						onAction={() => camerasQuery.refetch()}
-						title="History is out of reach"
-					/>
-				) : (
-					<StatePanel
-						detail="Add a camera from the web dashboard before browsing retained video."
-						title="No cameras yet"
-					/>
-				)
-			}
-			ListHeaderComponent={
-				<View style={styles.header}>
-					<StatePanel
-						detail="Choose a camera, then jump directly to any retained calendar day."
-						title="Recording history"
-					/>
-				</View>
-			}
 			refreshControl={
 				<RefreshControl
 					refreshing={camerasQuery.isRefetching}
@@ -61,18 +21,39 @@ export default function HistoryScreen() {
 					tintColor={colors.accent}
 				/>
 			}
-			renderItem={renderCamera}
 			style={styles.screen}
-		/>
+		>
+			<StatePanel
+				detail="Choose a camera, then jump directly to any retained calendar day."
+				title="Recording history"
+			/>
+			{cameras.length > 0 ? (
+				cameras.map((camera: Camera) => (
+					<HistoryCameraRow
+						enabled={camera.enabled}
+						id={camera.id}
+						key={camera.id}
+						name={camera.name}
+						status={camera.status}
+					/>
+				))
+			) : camerasQuery.isPending ? (
+				<StatePanel detail="Loading cameras…" loading title="Checking history" />
+			) : camerasQuery.isError ? (
+				<StatePanel
+					actionLabel="Try again"
+					detail={camerasQuery.error.message}
+					onAction={() => camerasQuery.refetch()}
+					title="History is out of reach"
+				/>
+			) : (
+				<StatePanel
+					detail="Add a camera from the web dashboard before browsing retained video."
+					title="No cameras yet"
+				/>
+			)}
+		</ScrollView>
 	);
-}
-
-function cameraKey(camera: Camera): string {
-	return camera.id;
-}
-
-function CameraSeparator() {
-	return <View style={styles.separator} />;
 }
 
 const styles = StyleSheet.create({
@@ -81,13 +62,8 @@ const styles = StyleSheet.create({
 		flex: 1,
 	},
 	content: {
+		gap: 12,
 		padding: 16,
 		paddingBottom: 40,
-	},
-	header: {
-		paddingBottom: 18,
-	},
-	separator: {
-		height: 12,
 	},
 });
