@@ -1,5 +1,6 @@
 import { Link } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { ActionButton } from "@/components/action-button";
 import { useApiBaseUrl } from "@/features/server/use-api-base-url";
 import { colors } from "@/theme/colors";
 
@@ -12,13 +13,7 @@ export function RecorderLink() {
 				{baseUrl}
 			</Text>
 			<Link href="/server" asChild>
-				<Pressable
-					accessibilityHint="Choose a different recorder"
-					accessibilityRole="button"
-					style={({ pressed }) => [styles.button, pressed ? styles.buttonPressed : null]}
-				>
-					<Text style={styles.buttonLabel}>Change recorder</Text>
-				</Pressable>
+				<ActionButton accessibilityHint="Choose a different recorder" label="Change recorder" variant="secondary" />
 			</Link>
 		</View>
 	);
@@ -35,19 +30,5 @@ const styles = StyleSheet.create({
 		maxWidth: "100%",
 		paddingHorizontal: 8,
 		textAlign: "center",
-	},
-	button: {
-		borderCurve: "continuous",
-		borderRadius: 10,
-		paddingHorizontal: 12,
-		paddingVertical: 7,
-	},
-	buttonPressed: {
-		backgroundColor: colors.surface,
-	},
-	buttonLabel: {
-		color: colors.accent,
-		fontSize: 13,
-		fontWeight: "700",
 	},
 });

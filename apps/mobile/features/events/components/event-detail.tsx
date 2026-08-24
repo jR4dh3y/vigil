@@ -1,6 +1,7 @@
 import type { Camera, Event } from "@nvr/api-client";
 import { Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActionButton } from "@/components/action-button";
 import { StatePanel } from "@/components/state-panel";
 import { StatusDot } from "@/components/status-dot";
 import { LivePlayer } from "@/features/cameras/components/live-player";
@@ -130,12 +131,7 @@ export function EventDetail({
 						)}
 					</View>
 					<Link href={{ pathname: "/camera/[id]", params: { id: event.cameraId } }} asChild>
-						<Pressable
-							accessibilityRole="button"
-							style={({ pressed }) => [styles.secondaryAction, pressed ? styles.pressed : null]}
-						>
-							<Text style={styles.secondaryActionLabel}>Open live camera</Text>
-						</Pressable>
+						<ActionButton label="Open live camera" variant="secondary" />
 					</Link>
 				</View>
 			) : (
@@ -150,16 +146,11 @@ export function EventDetail({
 					<Text style={styles.reviewedLabel}>Reviewed</Text>
 				</View>
 			) : (
-				<Pressable
-					accessibilityRole="button"
-					disabled={acknowledging}
+				<ActionButton
+					label={acknowledging ? "Marking as reviewed…" : "Mark as reviewed"}
+					loading={acknowledging}
 					onPress={onAcknowledge}
-					style={({ pressed }) => [styles.primaryAction, pressed ? styles.pressed : null]}
-				>
-					<Text style={styles.primaryActionLabel}>
-						{acknowledging ? "Marking as reviewed…" : "Mark as reviewed"}
-					</Text>
-				</Pressable>
+				/>
 			)}
 			{acknowledgeError ? (
 				<Text selectable style={styles.error}>
@@ -184,7 +175,7 @@ const styles = StyleSheet.create({
 		gap: 6,
 	},
 	eyebrow: {
-		color: colors.accent,
+		color: colors.deepPurple,
 		fontSize: 11,
 		fontWeight: "800",
 		letterSpacing: 1,
@@ -236,37 +227,6 @@ const styles = StyleSheet.create({
 		borderCurve: "continuous",
 		borderRadius: 20,
 		overflow: "hidden",
-	},
-	secondaryAction: {
-		alignItems: "center",
-		backgroundColor: colors.surface,
-		borderCurve: "continuous",
-		borderRadius: 13,
-		minHeight: 44,
-		justifyContent: "center",
-		paddingHorizontal: 14,
-	},
-	secondaryActionLabel: {
-		color: colors.accent,
-		fontSize: 14,
-		fontWeight: "700",
-	},
-	primaryAction: {
-		alignItems: "center",
-		backgroundColor: colors.label,
-		borderCurve: "continuous",
-		borderRadius: 14,
-		minHeight: 48,
-		justifyContent: "center",
-		paddingHorizontal: 16,
-	},
-	primaryActionLabel: {
-		color: colors.background,
-		fontSize: 15,
-		fontWeight: "700",
-	},
-	pressed: {
-		opacity: 0.65,
 	},
 	reviewed: {
 		alignItems: "center",

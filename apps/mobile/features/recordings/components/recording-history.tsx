@@ -4,7 +4,6 @@ import { StatePanel } from "@/components/state-panel";
 import { LivePlayer } from "@/features/cameras/components/live-player";
 import { RecordingCalendar } from "@/features/recordings/components/recording-calendar";
 import { RecordingTimeline } from "@/features/recordings/components/recording-timeline";
-import { formatCalendarDate } from "@/features/recordings/format";
 import type { useRecordingHistory } from "@/features/recordings/use-recording-history";
 import { colors, swatches } from "@/theme/colors";
 

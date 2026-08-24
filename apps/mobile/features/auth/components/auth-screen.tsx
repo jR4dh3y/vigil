@@ -1,15 +1,7 @@
 import type { ReactNode } from "react";
-import {
-	ActivityIndicator,
-	KeyboardAvoidingView,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	View,
-} from "react-native";
-import { colors, swatches } from "@/theme/colors";
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActionButton } from "@/components/action-button";
+import { colors } from "@/theme/colors";
 
 type AuthScreenProps = {
 	title: string;
@@ -96,21 +88,12 @@ export function AuthScreen({
 						</Text>
 					) : null}
 
-					<Pressable
-						accessibilityRole="button"
+					<ActionButton
 						disabled={!canSubmit}
+						label={submitLabel}
+						loading={submitting}
 						onPress={onSubmit}
-						style={({ pressed }) => [
-							styles.submit,
-							(!canSubmit || pressed) && styles.submitDisabled,
-						]}
-					>
-						{submitting ? (
-							<ActivityIndicator color={swatches.white} />
-						) : (
-							<Text style={styles.submitLabel}>{submitLabel}</Text>
-						)}
-					</Pressable>
+					/>
 				</View>
 
 				{footer}
@@ -136,7 +119,7 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 4,
 	},
 	kicker: {
-		color: colors.accent,
+		color: colors.deepPurple,
 		fontSize: 13,
 		fontWeight: "700",
 		letterSpacing: 1.2,
@@ -182,22 +165,5 @@ const styles = StyleSheet.create({
 		color: colors.red,
 		fontSize: 14,
 		lineHeight: 20,
-	},
-	submit: {
-		alignItems: "center",
-		backgroundColor: colors.label,
-		borderCurve: "continuous",
-		borderRadius: 14,
-		justifyContent: "center",
-		minHeight: 48,
-		paddingHorizontal: 16,
-	},
-	submitDisabled: {
-		opacity: 0.55,
-	},
-	submitLabel: {
-		color: swatches.white,
-		fontSize: 16,
-		fontWeight: "700",
 	},
 });

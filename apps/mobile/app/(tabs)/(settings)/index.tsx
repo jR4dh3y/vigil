@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text } from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch } from "react-native";
+import { ActionButton } from "@/components/action-button";
 import { logout } from "@/features/auth/api";
 import { authKeys } from "@/features/auth/keys";
 import { useAuthStatus } from "@/features/auth/use-auth-status";
@@ -49,9 +50,7 @@ export default function SettingsScreen() {
 				<SettingsRow label="Role" last value={user?.role ?? "—"} />
 			</SettingsGroup>
 
-			<SettingsGroup
-				title="Alerts"
-			>
+			<SettingsGroup title="Alerts">
 				<SettingsRow
 					control={
 						<Switch
@@ -67,7 +66,7 @@ export default function SettingsScreen() {
 									}
 								});
 							}}
-							trackColor={{ true: colors.green }}
+							trackColor={{ true: colors.lime }}
 							value={notificationPreference.enabled}
 						/>
 					}
@@ -84,11 +83,7 @@ export default function SettingsScreen() {
 			{statusQuery.data ? <SystemSummary status={statusQuery.data} /> : null}
 
 			<SettingsGroup
-				footer={
-					statusQuery.isError
-						? `Status unavailable: ${statusQuery.error.message}`
-						: ""
-				}
+				footer={statusQuery.isError ? `Status unavailable: ${statusQuery.error.message}` : ""}
 				title="Recorder"
 			>
 				<SettingsLinkRow href="/server" label="Server" last value={apiBaseUrl} />
@@ -99,16 +94,13 @@ export default function SettingsScreen() {
 				<SettingsRow label="Version" value={Constants.expoConfig?.version ?? "—"} />
 			</SettingsGroup>
 
-			<Pressable
-				accessibilityRole="button"
-				disabled={logoutMutation.isPending}
+			<ActionButton
+				danger
+				label={logoutMutation.isPending ? "Signing out…" : "Sign out"}
+				loading={logoutMutation.isPending}
 				onPress={() => logoutMutation.mutate()}
-				style={({ pressed }) => [styles.signOut, pressed && styles.signOutPressed]}
-			>
-				<Text style={styles.signOutLabel}>
-					{logoutMutation.isPending ? "Signing out…" : "Sign out"}
-				</Text>
-			</Pressable>
+				variant="secondary"
+			/>
 		</ScrollView>
 	);
 }
@@ -122,22 +114,5 @@ const styles = StyleSheet.create({
 		gap: 24,
 		padding: 16,
 		paddingBottom: 40,
-	},
-	signOut: {
-		alignItems: "center",
-		backgroundColor: colors.surface,
-		borderCurve: "continuous",
-		borderRadius: 14,
-		justifyContent: "center",
-		minHeight: 50,
-		paddingHorizontal: 16,
-	},
-	signOutPressed: {
-		opacity: 0.7,
-	},
-	signOutLabel: {
-		color: colors.red,
-		fontSize: 16,
-		fontWeight: "700",
 	},
 });

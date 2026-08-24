@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
 		fontWeight: "700",
 	},
 	link: {
-		color: colors.accent,
+		color: colors.deepPurple,
 		fontSize: 16,
 		fontWeight: "700",
 	},

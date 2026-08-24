@@ -3,13 +3,13 @@ import { useVideoPlayer, type VideoSource, VideoView } from "expo-video";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type GestureResponderEvent,
-	Pressable,
 	type StyleProp,
 	StyleSheet,
 	Text,
 	View,
 	type ViewStyle,
 } from "react-native";
+import { ActionButton } from "@/components/action-button";
 import { swatches } from "@/theme/colors";
 
 type LivePlayerProps = {
@@ -125,14 +125,11 @@ export function LivePlayer({
 					<Text selectable numberOfLines={2} style={styles.errorMessage}>
 						{error}
 					</Text>
-					<Pressable
-						accessibilityRole="button"
-						disabled={retrying}
+					<ActionButton
+						label={retrying ? "Retrying…" : "Retry video"}
+						loading={retrying}
 						onPress={handleRetry}
-						style={({ pressed }) => [styles.retry, pressed ? styles.retryPressed : null]}
-					>
-						<Text style={styles.retryLabel}>{retrying ? "Retrying…" : "Retry video"}</Text>
-					</Pressable>
+					/>
 				</View>
 			) : (
 				<VideoView
@@ -179,20 +176,5 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		lineHeight: 18,
 		textAlign: "center",
-	},
-	retry: {
-		backgroundColor: swatches.white,
-		borderCurve: "continuous",
-		borderRadius: 11,
-		paddingHorizontal: 14,
-		paddingVertical: 9,
-	},
-	retryPressed: {
-		opacity: 0.7,
-	},
-	retryLabel: {
-		color: swatches.black,
-		fontSize: 13,
-		fontWeight: "700",
 	},
 });

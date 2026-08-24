@@ -1,5 +1,5 @@
 import type { SystemStatus } from "@nvr/api-client";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { SettingsGroup } from "@/features/settings/components/settings-group";
 import { SettingsRow } from "@/features/settings/components/settings-row";
 import { formatDiskUsage } from "@/features/system/format";
@@ -16,9 +16,9 @@ export function SystemSummary({ status }: SystemSummaryProps) {
 		<SettingsGroup title="Recorder health">
 			<SettingsRow
 				control={
-				<Text style={[styles.badgeLabel, degraded ? styles.warningLabel : styles.healthyLabel]}>
-					{degraded ? "Degraded" : "Healthy"}
-				</Text>
+					<Text style={[styles.badgeLabel, degraded ? styles.warningLabel : styles.healthyLabel]}>
+						{degraded ? "Degraded" : "Healthy"}
+					</Text>
 				}
 				label="Status"
 			/>

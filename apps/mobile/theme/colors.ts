@@ -1,7 +1,14 @@
 import { Color } from "expo-router";
 import { Platform } from "react-native";
 
+// Brand palette mirrors apps/landing global.css.
 export const colors = {
+	paper: "#f3eee3",
+	ink: "#1e1e20",
+	deepPurple: "#4a3b5f",
+	lime: "#c3fb5b",
+	coral: "#ff6e79",
+	pop: "#ffb86c",
 	background: Platform.select({
 		ios: Color.ios.systemGroupedBackground,
 		android: Color.android.dynamic.surface,
@@ -32,11 +39,10 @@ export const colors = {
 		android: Color.android.dynamic.outlineVariant,
 		default: "#deded8",
 	}),
-	accent: Platform.select({
-		ios: Color.ios.systemOrange,
-		android: Color.android.dynamic.primary,
-		default: "#e96f16",
-	}),
+	// Brand accent: landing lavender across platforms.
+	accent: "#c59edc",
+	// Darker semantic shades kept for text on light surfaces where the bright
+	// landing hues would fail contrast.
 	green: Platform.select({
 		ios: Color.ios.systemGreen,
 		android: "#3f8f4d",
@@ -59,8 +65,8 @@ export const swatches = {
 	previewRaised: "#232826",
 	white: "#ffffff",
 	black: "#000000",
-	greenSoft: "rgba(53, 199, 89, 0.14)",
-	orangeSoft: "rgba(255, 149, 0, 0.14)",
-	redSoft: "rgba(255, 59, 48, 0.14)",
+	greenSoft: "rgba(195, 251, 91, 0.16)",
+	orangeSoft: "rgba(255, 184, 108, 0.2)",
+	redSoft: "rgba(255, 110, 121, 0.16)",
 	neutralSoft: "rgba(120, 120, 128, 0.14)",
 };

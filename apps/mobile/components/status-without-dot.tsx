@@ -19,7 +19,9 @@ const toneColor = {
 export function Status({ label, tone, inverted = false }: StatusProps) {
 	return (
 		<View style={styles.container}>
-		<Text style={[styles.label, { color: toneColor[tone] }, inverted && styles.labelInverted]}>{label}</Text>
+			<Text style={[styles.label, { color: toneColor[tone] }, inverted && styles.labelInverted]}>
+				{label}
+			</Text>
 		</View>
 	);
 }

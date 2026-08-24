@@ -92,7 +92,7 @@ export function RecordingCalendar({
 
 			<View style={styles.legend}>
 				<LegendItem color={colors.accent} label="Local" />
-				<LegendItem color={colors.green} label="Google Drive" />
+				<LegendItem color={colors.lime} label="Google Drive" />
 				<Text selectable style={error ? styles.error : styles.status}>
 					{loading ? "Loading days…" : error ? "Day markers unavailable" : ""}
 				</Text>
@@ -136,7 +136,7 @@ function AvailabilityDots({ source }: { source: RecordingDaySource }) {
 				<View style={[styles.dot, { backgroundColor: colors.accent }]} />
 			) : null}
 			{source === "gdrive" || source === "mixed" ? (
-				<View style={[styles.dot, { backgroundColor: colors.green }]} />
+				<View style={[styles.dot, { backgroundColor: colors.lime }]} />
 			) : null}
 		</View>
 	);

@@ -1,15 +1,14 @@
 import {
-	ActivityIndicator,
 	KeyboardAvoidingView,
 	Platform,
-	Pressable,
 	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
 	View,
 } from "react-native";
-import { colors, swatches } from "@/theme/colors";
+import { ActionButton } from "@/components/action-button";
+import { colors } from "@/theme/colors";
 
 type ServerConnectionScreenProps = {
 	value: string;
@@ -75,21 +74,12 @@ export function ServerConnectionScreen({
 						{error}
 					</Text>
 				) : null}
-				<Pressable
-					accessibilityRole="button"
+				<ActionButton
 					disabled={!canConnect}
+					label="Test and connect"
+					loading={connecting}
 					onPress={onConnect}
-					style={({ pressed }) => [
-						styles.connect,
-						!canConnect || pressed ? styles.connectDisabled : null,
-					]}
-				>
-					{connecting ? (
-						<ActivityIndicator color={swatches.white} />
-					) : (
-						<Text style={styles.connectLabel}>Test and connect</Text>
-					)}
-				</Pressable>
+				/>
 			</View>
 		</ScrollView>
 		</KeyboardAvoidingView>
@@ -156,22 +146,5 @@ const styles = StyleSheet.create({
 		color: colors.red,
 		fontSize: 14,
 		lineHeight: 20,
-	},
-	connect: {
-		alignItems: "center",
-		backgroundColor: colors.label,
-		borderCurve: "continuous",
-		borderRadius: 14,
-		justifyContent: "center",
-		minHeight: 48,
-		paddingHorizontal: 16,
-	},
-	connectDisabled: {
-		opacity: 0.55,
-	},
-	connectLabel: {
-		color: swatches.white,
-		fontSize: 16,
-		fontWeight: "700",
 	},
 });

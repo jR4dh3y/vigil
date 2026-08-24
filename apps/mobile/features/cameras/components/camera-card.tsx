@@ -2,7 +2,6 @@ import type { Camera } from "@nvr/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { StatusDot } from "@/components/status-dot";
 import { cameraKeys, getLiveStream, liveRefetchInterval } from "@/features/cameras/api";
 import { LiveStreamPlayer } from "@/features/cameras/components/live-stream-player";
 import { resolveLiveStream } from "@/features/cameras/media";

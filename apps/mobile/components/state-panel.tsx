@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActionButton } from "@/components/action-button";
 import { colors, swatches } from "@/theme/colors";
 
 type StatePanelProps = {
@@ -27,15 +28,7 @@ export function StatePanel({
 					{detail}
 				</Text>
 			</View>
-			{actionLabel && onAction ? (
-				<Pressable
-					accessibilityRole="button"
-					onPress={onAction}
-					style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
-				>
-					<Text style={styles.actionLabel}>{actionLabel}</Text>
-				</Pressable>
-			) : null}
+			{actionLabel && onAction ? <ActionButton label={actionLabel} onPress={onAction} /> : null}
 		</View>
 	);
 }
@@ -73,20 +66,5 @@ const styles = StyleSheet.create({
 		lineHeight: 20,
 		maxWidth: 320,
 		textAlign: "center",
-	},
-	action: {
-		backgroundColor: colors.label,
-		borderCurve: "continuous",
-		borderRadius: 12,
-		paddingHorizontal: 18,
-		paddingVertical: 10,
-	},
-	actionPressed: {
-		opacity: 0.65,
-	},
-	actionLabel: {
-		color: colors.background,
-		fontSize: 14,
-		fontWeight: "700",
 	},
 });

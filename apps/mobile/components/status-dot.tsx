@@ -9,10 +9,11 @@ type StatusDotProps = {
 	inverted?: boolean;
 };
 
+// Bright landing hues for the dot fill; labels stay neutral for contrast.
 const toneColor = {
-	online: colors.green,
-	warning: colors.orange,
-	offline: colors.red,
+	online: colors.lime,
+	warning: colors.pop,
+	offline: colors.coral,
 	neutral: colors.secondaryLabel,
 } satisfies Record<StatusTone, string | object>;
 
