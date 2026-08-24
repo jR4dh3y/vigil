@@ -1,4 +1,3 @@
-import Constants, { AppOwnership } from "expo-constants";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { LivePlayer } from "@/features/cameras/components/live-player";
 import { useWhepStream } from "@/features/cameras/use-whep-stream";
@@ -15,10 +14,12 @@ export function LiveStreamPlayer({
 	hlsUri,
 	nativeControls = false,
 }: LiveStreamPlayerProps) {
-	const isExpoGo = Constants.appOwnership === AppOwnership.Expo;
-	const { streamUrl, RtcView, failed } = useWhepStream(whepUri, !isExpoGo);
+	// Let the WHEP hook detect availability via dynamic import — AppOwnership
+	// is unreliable in EAS builds without expo-updates (it can return "expo"
+	// even when native modules are readily available).
+	const { streamUrl, RtcView, failed } = useWhepStream(whepUri);
 
-	if (isExpoGo || failed) {
+	if (failed) {
 		return <LivePlayer nativeControls={nativeControls} uri={hlsUri} />;
 	}
 	if (streamUrl && RtcView) {

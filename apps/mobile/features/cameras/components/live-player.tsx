@@ -1,5 +1,5 @@
 import { useEventListener } from "expo";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { useVideoPlayer, type VideoSource, VideoView } from "expo-video";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type GestureResponderEvent,
@@ -96,9 +96,10 @@ export function LivePlayer({
 		setError(null);
 		setRetrying(false);
 		player.loop = loop;
+		const source: VideoSource = loop ? { contentType: "hls", uri } : uri;
 		let cancelled = false;
 		void player
-			.replaceAsync(uri)
+			.replaceAsync(source)
 			.then(() => {
 				if (!cancelled) {
 					player.play();

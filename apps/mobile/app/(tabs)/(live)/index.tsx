@@ -18,6 +18,9 @@ import { colors } from "@/theme/colors";
 
 export default function LiveScreen() {
 	const isFocused = useIsFocused();
+	// Only visible cameras hold a hardware decoder and peer connection; releasing
+	// them on scroll-out is what keeps multi-camera playback within device codec
+	// limits. Accumulating streams instead guarantees black tiles past ~4 feeds.
 	const [visibleCameraIds, setVisibleCameraIds] = useState<ReadonlySet<string>>(() => new Set());
 	const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40 }).current;
 	const onViewableItemsChanged = useRef(
@@ -82,6 +85,8 @@ export default function LiveScreen() {
 			}
 			renderItem={renderCamera}
 			onViewableItemsChanged={onViewableItemsChanged}
+			// Clipped subviews blank out native video surfaces (RTCView/VideoView).
+			removeClippedSubviews={false}
 			style={styles.screen}
 			viewabilityConfig={viewabilityConfig}
 		/>

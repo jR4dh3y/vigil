@@ -18,19 +18,12 @@ const initialState: WhepStreamState = {
 	failed: false,
 };
 
-export function useWhepStream(uri: string, enabled = true): WhepStreamState {
-	const [state, setState] = useState<WhepStreamState>(() =>
-		enabled ? initialState : { ...initialState, failed: true },
-	);
+export function useWhepStream(uri: string): WhepStreamState {
+	const [state, setState] = useState<WhepStreamState>(initialState);
 	const endpoint = streamEndpoint(uri);
 	const getConnectionUri = useEffectEvent(() => uri);
 
 	useEffect(() => {
-		if (!enabled) {
-			setState({ ...initialState, failed: true });
-			return;
-		}
-
 		void endpoint;
 		const connectionUri = getConnectionUri();
 		let cancelled = false;
@@ -112,15 +105,34 @@ export function useWhepStream(uri: string, enabled = true): WhepStreamState {
 					resourceUrl = null;
 				}
 				await peer.setRemoteDescription({ type: "answer", sdp: answer });
-			} catch {
-				if (!cancelled) {
-					setState((current) => ({ ...current, failed: true }));
-				}
+			} catch (cause) {
+				peer?.close();
+				peer = null;
+				throw cause;
 			}
 		};
 
 		setState(initialState);
-		void connect();
+		// One bounded retry: a scroll-flap or transient negotiation error must not
+		// permanently demote a tile to the HLS fallback.
+		void (async () => {
+			for (let attempt = 0; ; attempt += 1) {
+				try {
+					await connect();
+					return;
+				} catch {
+					if (cancelled || attempt >= 1) {
+						break;
+					}
+					const { promise, resolve } = Promise.withResolvers<void>();
+					setTimeout(resolve, 700);
+					await promise;
+				}
+			}
+			if (!cancelled) {
+				setState((current) => ({ ...current, failed: true }));
+			}
+		})();
 		return () => {
 			cancelled = true;
 			clearTimeout(fallbackTimer);
@@ -134,7 +146,7 @@ export function useWhepStream(uri: string, enabled = true): WhepStreamState {
 				void fetch(cleanupUrl, { method: "DELETE" }).catch(() => undefined);
 			}
 		};
-	}, [enabled, endpoint]);
+	}, [endpoint]);
 
 	return state;
 }
