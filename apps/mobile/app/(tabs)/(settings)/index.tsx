@@ -50,7 +50,6 @@ export default function SettingsScreen() {
 			</SettingsGroup>
 
 			<SettingsGroup
-				footer="Vigil checks every 15 seconds while the app is open. Remote push is not available."
 				title="Alerts"
 			>
 				<SettingsRow
@@ -88,7 +87,7 @@ export default function SettingsScreen() {
 				footer={
 					statusQuery.isError
 						? `Status unavailable: ${statusQuery.error.message}`
-						: "The recorder address is stored on this device and must not contain credentials."
+						: ""
 				}
 				title="Recorder"
 			>

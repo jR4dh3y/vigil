@@ -23,10 +23,6 @@ export default function HistoryScreen() {
 			}
 			style={styles.screen}
 		>
-			<StatePanel
-				detail="Choose a camera, then jump directly to any retained calendar day."
-				title="Recording history"
-			/>
 			{cameras.length > 0 ? (
 				cameras.map((camera: Camera) => (
 					<HistoryCameraRow
