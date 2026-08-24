@@ -18,12 +18,19 @@ const initialState: WhepStreamState = {
 	failed: false,
 };
 
-export function useWhepStream(uri: string): WhepStreamState {
-	const [state, setState] = useState<WhepStreamState>(initialState);
+export function useWhepStream(uri: string, enabled = true): WhepStreamState {
+	const [state, setState] = useState<WhepStreamState>(() =>
+		enabled ? initialState : { ...initialState, failed: true },
+	);
 	const endpoint = streamEndpoint(uri);
 	const getConnectionUri = useEffectEvent(() => uri);
 
 	useEffect(() => {
+		if (!enabled) {
+			setState({ ...initialState, failed: true });
+			return;
+		}
+
 		void endpoint;
 		const connectionUri = getConnectionUri();
 		let cancelled = false;
@@ -127,7 +134,7 @@ export function useWhepStream(uri: string): WhepStreamState {
 				void fetch(cleanupUrl, { method: "DELETE" }).catch(() => undefined);
 			}
 		};
-	}, [endpoint]);
+	}, [enabled, endpoint]);
 
 	return state;
 }

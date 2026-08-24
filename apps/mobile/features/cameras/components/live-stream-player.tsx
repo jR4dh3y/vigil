@@ -1,3 +1,4 @@
+import Constants, { AppOwnership } from "expo-constants";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { LivePlayer } from "@/features/cameras/components/live-player";
 import { useWhepStream } from "@/features/cameras/use-whep-stream";
@@ -14,9 +15,10 @@ export function LiveStreamPlayer({
 	hlsUri,
 	nativeControls = false,
 }: LiveStreamPlayerProps) {
-	const { streamUrl, RtcView, failed } = useWhepStream(whepUri);
+	const isExpoGo = Constants.appOwnership === AppOwnership.Expo;
+	const { streamUrl, RtcView, failed } = useWhepStream(whepUri, !isExpoGo);
 
-	if (failed) {
+	if (isExpoGo || failed) {
 		return <LivePlayer nativeControls={nativeControls} uri={hlsUri} />;
 	}
 	if (streamUrl && RtcView) {
