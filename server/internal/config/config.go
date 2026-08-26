@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Package-level build metadata; overridden via ldflags in release builds.
@@ -17,6 +18,14 @@ var (
 // DefaultRetentionDays is the local fallback retention period used when no
 // persisted or environment override is configured.
 const DefaultRetentionDays = 7
+
+// Storage tuning defaults for the archive loop and RAM-staging safeguards.
+const (
+	// DefaultArchiveInterval matches the historical 5-minute cron cadence.
+	DefaultArchiveInterval = 5 * time.Minute
+	// MinArchiveInterval protects the Drive API quota from tight loops.
+	MinArchiveInterval = 15 * time.Second
+)
 
 type Config struct {
 	HTTPAddr      string
@@ -35,6 +44,18 @@ type Config struct {
 
 	// RetentionDays is how long recording index rows are kept (default 7).
 	RetentionDays int
+
+	// ArchiveInterval is how often the Drive archive loop runs without a
+	// segment-completion nudge (default 5m, NVR_ARCHIVE_INTERVAL_SECONDS).
+	ArchiveInterval time.Duration
+	// LocalMaxDwell bounds how long an unarchived segment may stay on the
+	// recordings volume before oldest-first eviction (0 = disabled,
+	// NVR_MAX_LOCAL_DWELL_MINUTES). Intended for RAM-backed staging volumes.
+	LocalMaxDwell time.Duration
+	// LocalEvictThreshold is the used-percent of the recordings volume at
+	// which oldest-first overflow eviction starts (NVR_LOCAL_EVICT_THRESHOLD).
+	// 0 disables overflow eviction.
+	LocalEvictThreshold float64
 
 	// Google Drive OAuth (optional archive tier).
 	GoogleClientID     string // NVR_GOOGLE_CLIENT_ID
@@ -66,6 +87,9 @@ func Load() (*Config, error) {
 		MediaMTXHLSURL:      env("NVR_MEDIAMTX_HLS_URL", "http://127.0.0.1:8888"),
 		MediaMTXPlaybackURL: env("NVR_MEDIAMTX_PLAYBACK_URL", ""),
 		RetentionDays:       envInt("NVR_RETENTION_DAYS", DefaultRetentionDays),
+		ArchiveInterval:     time.Duration(envInt("NVR_ARCHIVE_INTERVAL_SECONDS", int(DefaultArchiveInterval/time.Second))) * time.Second,
+		LocalMaxDwell:       time.Duration(envInt("NVR_MAX_LOCAL_DWELL_MINUTES", 0)) * time.Minute,
+		LocalEvictThreshold: float64(envInt("NVR_LOCAL_EVICT_THRESHOLD", 0)),
 		GoogleClientID:      env("NVR_GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:  env("NVR_GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:   env("NVR_GOOGLE_REDIRECT_URL", ""),

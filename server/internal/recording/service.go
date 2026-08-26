@@ -90,6 +90,12 @@ type Service struct {
 	recordingsDir string
 	retentionDays int
 	reconcileMu   sync.Mutex
+	// segmentListener fires after each successfully indexed segment. Set once
+	// during startup before the HTTP server accepts MediaMTX hooks; handlers
+	// must be fast and non-blocking. nil disables notification.
+	segmentListener func(Segment)
+	// usageFn reports recordings-volume used percent; overridable in tests.
+	usageFn func(ctx context.Context) (float64, error)
 }
 
 // SetRecordingsDir updates the root used to relativize segment paths.
@@ -385,6 +391,14 @@ func (s *Service) SetRetentionDays(days int) {
 // RecordingsDir returns the configured recordings root.
 func (s *Service) RecordingsDir() string {
 	return s.recordingsDir
+}
+
+// SetSegmentListener registers a callback invoked after each segment is
+// successfully indexed from a MediaMTX segment-complete hook. The callback
+// runs on the HTTP handler goroutine and must not block; use it to nudge
+// background archival. Call during startup, before hooks are served.
+func (s *Service) SetSegmentListener(fn func(Segment)) {
+	s.segmentListener = fn
 }
 
 // AbsolutePath joins rel under RecordingsDir and rejects path traversal.

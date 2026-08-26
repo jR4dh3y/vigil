@@ -33,3 +33,15 @@ services:
 volumes:
   nvr-data:
   nvr-recordings:
+  # --- RAM-staged recordings (optional) -------------------------------------
+  # To stage recordings in RAM (zero SSD writes; segments are pushed to Google
+  # Drive as they complete and evicted oldest-first under pressure), comment
+  # out the plain nvr-recordings volume above and enable the tmpfs variant.
+  # Pair with NVR_MAX_LOCAL_DWELL_MINUTES + NVR_LOCAL_EVICT_THRESHOLD on the
+  # nvr service. Size tmpfs to leave headroom for the OS (e.g. 2-4g on an 8g
+  # box). WARNING: everything unarchived is lost on reboot or daemon restart.
+  # nvr-recordings:
+  #   driver_opts:
+  #     type: tmpfs
+  #     device: tmpfs
+  #     o: size=3g

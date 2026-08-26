@@ -226,6 +226,9 @@ func (s *Service) SegmentCompleteHandler() http.HandlerFunc {
 			"duration_sec", seg.DurationSec,
 			"size_bytes", seg.SizeBytes,
 		)
+		if s.segmentListener != nil {
+			s.segmentListener(seg)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

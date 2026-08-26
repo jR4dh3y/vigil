@@ -145,7 +145,9 @@ The recordings directory is runtime data. It is ignored by Git. Refer to [databa
 
 ## The Archive Behavior
 
-Vigil uploads up to 50 unarchived recordings to Google Drive every five minutes. You can also trigger an immediate archive from the dashboard. After an
+Vigil uploads up to 50 unarchived recordings to Google Drive every five
+minutes, and starts an upload pass immediately after each completed segment.
+You can also trigger an immediate archive from the dashboard. After an
 upload succeeds, `nvrd` commits the `gdrive:<file-id>` location and removes the
 local MP4 in the same archive pass. Successful Drive rows remain in SQLite so
 the timeline can play them through the Drive proxy.
