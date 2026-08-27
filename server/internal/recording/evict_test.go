@@ -219,7 +219,7 @@ func TestSegmentCompleteNotifiesListener(t *testing.T) {
 	body := `{"path":"` + testCameraID + `","file_path":"` +
 		filepath.Join(svc.RecordingsDir(), testCameraID, "2026-08-01", "10-00-00.mp4") +
 		`","duration_sec":60,"size_bytes":2048}`
-	req := httptest.NewRequest(http.MethodPost, "/internal/mediamtx/segment-complete", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/internal/mediamtx/segment-complete", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -243,7 +243,7 @@ func TestSegmentCompleteWithoutListenerStillIndexes(t *testing.T) {
 	body := `{"path":"` + testCameraID + `","file_path":"` +
 		filepath.Join(svc.RecordingsDir(), testCameraID, "2026-08-01", "11-00-00.mp4") +
 		`","duration_sec":60}`
-	req := httptest.NewRequest(http.MethodPost, "/internal/mediamtx/segment-complete", strings.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/internal/mediamtx/segment-complete", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -252,5 +252,43 @@ func TestSegmentCompleteWithoutListenerStillIndexes(t *testing.T) {
 	rows, err := q.ListUnarchivedRecordings(context.Background(), 10)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("indexed rows = %d, err %v, want 1", len(rows), err)
+	}
+}
+
+func TestEnforceLocalLimitsDwellSkipsNonExpiredAndContinues(t *testing.T) {
+	svc, q := setupTestService(t)
+	now := time.Now().UTC()
+
+	// Regression test: a long-dwell early segment (not yet expired) followed by
+	// a short-dwell segment that IS expired. The dwell scan must continue past
+	// the non-expired segment and still evict the short expired one.
+	longNotExpired := indexSegmentWithFile(t, svc, now.Add(-30*time.Minute), 60, "long", now.Add(-29*time.Minute))
+	shortExpired := indexSegmentWithFile(t, svc, now.Add(-3*time.Hour), 60, "short", now.Add(-2*time.Hour))
+
+	stats, err := svc.EnforceLocalLimits(context.Background(), LocalLimits{MaxDwell: time.Hour})
+	if err != nil {
+		t.Fatalf("EnforceLocalLimits: %v", err)
+	}
+	if stats.Removed != 1 || stats.FreedBytes != int64(len("short")) {
+		t.Fatalf("stats = %+v, want one removal of short segment (%d bytes)", stats, len("short"))
+	}
+
+	requireFileState(t, svc, longNotExpired, true)
+	requireFileState(t, svc, shortExpired, false)
+
+	row, err := q.GetRecording(context.Background(), shortExpired.ID)
+	if err != nil {
+		t.Fatalf("get evicted row: %v", err)
+	}
+	if !row.ArchiveLocation.Valid || row.ArchiveLocation.String != LocationExpired {
+		t.Fatalf("archive location = %+v, want %q", row.ArchiveLocation, LocationExpired)
+	}
+
+	remaining, err := svc.ListUnarchived(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("list unarchived: %v", err)
+	}
+	if len(remaining) != 1 || remaining[0].ID != longNotExpired.ID {
+		t.Fatalf("unarchived queue should only hold non-expired segment, got %+v", remaining)
 	}
 }

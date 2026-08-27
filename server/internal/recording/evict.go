@@ -92,7 +92,7 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 				return stats, ctx.Err()
 			}
 			if !segmentEndedBefore(seg, cutoff) {
-				break
+				continue
 			}
 			s.applyEviction(ctx, seg, &stats)
 			start = i + 1

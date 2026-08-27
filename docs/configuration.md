@@ -121,11 +121,13 @@ By default, segments land on a normal disk and Drive archival deletes each
 local file within minutes of its upload. If the recordings volume is an SSD you
 want to spare, or simply small, you can stage recordings in RAM instead:
 
-1. Mount a tmpfs volume at the recordings path (in Docker, back the
-   `nvr-recordings` volume with `tmpfs`; see the commented block in
-   `deploy/docker-compose.yml`). Size it to leave headroom for the OS — for
-   example 2–4 GiB on an 8 GiB host.
-2. Set `NVR_RECORDINGS_DIR` to that mount (or keep the compose volume name).
+1. Mount a tmpfs volume at the recordings path. In Docker, back the
+   `nvr-recordings` volume (the Docker volume name) with `tmpfs`; see the
+   commented block in `deploy/docker-compose.yml`. Size it to leave headroom
+   for the OS — for example 2–4 GiB on an 8 GiB host.
+2. Set `NVR_RECORDINGS_DIR` to the container mount path:
+   `/var/lib/nvr/recordings` (not the volume name). The compose file already
+   mounts the `nvr-recordings` volume at that path.
 3. Opt in to the safeguards so a full staging volume never stalls recording:
    - `NVR_MAX_LOCAL_DWELL_MINUTES` evicts unarchived segments older than the
      window, oldest first.
@@ -134,8 +136,9 @@ want to spare, or simply small, you can stage recordings in RAM instead:
 
 With Google Drive connected, every completed one-minute segment nudges an
 immediate archive pass, so under normal operation a segment exists locally for
-only a few seconds and the SSD receives no recording writes at all. The SQLite
-index stays on `NVR_DATA_DIR`.
+only a few seconds and the SSD receives no recording writes at all (when host
+swap is disabled; if swap is enabled, tmpfs pages may be swapped to disk). The
+SQLite index stays on `NVR_DATA_DIR`.
 
 Trade-offs to accept before enabling this mode:
 

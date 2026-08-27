@@ -97,6 +97,9 @@ func Load() (*Config, error) {
 		HostedDashboardURL:  env("NVR_HOSTED_DASHBOARD_URL", ""),
 		CORSOrigins:         splitList(env("NVR_CORS_ORIGINS", "")),
 	}
+	if cfg.LocalEvictThreshold > 100 {
+		return nil, fmt.Errorf("NVR_LOCAL_EVICT_THRESHOLD must not exceed 100 (got %.0f)", cfg.LocalEvictThreshold)
+	}
 	return cfg, nil
 }
 

@@ -159,7 +159,8 @@ The background jobs emit events. The event service writes them to SQLite and pub
 - **Filesystem as recovery input**: pending recordings can be re-indexed by
   scanning the disk; Drive is the durable media tier after an archive succeeds.
   Opt-in RAM staging deliberately gives up this recovery path in exchange for
-  zero recording writes to disk.
+  zero persistent writes to disk (when host swap is disabled; if swap is
+  enabled, tmpfs pages may be swapped to disk).
 
 ## The service boundaries
 

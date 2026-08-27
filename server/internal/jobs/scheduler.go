@@ -152,11 +152,11 @@ func (s *Scheduler) archiveLoop(ctx context.Context) {
 }
 
 func (s *Scheduler) runArchivePass(ctx context.Context) {
-	s.safeRunTimeout("gdrive_archive", 30*time.Minute, s.archiveToGDrive)()
+	s.safeRunTimeoutWithContext(ctx, "gdrive_archive", 30*time.Minute, s.archiveToGDrive)()
 }
 
 func (s *Scheduler) runEnforcePass(ctx context.Context) {
-	s.safeRunTimeout("local_limits_enforcement", time.Minute, s.enforceLocalLimits)()
+	s.safeRunTimeoutWithContext(ctx, "local_limits_enforcement", time.Minute, s.enforceLocalLimits)()
 }
 
 // enforceLocalLimits applies RAM-staging safeguards (dwell expiry and overflow
@@ -256,6 +256,19 @@ func (s *Scheduler) safeRunTimeout(name string, timeout time.Duration, fn func(c
 			}
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		fn(ctx)
+	}
+}
+
+func (s *Scheduler) safeRunTimeoutWithContext(parent context.Context, name string, timeout time.Duration, fn func(context.Context)) func() {
+	return func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("job panicked", "job", name, "recover", r)
+			}
+		}()
+		ctx, cancel := context.WithTimeout(parent, timeout)
 		defer cancel()
 		fn(ctx)
 	}
