@@ -12,6 +12,9 @@ The backend reads its configuration from environment variables. There is no conf
 | `NVR_SECRETS_KEY` | The encryption key for secrets. | empty |
 | `NVR_LOG_LEVEL` | The log level. | `info` |
 | `NVR_RETENTION_DAYS` | The local fallback retention period in days. Drive-archived files are removed sooner after upload. | `7` |
+| `NVR_ARCHIVE_INTERVAL_SECONDS` | Fallback cadence for the Drive archive loop when no segment completions arrive. Minimum 15. | `300` |
+| `NVR_MAX_LOCAL_DWELL_MINUTES` | How long an unarchived segment may stay on the recordings volume before oldest-first eviction. `0` disables. Intended for RAM-staged recordings. | `0` |
+| `NVR_LOCAL_EVICT_THRESHOLD` | Used-percent of the recordings volume that starts oldest-first overflow eviction of unarchived segments. `0` disables. | `0` |
 | `NVR_MEDIAMTX_API_URL` | The MediaMTX control API URL. | `http://127.0.0.1:9997` |
 | `NVR_MEDIAMTX_WEBRTC_URL` | The MediaMTX WebRTC URL. | `http://127.0.0.1:8889` |
 | `NVR_MEDIAMTX_HLS_URL` | The MediaMTX HLS URL. | `http://127.0.0.1:8888` |
@@ -111,6 +114,42 @@ The default redirect URL is:
 ```text
 http://localhost:8080/api/v1/storage/gdrive/callback
 ```
+
+## RAM-staged recordings
+
+By default, segments land on a normal disk and Drive archival deletes each
+local file within minutes of its upload. If the recordings volume is an SSD you
+want to spare, or simply small, you can stage recordings in RAM instead:
+
+1. Mount a tmpfs volume at the recordings path. In Docker, back the
+   `nvr-recordings` volume (the Docker volume name) with `tmpfs`; see the
+   commented block in `deploy/docker-compose.yml`. Size it to leave headroom
+   for the OS — for example 2–4 GiB on an 8 GiB host.
+2. Set `NVR_RECORDINGS_DIR` to the container mount path:
+   `/var/lib/nvr/recordings` (not the volume name). The compose file already
+   mounts the `nvr-recordings` volume at that path.
+3. Opt in to the safeguards so a full staging volume never stalls recording:
+   - `NVR_MAX_LOCAL_DWELL_MINUTES` evicts unarchived segments older than the
+     window, oldest first.
+   - `NVR_LOCAL_EVICT_THRESHOLD` evicts oldest-first while the volume is above
+     the used-percent.
+
+With Google Drive connected, every completed one-minute segment nudges an
+immediate archive pass, so under normal operation a segment exists locally for
+only a few seconds and the SSD receives no recording writes at all (when host
+swap is disabled; if swap is enabled, tmpfs pages may be swapped to disk). The
+SQLite index stays on `NVR_DATA_DIR`.
+
+Trade-offs to accept before enabling this mode:
+
+- A reboot, power cut, or Docker daemon restart empties tmpfs. Everything not
+  yet uploaded is gone.
+- If Drive is unavailable longer than the dwell window, footage starts dropping
+  oldest-first. Evicted rows stay on the timeline marked `skipped:expired`
+  until retention pruning removes them; the `disk.low` event and server logs
+  report evictions.
+- Upload bandwidth must keep up with recording bitrate. When it does not,
+  eviction — not the archive backlog — defines what you lose.
 
 ## The example environment file
 

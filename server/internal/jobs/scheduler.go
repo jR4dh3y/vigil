@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/nvr/nvr/server/internal/camera"
+	"github.com/nvr/nvr/server/internal/config"
 	"github.com/nvr/nvr/server/internal/event"
 	"github.com/nvr/nvr/server/internal/recording"
 	"github.com/nvr/nvr/server/internal/storage/gdrive"
@@ -26,7 +27,21 @@ type Config struct {
 	HealthTimeout time.Duration
 	// DiskThreshold is the used-percent at which disk.low is emitted (default 90).
 	DiskThreshold float64
+	// ArchiveInterval is the fallback Drive archival cadence when no segment
+	// completion nudges the loop (default 5m, minimum 15s).
+	ArchiveInterval time.Duration
+	// LocalMaxDwell bounds how long unarchived segments may stay local before
+	// oldest-first eviction. 0 disables (see recording.LocalLimits).
+	LocalMaxDwell time.Duration
+	// LocalEvictThreshold is the recordings-volume used-percent that starts
+	// overflow eviction. 0 disables.
+	LocalEvictThreshold float64
 }
+
+// enforceInterval is how often local staging limits are re-checked while the
+// scheduler runs. Enforcement is cheap (one statfs plus an indexed query) and
+// reacts to overflow faster than archival alone on small volumes.
+const enforceInterval = 30 * time.Second
 
 // Scheduler runs periodic background tasks via robfig/cron.
 type Scheduler struct {
@@ -34,6 +49,10 @@ type Scheduler struct {
 	cron          *cron.Cron
 	mu            sync.Mutex
 	lastDiskAlert time.Time
+
+	nudgeCh  chan struct{}
+	stopLoop context.CancelFunc
+	loopDone chan struct{}
 }
 
 // NewScheduler constructs a jobs Scheduler. Call Start to begin cron jobs.
@@ -44,10 +63,16 @@ func NewScheduler(cfg Config) *Scheduler {
 	if cfg.DiskThreshold <= 0 {
 		cfg.DiskThreshold = 90
 	}
+	if cfg.ArchiveInterval <= 0 {
+		cfg.ArchiveInterval = config.DefaultArchiveInterval
+	}
+	if cfg.ArchiveInterval < config.MinArchiveInterval {
+		cfg.ArchiveInterval = config.MinArchiveInterval
+	}
 	return &Scheduler{
-		cfg: cfg,
-		// All schedules use UTC for predictable operations.
-		cron: cron.New(cron.WithSeconds(), cron.WithLocation(time.UTC)),
+		cfg:     cfg,
+		cron:    cron.New(cron.WithSeconds(), cron.WithLocation(time.UTC)),
+		nudgeCh: make(chan struct{}, 1),
 	}
 }
 
@@ -69,14 +94,98 @@ func (s *Scheduler) Start() error {
 	if _, err := s.cron.AddFunc("30 */5 * * * *", s.safeRun("recording_reconcile", s.reconcileRecordings)); err != nil {
 		return err
 	}
-	// Every 5 minutes: keep Drive close to the live recording queue. With six
-	// one-minute camera segments this remains below the 50-item batch limit.
-	if _, err := s.cron.AddFunc("15 */5 * * * *", s.safeRunTimeout("gdrive_archive", 30*time.Minute, s.archiveToGDrive)); err != nil {
-		return err
-	}
+	// Drive archival runs in a dedicated loop instead of cron so completed
+	// segments can nudge an immediate pass (RAM-staging mode) while the ticker
+	// preserves the historical fallback cadence.
+	loopCtx, cancel := context.WithCancel(context.Background())
+	s.stopLoop = cancel
+	s.loopDone = make(chan struct{})
+	go s.archiveLoop(loopCtx)
 	s.cron.Start()
-	slog.Info("jobs scheduler started", "cron_location", "UTC")
+	slog.Info("jobs scheduler started",
+		"cron_location", "UTC",
+		"archive_interval", s.cfg.ArchiveInterval,
+		"local_max_dwell", s.cfg.LocalMaxDwell,
+		"local_evict_threshold", s.cfg.LocalEvictThreshold,
+	)
 	return nil
+}
+
+// NudgeArchive requests an immediate Drive archival pass. Nudges are coalesced;
+// callers must be fast and non-blocking. Safe to call before Start or after
+// Stop; the signal is simply dropped when no loop is running.
+func (s *Scheduler) NudgeArchive() {
+	if s == nil {
+		return
+	}
+	select {
+	case s.nudgeCh <- struct{}{}:
+	default:
+	}
+}
+
+// archiveLoop alternates between segment-completion nudges, the archive
+// ticker, and local-limits enforcement until ctx is cancelled. Passes run
+// sequentially: Drive uploads already serialize on the gdrive single-flight
+// lock, and enforcement right after each pass reclaims staging space quickly.
+func (s *Scheduler) archiveLoop(ctx context.Context) {
+	defer close(s.loopDone)
+	archiveTicker := time.NewTicker(s.cfg.ArchiveInterval)
+	defer archiveTicker.Stop()
+	enforceTicker := time.NewTicker(enforceInterval)
+	defer enforceTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-s.nudgeCh:
+			s.runArchivePass(ctx)
+			s.runEnforcePass(ctx)
+		case <-archiveTicker.C:
+			s.runArchivePass(ctx)
+			s.runEnforcePass(ctx)
+		case <-enforceTicker.C:
+			s.runEnforcePass(ctx)
+		}
+	}
+}
+
+func (s *Scheduler) runArchivePass(ctx context.Context) {
+	s.safeRunTimeoutWithContext(ctx, "gdrive_archive", 30*time.Minute, s.archiveToGDrive)()
+}
+
+func (s *Scheduler) runEnforcePass(ctx context.Context) {
+	s.safeRunTimeoutWithContext(ctx, "local_limits_enforcement", time.Minute, s.enforceLocalLimits)()
+}
+
+// enforceLocalLimits applies RAM-staging safeguards (dwell expiry and overflow
+// eviction). It is a no-op unless limits are configured, so default
+// deployments keep their exact historical behavior.
+func (s *Scheduler) enforceLocalLimits(ctx context.Context) {
+	if s.cfg.Recording == nil {
+		return
+	}
+	if s.cfg.LocalMaxDwell <= 0 && s.cfg.LocalEvictThreshold <= 0 {
+		return
+	}
+	stats, err := s.cfg.Recording.EnforceLocalLimits(ctx, recording.LocalLimits{
+		MaxDwell:       s.cfg.LocalMaxDwell,
+		MaxUsedPercent: s.cfg.LocalEvictThreshold,
+	})
+	if err != nil {
+		slog.Warn("local limits enforcement failed", "err", err)
+		return
+	}
+	if stats.Removed > 0 || stats.Failed > 0 || stats.BusySkipped > 0 {
+		slog.Warn("local staging limits enforced",
+			"removed", stats.Removed,
+			"freed_bytes", stats.FreedBytes,
+			"busy_skipped", stats.BusySkipped,
+			"failed", stats.Failed,
+			"examined", stats.Examined,
+		)
+	}
 }
 
 func (s *Scheduler) reconcileRecordings(ctx context.Context) {
@@ -111,8 +220,17 @@ func (s *Scheduler) reconcileRecordings(ctx context.Context) {
 	}
 }
 
-// Stop gracefully stops cron jobs, waiting for in-flight work (incl. long archive runs).
+// Stop gracefully stops background work: the archive loop first, then cron
+// jobs, waiting for in-flight work (incl. long archive runs).
 func (s *Scheduler) Stop() {
+	if s.stopLoop != nil {
+		s.stopLoop()
+		select {
+		case <-s.loopDone:
+		case <-time.After(5 * time.Second):
+			slog.Warn("archive loop stop timed out")
+		}
+	}
 	if s.cron == nil {
 		return
 	}
@@ -138,6 +256,19 @@ func (s *Scheduler) safeRunTimeout(name string, timeout time.Duration, fn func(c
 			}
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		fn(ctx)
+	}
+}
+
+func (s *Scheduler) safeRunTimeoutWithContext(parent context.Context, name string, timeout time.Duration, fn func(context.Context)) func() {
+	return func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("job panicked", "job", name, "recover", r)
+			}
+		}()
+		ctx, cancel := context.WithTimeout(parent, timeout)
 		defer cancel()
 		fn(ctx)
 	}

@@ -25,6 +25,7 @@ type ArchiveIndex interface {
 	AbsolutePath(rel string) (string, error)
 	MarkArchived(ctx context.Context, id, location string) error
 	DeleteLocal(ctx context.Context, id, rel, absolutePath string) error
+	LockArchive(ctx context.Context) (func(), error)
 }
 
 // ArchiveStats summarizes a batch archive run.
@@ -43,6 +44,10 @@ const DefaultArchiveBatchLimit = 50
 // ErrArchiveInProgress is returned when a cron or API archive pass already owns
 // the service's single-flight lock.
 var ErrArchiveInProgress = errors.New("google drive archive already in progress")
+
+// ErrAlreadyArchived is returned when attempting to mark a segment that has
+// already been archived or marked expired.
+var ErrAlreadyArchived = errors.New("recording already archived")
 
 // Connected reports whether stored Drive credentials are configured and decryptable.
 func (s *Service) Connected(ctx context.Context) bool {
@@ -100,6 +105,12 @@ func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit 
 	}
 	defer s.archiveMu.Unlock()
 
+	unlock, err := index.LockArchive(ctx)
+	if err != nil {
+		return stats, err
+	}
+	defer unlock()
+
 	if !s.Connected(ctx) {
 		return stats, fmt.Errorf("google drive is not connected")
 	}
@@ -130,6 +141,10 @@ func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit 
 				continue
 			}
 			if markErr := index.MarkArchived(ctx, seg.ID, LocationMissing); markErr != nil {
+				if errors.Is(markErr, ErrAlreadyArchived) {
+					// Row was already marked (e.g. expired); skip without counting failure.
+					continue
+				}
 				slog.Warn("gdrive archive: mark missing failed", "id", seg.ID, "err", markErr)
 				stats.Failed++
 			} else {
@@ -150,6 +165,10 @@ func (s *Service) ArchivePending(ctx context.Context, index ArchiveIndex, limit 
 			continue
 		}
 		if err := markArchivedWithRetry(ctx, index, seg.ID, loc); err != nil {
+			if errors.Is(err, ErrAlreadyArchived) {
+				slog.Warn("gdrive archive: segment already marked archived or expired", "id", seg.ID)
+				continue
+			}
 			slog.Warn("gdrive archive: mark failed after upload", "id", seg.ID, "location", loc, "err", err)
 			stats.Failed++
 			continue
@@ -180,6 +199,9 @@ func markArchivedWithRetry(ctx context.Context, index ArchiveIndex, id, location
 			return err
 		}
 		if err := index.MarkArchived(ctx, id, location); err != nil {
+			if errors.Is(err, ErrAlreadyArchived) {
+				return err
+			}
 			last = err
 			// Brief backoff without importing time-heavy helpers in loop of success path.
 			select {
