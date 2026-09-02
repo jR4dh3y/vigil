@@ -592,8 +592,8 @@ func (s *Service) DeleteLocalAt(ctx context.Context, id, path, absolutePath stri
 		return fmt.Errorf("get recording for local cleanup: %w", err)
 	}
 	location := strings.TrimSpace(row.ArchiveLocation.String)
-	if !row.ArchiveLocation.Valid || !strings.HasPrefix(location, "gdrive:") {
-		return fmt.Errorf("recording %q is not archived to Google Drive", id)
+	if !row.ArchiveLocation.Valid || (!strings.HasPrefix(location, "gdrive:") && location != LocationExpired) {
+		return fmt.Errorf("recording %q is not eligible for local cleanup (location: %q)", id, location)
 	}
 
 	path = strings.TrimSpace(path)
@@ -684,7 +684,8 @@ func (s *Service) CleanupArchivedLocals(ctx context.Context, settleAge time.Dura
 			stats.Failed++
 			return nil
 		}
-		if !row.ArchiveLocation.Valid || !strings.HasPrefix(strings.TrimSpace(row.ArchiveLocation.String), "gdrive:") {
+		location := strings.TrimSpace(row.ArchiveLocation.String)
+		if !row.ArchiveLocation.Valid || (!strings.HasPrefix(location, "gdrive:") && location != LocationExpired) {
 			return nil
 		}
 		stats.Matched++

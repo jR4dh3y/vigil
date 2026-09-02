@@ -112,6 +112,11 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 
 	// Pass 2: overflow eviction until usage drops below the threshold.
 	if limits.MaxUsedPercent > 0 {
+		// First retry cleanup of any already-archived or expired local files
+		// before evicting fresh recordings.
+		if _, err := s.CleanupArchivedLocals(ctx, defaultRecordingSettleAge); err != nil {
+			slog.Warn("pre-overflow cleanup failed", "err", err)
+		}
 		for _, seg := range segs {
 			if evicted[seg.ID] {
 				continue
