@@ -367,7 +367,7 @@ func (q *Queries) ListUnarchivedRecordings(ctx context.Context, limit int64) ([]
 const markRecordingArchived = `-- name: MarkRecordingArchived :execrows
 UPDATE recordings
 SET archived_at = ?, archive_location = ?
-WHERE id = ?
+WHERE id = ? AND (archived_at IS NULL OR archived_at = '')
 `
 
 type MarkRecordingArchivedParams struct {

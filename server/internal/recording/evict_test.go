@@ -259,11 +259,13 @@ func TestEnforceLocalLimitsDwellSkipsNonExpiredAndContinues(t *testing.T) {
 	svc, q := setupTestService(t)
 	now := time.Now().UTC()
 
-	// Regression test: a long-dwell early segment (not yet expired) followed by
-	// a short-dwell segment that IS expired. The dwell scan must continue past
-	// the non-expired segment and still evict the short expired one.
-	longNotExpired := indexSegmentWithFile(t, svc, now.Add(-30*time.Minute), 60, "long", now.Add(-29*time.Minute))
-	shortExpired := indexSegmentWithFile(t, svc, now.Add(-3*time.Hour), 60, "short", now.Add(-2*time.Hour))
+	// Regression test: a long-duration early segment (starts 2h ago, duration 90m -> ends 30m ago, not yet expired)
+	// followed by a short-duration segment (starts 90m ago, duration 10m -> ends 80m ago, IS expired).
+	// ListUnarchivedRecordings returns rows in started_at ASC order, so the early non-expired segment
+	// is examined first. The dwell scan must continue past the non-expired segment and still evict
+	// the later expired one.
+	longNotExpired := indexSegmentWithFile(t, svc, now.Add(-2*time.Hour), 90*60, "long", now.Add(-30*time.Minute))
+	shortExpired := indexSegmentWithFile(t, svc, now.Add(-90*time.Minute), 10*60, "short", now.Add(-80*time.Minute))
 
 	stats, err := svc.EnforceLocalLimits(context.Background(), LocalLimits{MaxDwell: time.Hour})
 	if err != nil {
@@ -290,5 +292,86 @@ func TestEnforceLocalLimitsDwellSkipsNonExpiredAndContinues(t *testing.T) {
 	}
 	if len(remaining) != 1 || remaining[0].ID != longNotExpired.ID {
 		t.Fatalf("unarchived queue should only hold non-expired segment, got %+v", remaining)
+	}
+}
+
+func TestEnforceLocalLimitsPreservesFileWhenMarkArchivedFails(t *testing.T) {
+	svc, q := setupTestService(t)
+	now := time.Now().UTC()
+
+	seg := indexSegmentWithFile(t, svc, now.Add(-2*time.Hour), 60, "keep-me", now.Add(-time.Hour))
+
+	// Delete the recording from the database so MarkArchived fails with "not found"
+	if err := q.DeleteRecording(context.Background(), seg.ID); err != nil {
+		t.Fatalf("delete recording: %v", err)
+	}
+
+	var stats EvictStats
+	svc.applyEviction(context.Background(), seg, &stats)
+
+	if stats.Failed != 1 || stats.Removed != 0 {
+		t.Fatalf("stats = %+v, want Failed=1 Removed=0", stats)
+	}
+	requireFileState(t, svc, seg, true)
+}
+
+func TestEnforceLocalLimitsSkipsAlreadyArchivedRecording(t *testing.T) {
+	svc, q := setupTestService(t)
+	now := time.Now().UTC()
+
+	seg := indexSegmentWithFile(t, svc, now.Add(-2*time.Hour), 60, "already-archived", now.Add(-time.Hour))
+
+	// Mark the segment archived (e.g. by Google Drive)
+	if err := svc.MarkArchived(context.Background(), seg.ID, "gdrive:test-file-id"); err != nil {
+		t.Fatalf("mark archived: %v", err)
+	}
+
+	var stats EvictStats
+	svc.applyEviction(context.Background(), seg, &stats)
+
+	// Should not be removed, should not fail, and existing archive location must be preserved
+	if stats.Removed != 0 || stats.Failed != 0 {
+		t.Fatalf("stats = %+v, want 0 removed and 0 failed", stats)
+	}
+	requireFileState(t, svc, seg, true)
+
+	row, err := q.GetRecording(context.Background(), seg.ID)
+	if err != nil {
+		t.Fatalf("get recording: %v", err)
+	}
+	if row.ArchiveLocation.String != "gdrive:test-file-id" {
+		t.Fatalf("archive location was overwritten: %q", row.ArchiveLocation.String)
+	}
+}
+
+func TestEnforceLocalLimitsSerializesWithLockArchive(t *testing.T) {
+	svc, _ := setupTestService(t)
+	now := time.Now().UTC()
+	indexSegmentWithFile(t, svc, now.Add(-2*time.Hour), 60, "dwell", now.Add(-time.Hour))
+
+	// Acquire the lock (simulating an in-flight Drive archive pass)
+	unlock, err := svc.LockArchive(context.Background())
+	if err != nil {
+		t.Fatalf("LockArchive: %v", err)
+	}
+
+	// Enforce with a canceled context should fail immediately because the lock is held
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = svc.EnforceLocalLimits(ctx, LocalLimits{MaxDwell: time.Hour})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+
+	// Release lock and verify enforcement succeeds
+	unlock()
+
+	stats, err := svc.EnforceLocalLimits(context.Background(), LocalLimits{MaxDwell: time.Hour})
+	if err != nil {
+		t.Fatalf("EnforceLocalLimits after unlock: %v", err)
+	}
+	if stats.Removed != 1 {
+		t.Fatalf("removed = %d, want 1", stats.Removed)
 	}
 }

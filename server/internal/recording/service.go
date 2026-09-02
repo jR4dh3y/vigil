@@ -23,6 +23,7 @@ const DefaultRetentionDays = config.DefaultRetentionDays
 var (
 	ErrNotFound         = errors.New("recording not found")
 	ErrOutsideRecording = errors.New("requested time is outside the recording segment")
+	ErrAlreadyArchived  = errors.New("recording already archived")
 )
 
 // Segment is a recorded media segment in the index.
@@ -90,6 +91,9 @@ type Service struct {
 	recordingsDir string
 	retentionDays int
 	reconcileMu   sync.Mutex
+	// archiveSem serializes Drive archival passes with local-limit eviction
+	// so the two operations never race on unarchived rows or files.
+	archiveSem chan struct{}
 	// segmentListener fires after each successfully indexed segment. Set once
 	// during startup before the HTTP server accepts MediaMTX hooks; handlers
 	// must be fast and non-blocking. nil disables notification.
@@ -109,10 +113,51 @@ func NewService(q *store.Queries, cfg Config) *Service {
 	if days <= 0 {
 		days = DefaultRetentionDays
 	}
-	return &Service{
+	svc := &Service{
 		q:             q,
 		recordingsDir: strings.TrimSpace(cfg.RecordingsDir),
 		retentionDays: days,
+		archiveSem:    make(chan struct{}, 1),
+	}
+	svc.archiveSem <- struct{}{}
+	return svc
+}
+
+// LockArchive acquires the archive/eviction lock, waiting until available or
+// ctx is cancelled. It serializes Drive archival passes and local-limit
+// eviction so they never race on unarchived recordings or local files.
+func (s *Service) LockArchive(ctx context.Context) (func(), error) {
+	if s == nil || s.archiveSem == nil {
+		return func() {}, nil
+	}
+	select {
+	case <-s.archiveSem:
+		var once sync.Once
+		return func() {
+			once.Do(func() {
+				s.archiveSem <- struct{}{}
+			})
+		}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// TryLockArchive attempts to acquire the archive/eviction lock without blocking.
+func (s *Service) TryLockArchive() (func(), bool) {
+	if s == nil || s.archiveSem == nil {
+		return func() {}, true
+	}
+	select {
+	case <-s.archiveSem:
+		var once sync.Once
+		return func() {
+			once.Do(func() {
+				s.archiveSem <- struct{}{}
+			})
+		}, true
+	default:
+		return nil, false
 	}
 }
 
@@ -263,6 +308,9 @@ func (s *Service) ListDays(
 				continue
 			}
 			archiveLocation := strings.TrimSpace(row.ArchiveLocation.String)
+			if row.ArchiveLocation.Valid && strings.HasPrefix(archiveLocation, "skipped:") {
+				continue
+			}
 			archiveFileID, isDriveArchive := strings.CutPrefix(archiveLocation, "gdrive:")
 			source := hasLocal
 			if row.ArchiveLocation.Valid && isDriveArchive && strings.TrimSpace(archiveFileID) != "" {
@@ -503,6 +551,10 @@ func (s *Service) MarkArchived(ctx context.Context, id, location string) error {
 		return fmt.Errorf("mark recording archived: %w", err)
 	}
 	if n == 0 {
+		row, getErr := s.q.GetRecording(ctx, id)
+		if getErr == nil && row.ArchivedAt.Valid && row.ArchivedAt.String != "" {
+			return ErrAlreadyArchived
+		}
 		return fmt.Errorf("mark recording archived: recording %q not found", id)
 	}
 	return nil

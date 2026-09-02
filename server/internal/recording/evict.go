@@ -54,6 +54,10 @@ type EvictStats struct {
 // overflow eviction removes oldest-first until volume usage drops below the
 // threshold. Removed rows are marked LocationExpired so they leave the
 // archive queue and stay visible (as non-preserved) on the timeline.
+//
+// EnforceLocalLimits serializes on LockArchive so it never races with Drive
+// archive passes. Expired state is durably committed to SQLite before any local
+// file is deleted, and failures are recorded rather than suppressed.
 func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (EvictStats, error) {
 	var stats EvictStats
 	if s == nil || s.q == nil {
@@ -66,6 +70,12 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 	if root == "" {
 		return stats, fmt.Errorf("recordings dir not configured")
 	}
+
+	unlock, err := s.LockArchive(ctx)
+	if err != nil {
+		return stats, err
+	}
+	defer unlock()
 
 	rows, err := s.q.ListUnarchivedRecordings(ctx, maxEvictionBatch)
 	if err != nil {
@@ -83,11 +93,12 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 		segs = append(segs, seg)
 	}
 
+	evicted := make(map[string]bool)
+
 	// Pass 1: dwell expiry. Rows arrive oldest-first from the index query.
-	start := 0
 	if limits.MaxDwell > 0 {
 		cutoff := time.Now().UTC().Add(-limits.MaxDwell)
-		for i, seg := range segs {
+		for _, seg := range segs {
 			if ctx.Err() != nil {
 				return stats, ctx.Err()
 			}
@@ -95,15 +106,16 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 				continue
 			}
 			s.applyEviction(ctx, seg, &stats)
-			start = i + 1
+			evicted[seg.ID] = true
 		}
 	}
 
 	// Pass 2: overflow eviction until usage drops below the threshold.
-	// Rows already handled by pass 1 keep their order, so scanning resumes
-	// right after the dwell prefix instead of retrying them.
 	if limits.MaxUsedPercent > 0 {
-		for _, seg := range segs[start:] {
+		for _, seg := range segs {
+			if evicted[seg.ID] {
+				continue
+			}
 			if ctx.Err() != nil {
 				return stats, ctx.Err()
 			}
@@ -115,59 +127,69 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 				break
 			}
 			s.applyEviction(ctx, seg, &stats)
+			evicted[seg.ID] = true
 		}
 	}
 	return stats, nil
 }
 
 // applyEviction removes one segment's local file and marks the row expired,
-// updating stats. Failures are logged and counted, never fatal to the pass.
+// updating stats. The expired state is committed to SQLite BEFORE any local
+// file is deleted so durable state is never lost, and update failures are
+// tracked in stats.Failed instead of being silently ignored.
 func (s *Service) applyEviction(ctx context.Context, seg Segment, stats *EvictStats) {
-	removed, freed, busy, err := s.evictOne(ctx, seg)
-	switch {
-	case err != nil:
-		slog.Warn("local eviction failed", "id", seg.ID, "path", seg.Path, "err", err)
-		stats.Failed++
-	case busy:
-		stats.BusySkipped++
-	default:
-		if removed {
-			stats.Removed++
-			stats.FreedBytes += freed
-		}
-		if markErr := s.MarkArchived(ctx, seg.ID, LocationExpired); markErr != nil {
-			slog.Warn("mark evicted recording failed", "id", seg.ID, "err", markErr)
-		}
-	}
-}
-
-// evictOne removes the local file for seg. It reports whether the file was
-// removed, the bytes freed, and whether the file was skipped because it may
-// still be written (settle age). A missing file is treated as success with
-// removed=false so marking can proceed.
-func (s *Service) evictOne(ctx context.Context, seg Segment) (removed bool, freed int64, busy bool, err error) {
 	abs, err := s.AbsolutePath(seg.Path)
 	if err != nil {
-		return false, 0, false, fmt.Errorf("resolve eviction path: %w", err)
+		slog.Warn("resolve eviction path: invalid path", "id", seg.ID, "path", seg.Path, "err", err)
+		stats.Failed++
+		return
 	}
-	// Lstat deliberately refuses symlinks, mirroring DeleteLocalAt.
 	info, err := os.Lstat(abs)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, 0, false, nil
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.Warn("stat eviction path failed", "id", seg.ID, "path", abs, "err", err)
+			stats.Failed++
+			return
 		}
-		return false, 0, false, fmt.Errorf("stat %s: %w", abs, err)
+		// File already gone. Mark LocationExpired so the row leaves the queue.
+		if markErr := s.MarkArchived(ctx, seg.ID, LocationExpired); markErr != nil {
+			if !errors.Is(markErr, ErrAlreadyArchived) {
+				slog.Warn("mark expired recording failed", "id", seg.ID, "err", markErr)
+				stats.Failed++
+			}
+		}
+		return
 	}
 	if !info.Mode().IsRegular() {
-		return false, 0, false, fmt.Errorf("%s is not a regular file", abs)
+		slog.Warn("eviction candidate is not a regular file", "id", seg.ID, "path", abs)
+		stats.Failed++
+		return
 	}
 	if time.Since(info.ModTime()) < defaultRecordingSettleAge {
-		return false, 0, true, nil
+		stats.BusySkipped++
+		return
 	}
+
+	// Commit expired state BEFORE deleting the file from disk.
+	if markErr := s.MarkArchived(ctx, seg.ID, LocationExpired); markErr != nil {
+		if errors.Is(markErr, ErrAlreadyArchived) {
+			// Row was already archived or expired; leave local file alone.
+			return
+		}
+		slog.Warn("mark evicted recording failed", "id", seg.ID, "err", markErr)
+		stats.Failed++
+		return
+	}
+
+	// Local state is durably marked LocationExpired; now reclaim space.
+	size := info.Size()
 	if err := os.Remove(abs); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return false, 0, false, fmt.Errorf("remove %s: %w", abs, err)
+		slog.Warn("remove evicted recording file failed", "id", seg.ID, "path", abs, "err", err)
+		stats.Failed++
+		return
 	}
-	return true, info.Size(), false, nil
+	stats.Removed++
+	stats.FreedBytes += size
 }
 
 // volumeUsage reports used-percent of the recordings volume. usageFn overrides

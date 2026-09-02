@@ -87,4 +87,4 @@ LIMIT ?;
 -- name: MarkRecordingArchived :execrows
 UPDATE recordings
 SET archived_at = ?, archive_location = ?
-WHERE id = ?;
+WHERE id = ? AND (archived_at IS NULL OR archived_at = '');
