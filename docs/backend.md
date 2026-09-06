@@ -144,7 +144,11 @@ The scheduler is in `scheduler.go`. It uses `robfig/cron`. The jobs are:
 - Camera health probes every minute.
 - Retention prune every hour.
 - Disk check every five minutes.
-- Recording-directory reconciliation and Google Drive archive every five minutes.
+- Recording-directory reconciliation every five minutes.
+- Google Drive archive in a dedicated loop: each completed segment nudges an
+  immediate pass, and a fallback ticker (default five minutes) covers quiet
+  periods. Local staging limits (dwell/overflow eviction) are enforced on the
+  same loop every 30 seconds when configured.
 
 The archive job is in `archive_gdrive.go`.
 

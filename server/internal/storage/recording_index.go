@@ -78,9 +78,20 @@ func (a RecordingArchiveIndex) AbsolutePath(rel string) (string, error) {
 }
 
 func (a RecordingArchiveIndex) MarkArchived(ctx context.Context, id, location string) error {
-	return a.Recording.MarkArchived(ctx, id, location)
+	err := a.Recording.MarkArchived(ctx, id, location)
+	if errors.Is(err, recording.ErrAlreadyArchived) {
+		return gdrive.ErrAlreadyArchived
+	}
+	return err
 }
 
 func (a RecordingArchiveIndex) DeleteLocal(ctx context.Context, id, path, absolutePath string) error {
 	return a.Recording.DeleteLocalAt(ctx, id, path, absolutePath)
+}
+
+func (a RecordingArchiveIndex) LockArchive(ctx context.Context) (func(), error) {
+	if a.Recording == nil {
+		return func() {}, nil
+	}
+	return a.Recording.LockArchive(ctx)
 }

@@ -354,6 +354,10 @@ func (f *fakeArchiveIndex) DeleteLocal(_ context.Context, id, path, absolutePath
 	return nil
 }
 
+func (f *fakeArchiveIndex) LockArchive(context.Context) (func(), error) {
+	return func() {}, nil
+}
+
 func TestArchivePendingUploadsAndMarks(t *testing.T) {
 	service := newTestService(t)
 	recordingPath := filepath.Join(t.TempDir(), "segment.mp4")

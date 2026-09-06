@@ -119,11 +119,21 @@ The client asks the API for a live stream. The API returns a WHEP URL, an HLS UR
 
 MediaMTX records the video as one-minute fMP4 segments. When a segment
 completes, MediaMTX calls the segment-complete hook. `nvrd` indexes the segment
-in SQLite. The recording is continuous by default. The archive worker commits
-the Drive location before deleting the local MP4; a periodic cleanup pass
-retries deletion failures. MediaMTX's `recordDeleteAfter` remains a fallback
-when Drive is unavailable. Retention prunes old non-Drive index rows while
-keeping successful Drive archive metadata searchable.
+in SQLite. The recording is continuous by default. Each indexed segment nudges
+the archive loop, so with Drive connected an upload pass starts immediately;
+a ticker preserves the fallback cadence when no segments arrive or Drive is
+disconnected. The archive worker commits the Drive location before deleting the
+local MP4; a periodic cleanup pass retries deletion failures. MediaMTX's
+`recordDeleteAfter` remains a fallback when Drive is unavailable. Retention
+prunes old non-Drive index rows while keeping successful Drive archive metadata
+searchable.
+
+Optional RAM staging: when `NVR_MAX_LOCAL_DWELL_MINUTES` or
+`NVR_LOCAL_EVICT_THRESHOLD` is set, an enforcement pass evicts unarchived
+segments oldest-first — dwell expiry first, then overflow above the threshold —
+marking rows `skipped:expired`. This keeps a small tmpfs recordings volume
+from ever filling, at the cost of losing the oldest not-yet-uploaded footage
+(see [configuration](./configuration.md#ram-staged-recordings)).
 
 ### Timeline playback
 
@@ -148,6 +158,9 @@ The background jobs emit events. The event service writes them to SQLite and pub
 - **Crash-only design**: on boot, the backend reconciles state. It does not keep state only in memory.
 - **Filesystem as recovery input**: pending recordings can be re-indexed by
   scanning the disk; Drive is the durable media tier after an archive succeeds.
+  Opt-in RAM staging deliberately gives up this recovery path in exchange for
+  zero persistent writes to disk (when host swap is disabled; if swap is
+  enabled, tmpfs pages may be swapped to disk).
 
 ## The service boundaries
 

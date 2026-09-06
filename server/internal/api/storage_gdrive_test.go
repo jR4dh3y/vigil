@@ -243,6 +243,10 @@ func (*blockingArchiveIndex) DeleteLocal(context.Context, string, string, string
 	return nil
 }
 
+func (*blockingArchiveIndex) LockArchive(context.Context) (func(), error) {
+	return func() {}, nil
+}
+
 func newGDriveAPITestServer(t *testing.T) *Server {
 	t.Helper()
 	db, err := store.Open(t.TempDir())

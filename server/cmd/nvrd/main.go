@@ -196,11 +196,19 @@ func main() {
 	}, queries, cfg.SecretsKey)
 
 	scheduler := jobs.NewScheduler(jobs.Config{
-		Cameras:       cameraSvc,
-		Events:        eventSvc,
-		Recording:     recordingSvc,
-		GDrive:        gdriveSvc,
-		RecordingsDir: recordingsDir,
+		Cameras:             cameraSvc,
+		Events:              eventSvc,
+		Recording:           recordingSvc,
+		GDrive:              gdriveSvc,
+		RecordingsDir:       recordingsDir,
+		ArchiveInterval:     cfg.ArchiveInterval,
+		LocalMaxDwell:       cfg.LocalMaxDwell,
+		LocalEvictThreshold: cfg.LocalEvictThreshold,
+	})
+	// Completed segments nudge an immediate Drive archive pass so RAM-backed
+	// staging volumes drain as fast as MediaMTX produces them.
+	recordingSvc.SetSegmentListener(func(seg recording.Segment) {
+		scheduler.NudgeArchive()
 	})
 	if err := scheduler.Start(); err != nil {
 		slog.Error("start jobs scheduler", "err", err)
