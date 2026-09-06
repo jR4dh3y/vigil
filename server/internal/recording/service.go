@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,7 +98,7 @@ type Service struct {
 	// segmentListener fires after each successfully indexed segment. Set once
 	// during startup before the HTTP server accepts MediaMTX hooks; handlers
 	// must be fast and non-blocking. nil disables notification.
-	segmentListener func(Segment)
+	segmentListener atomic.Pointer[func(Segment)]
 	// usageFn reports recordings-volume used percent; overridable in tests.
 	usageFn func(ctx context.Context) (float64, error)
 }
@@ -140,24 +141,6 @@ func (s *Service) LockArchive(ctx context.Context) (func(), error) {
 		}, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	}
-}
-
-// TryLockArchive attempts to acquire the archive/eviction lock without blocking.
-func (s *Service) TryLockArchive() (func(), bool) {
-	if s == nil || s.archiveSem == nil {
-		return func() {}, true
-	}
-	select {
-	case <-s.archiveSem:
-		var once sync.Once
-		return func() {
-			once.Do(func() {
-				s.archiveSem <- struct{}{}
-			})
-		}, true
-	default:
-		return nil, false
 	}
 }
 
@@ -412,7 +395,8 @@ func (s *Service) Prune(ctx context.Context) (int64, error) {
 }
 
 // PruneArchived removes old rows that completed without a durable Drive object
-// (for example skipped:missing). Successful Drive rows remain searchable.
+// (for example skipped:missing or skipped:expired). Successful Drive rows
+// remain searchable.
 func (s *Service) PruneArchived(ctx context.Context) (int64, error) {
 	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
 	n, err := s.q.DeleteArchivedRecordingsOlderThan(ctx, formatTime(cutoff))
@@ -446,7 +430,11 @@ func (s *Service) RecordingsDir() string {
 // runs on the HTTP handler goroutine and must not block; use it to nudge
 // background archival. Call during startup, before hooks are served.
 func (s *Service) SetSegmentListener(fn func(Segment)) {
-	s.segmentListener = fn
+	if fn == nil {
+		s.segmentListener.Store(nil)
+		return
+	}
+	s.segmentListener.Store(&fn)
 }
 
 // AbsolutePath joins rel under RecordingsDir and rejects path traversal.

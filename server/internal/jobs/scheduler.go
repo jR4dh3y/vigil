@@ -111,9 +111,10 @@ func (s *Scheduler) Start() error {
 	return nil
 }
 
-// NudgeArchive requests an immediate Drive archival pass. Nudges are coalesced;
-// callers must be fast and non-blocking. Safe to call before Start or after
-// Stop; the signal is simply dropped when no loop is running.
+// NudgeArchive requests an immediate Drive archival pass. Nudges coalesce to
+// at most one pending signal; callers must be fast and non-blocking. A nudge
+// before Start triggers an early pass once the loop runs. Nudges after Stop
+// are cleared by Stop and have no effect.
 func (s *Scheduler) NudgeArchive() {
 	if s == nil {
 		return
@@ -221,14 +222,26 @@ func (s *Scheduler) reconcileRecordings(ctx context.Context) {
 }
 
 // Stop gracefully stops background work: the archive loop first, then cron
-// jobs, waiting for in-flight work (incl. long archive runs).
+// jobs, waiting for in-flight work (incl. long archive runs). The archive
+// loop observes cancellation via its context, so in-flight Drive uploads
+// abort promptly; shutdown is best-effort after a short grace period.
 func (s *Scheduler) Stop() {
 	if s.stopLoop != nil {
 		s.stopLoop()
+		if s.loopDone != nil {
+			select {
+			case <-s.loopDone:
+			case <-time.After(5 * time.Second):
+				slog.Warn("archive loop stop timed out")
+			}
+		}
+		s.stopLoop = nil
+	}
+	// Drop any stale nudge so a stopped scheduler holds no pending signal.
+	if s != nil && s.nudgeCh != nil {
 		select {
-		case <-s.loopDone:
-		case <-time.After(5 * time.Second):
-			slog.Warn("archive loop stop timed out")
+		case <-s.nudgeCh:
+		default:
 		}
 	}
 	if s.cron == nil {

@@ -762,3 +762,41 @@ func TestPruneDeletesOldRows(t *testing.T) {
 		t.Fatalf("remaining: %+v", list.Segments)
 	}
 }
+
+func TestListDaysHidesSkippedRecordingsButListKeepsThem(t *testing.T) {
+	svc, _ := setupTestService(t)
+	ctx := context.Background()
+	const camID = "550e8400-e29b-41d4-a716-446655440000"
+	start := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+
+	expired, err := svc.IndexSegment(ctx, camID, "cam/expired.mp4", start, 60, 100, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.MarkArchived(ctx, expired.ID, LocationExpired); err != nil {
+		t.Fatal(err)
+	}
+	missing, err := svc.IndexSegment(ctx, camID, "cam/missing.mp4", start.Add(time.Minute), 60, 100, "h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.MarkArchived(ctx, missing.ID, "skipped:missing"); err != nil {
+		t.Fatal(err)
+	}
+
+	days, err := svc.ListDays(ctx, []string{camID}, start, start.Add(3*time.Minute), time.UTC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(days) != 0 {
+		t.Fatalf("skipped rows must not contribute day availability, got %+v", days)
+	}
+
+	list, err := svc.List(ctx, camID, start, start.Add(3*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Segments) != 2 {
+		t.Fatalf("skipped rows must stay in segment List results, got %+v", list.Segments)
+	}
+}

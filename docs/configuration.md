@@ -132,7 +132,11 @@ want to spare, or simply small, you can stage recordings in RAM instead:
    - `NVR_MAX_LOCAL_DWELL_MINUTES` evicts unarchived segments older than the
      window, oldest first.
    - `NVR_LOCAL_EVICT_THRESHOLD` evicts oldest-first while the volume is above
-     the used-percent.
+     the used-percent (a number 0-100, fractions allowed; `0` disables).
+     The threshold measures the whole recordings filesystem, so give the
+     staging volume its own mount. On a shared mount, unrelated files can pin
+     usage above the threshold and enforcement will warn after evicting
+     without reclaiming space.
 
 With Google Drive connected, every completed one-minute segment nudges an
 immediate archive pass, so under normal operation a segment exists locally for
@@ -145,9 +149,9 @@ Trade-offs to accept before enabling this mode:
 - A reboot, power cut, or Docker daemon restart empties tmpfs. Everything not
   yet uploaded is gone.
 - If Drive is unavailable longer than the dwell window, footage starts dropping
-  oldest-first. Evicted rows stay on the timeline marked `skipped:expired`
-  until retention pruning removes them; the `disk.low` event and server logs
-  report evictions.
+  oldest-first. Evicted rows stay in segment list results marked
+  `skipped:expired` (but are excluded from day availability) until retention
+  pruning removes them; evictions are reported in the server logs.
 - Upload bandwidth must keep up with recording bitrate. When it does not,
   eviction — not the archive backlog — defines what you lose.
 

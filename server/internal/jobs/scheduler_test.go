@@ -20,6 +20,22 @@ func TestNudgeArchiveCoalescesBeforeStart(t *testing.T) {
 func TestStopWithoutStartIsSafe(t *testing.T) {
 	s := NewScheduler(Config{})
 	s.Stop() // must not panic or block without a running loop
+	s.Stop() // second stop must also be safe
+	if len(s.nudgeCh) != 0 {
+		t.Fatalf("stopped scheduler holds %d nudge signals, want 0", len(s.nudgeCh))
+	}
+}
+
+func TestStopClearsPendingNudge(t *testing.T) {
+	s := NewScheduler(Config{})
+	s.NudgeArchive()
+	if len(s.nudgeCh) != 1 {
+		t.Fatalf("nudge channel holds %d signals, want 1", len(s.nudgeCh))
+	}
+	s.Stop()
+	if len(s.nudgeCh) != 0 {
+		t.Fatalf("stopped scheduler holds %d nudge signals, want 0", len(s.nudgeCh))
+	}
 }
 
 func TestArchiveIntervalDefaultsAndClamp(t *testing.T) {

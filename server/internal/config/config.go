@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -89,7 +90,7 @@ func Load() (*Config, error) {
 		RetentionDays:       envInt("NVR_RETENTION_DAYS", DefaultRetentionDays),
 		ArchiveInterval:     time.Duration(envInt("NVR_ARCHIVE_INTERVAL_SECONDS", int(DefaultArchiveInterval/time.Second))) * time.Second,
 		LocalMaxDwell:       time.Duration(envInt("NVR_MAX_LOCAL_DWELL_MINUTES", 0)) * time.Minute,
-		LocalEvictThreshold: float64(envInt("NVR_LOCAL_EVICT_THRESHOLD", 0)),
+		LocalEvictThreshold: envFloat("NVR_LOCAL_EVICT_THRESHOLD", 0),
 		GoogleClientID:      env("NVR_GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:  env("NVR_GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:   env("NVR_GOOGLE_REDIRECT_URL", ""),
@@ -97,8 +98,11 @@ func Load() (*Config, error) {
 		HostedDashboardURL:  env("NVR_HOSTED_DASHBOARD_URL", ""),
 		CORSOrigins:         splitList(env("NVR_CORS_ORIGINS", "")),
 	}
-	if cfg.LocalEvictThreshold > 100 {
-		return nil, fmt.Errorf("NVR_LOCAL_EVICT_THRESHOLD must not exceed 100 (got %.0f)", cfg.LocalEvictThreshold)
+	if math.IsNaN(cfg.LocalEvictThreshold) || math.IsInf(cfg.LocalEvictThreshold, 0) {
+		return nil, fmt.Errorf("NVR_LOCAL_EVICT_THRESHOLD must be a percent 0-100 (got %q)", strings.TrimSpace(os.Getenv("NVR_LOCAL_EVICT_THRESHOLD")))
+	}
+	if cfg.LocalEvictThreshold < 0 || cfg.LocalEvictThreshold > 100 {
+		return nil, fmt.Errorf("NVR_LOCAL_EVICT_THRESHOLD must be a percent 0-100 (got %g)", cfg.LocalEvictThreshold)
 	}
 	return cfg, nil
 }
@@ -136,6 +140,20 @@ func envInt(k string, def int) int {
 		return def
 	}
 	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+// envFloat parses a float env var, falling back to def on empty or invalid
+// input like envInt does. Range validation happens at the call site.
+func envFloat(k string, def float64) float64 {
+	v := strings.TrimSpace(os.Getenv(k))
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseFloat(v, 64)
 	if err != nil {
 		return def
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -53,10 +54,13 @@ type EvictStats struct {
 // limits. Dwell violations are removed first (oldest overdue first), then
 // overflow eviction removes oldest-first until volume usage drops below the
 // threshold. Removed rows are marked LocationExpired so they leave the
-// archive queue and stay visible (as non-preserved) on the timeline.
+// archive queue; they stay in segment List results with the skipped:expired
+// marker but are excluded from ListDays availability.
 //
-// EnforceLocalLimits serializes on LockArchive so it never races with Drive
-// archive passes. Expired state is durably committed to SQLite before any local
+// EnforceLocalLimits serializes marking with Drive archive passes on
+// LockArchive. Filesystem cleanup of already-archived rows runs before the
+// lock is taken because directory walks are expensive and DeleteLocal is
+// idempotent. Expired state is durably committed to SQLite before any local
 // file is deleted, and failures are recorded rather than suppressed.
 func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (EvictStats, error) {
 	var stats EvictStats
@@ -69,6 +73,19 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 	root := strings.TrimSpace(s.recordingsDir)
 	if root == "" {
 		return stats, fmt.Errorf("recordings dir not configured")
+	}
+
+	// Reclaim already-archived or expired local files before taking the
+	// archive lock. The walk is the expensive part of enforcement and
+	// DeleteLocal is idempotent, so this safely runs concurrently with an
+	// in-flight archive pass while keeping the locked section short.
+	if limits.MaxUsedPercent > 0 {
+		if _, err := s.CleanupArchivedLocals(ctx, defaultRecordingSettleAge); err != nil {
+			slog.Warn("pre-overflow cleanup failed", "err", err)
+		}
+		if err := ctx.Err(); err != nil {
+			return stats, err
+		}
 	}
 
 	unlock, err := s.LockArchive(ctx)
@@ -112,11 +129,6 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 
 	// Pass 2: overflow eviction until usage drops below the threshold.
 	if limits.MaxUsedPercent > 0 {
-		// First retry cleanup of any already-archived or expired local files
-		// before evicting fresh recordings.
-		if _, err := s.CleanupArchivedLocals(ctx, defaultRecordingSettleAge); err != nil {
-			slog.Warn("pre-overflow cleanup failed", "err", err)
-		}
 		for _, seg := range segs {
 			if evicted[seg.ID] {
 				continue
@@ -133,6 +145,20 @@ func (s *Service) EnforceLocalLimits(ctx context.Context, limits LocalLimits) (E
 			}
 			s.applyEviction(ctx, seg, &stats)
 			evicted[seg.ID] = true
+		}
+		// Eviction cannot help when non-recording files pin usage above the
+		// threshold (e.g. a shared mount). Warn instead of silently dropping
+		// the whole queue without reclaiming space.
+		if stats.Removed > 0 {
+			if used, err := s.volumeUsage(ctx, root); err != nil {
+				slog.Warn("post-eviction usage check failed", "err", err)
+			} else if used >= limits.MaxUsedPercent {
+				slog.Warn("recordings volume still above evict threshold after eviction; threshold may be unreachable on a shared mount",
+					"used_percent", used,
+					"threshold", limits.MaxUsedPercent,
+					"removed", stats.Removed,
+				)
+			}
 		}
 	}
 	return stats, nil
@@ -211,8 +237,17 @@ func (s *Service) volumeUsage(ctx context.Context, root string) (float64, error)
 }
 
 // segmentEndedBefore reports whether seg's end time is before cutoff. Rows
-// without a usable duration fall back to their start time.
+// without a usable duration fall back to their start time. Absurd durations
+// are clamped so corrupt DB values cannot overflow time.Duration.
 func segmentEndedBefore(seg Segment, cutoff time.Time) bool {
-	end := seg.StartedAt.Add(time.Duration(max(0, seg.DurationSec) * float64(time.Second)))
+	d := seg.DurationSec
+	if math.IsNaN(d) || math.IsInf(d, 0) || d < 0 {
+		d = 0
+	}
+	const maxSegmentDurationSec = 24 * 60 * 60
+	if d > maxSegmentDurationSec {
+		d = maxSegmentDurationSec
+	}
+	end := seg.StartedAt.Add(time.Duration(d * float64(time.Second)))
 	return end.Before(cutoff)
 }
