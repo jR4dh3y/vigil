@@ -17,6 +17,10 @@ type WhepPeer = Pick<
 export function startWhepSession(peer: WhepPeer, uri: string, request: typeof fetch) {
 	const controller = new AbortController();
 	const { signal } = controller;
+	// React Native's AbortSignal has aborted, but no throwIfAborted method.
+	const throwIfCancelled = () => {
+		if (signal.aborted) throw new Error("WHEP session cancelled");
+	};
 	let resourceUrl: string | null = null;
 	const deleteResource = () => {
 		if (!resourceUrl) return;
@@ -37,11 +41,11 @@ export function startWhepSession(peer: WhepPeer, uri: string, request: typeof fe
 	const ready = (async () => {
 		try {
 			const offer = await peer.createOffer();
-			signal.throwIfAborted();
+			throwIfCancelled();
 			await peer.setLocalDescription(offer);
-			signal.throwIfAborted();
+			throwIfCancelled();
 			await waitForIceGathering(peer, signal);
-			signal.throwIfAborted();
+			throwIfCancelled();
 			const sdp = peer.localDescription?.sdp;
 			if (!sdp) throw new Error("WHEP offer has no SDP");
 			const response = await request(uri, {
@@ -58,13 +62,13 @@ export function startWhepSession(peer: WhepPeer, uri: string, request: typeof fe
 				}
 				resourceUrl = resolved.toString();
 			}
-			signal.throwIfAborted();
+			throwIfCancelled();
 			if (!response.ok) throw new Error(`WHEP request failed (${response.status})`);
 			const answer = await response.text();
-			signal.throwIfAborted();
+			throwIfCancelled();
 			if (!answer.trim()) throw new Error("WHEP returned an empty response");
 			await peer.setRemoteDescription({ type: "answer", sdp: answer });
-			signal.throwIfAborted();
+			throwIfCancelled();
 		} catch (cause) {
 			dispose();
 			throw cause;

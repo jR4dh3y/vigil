@@ -24,6 +24,22 @@ async function flushNegotiation() {
 }
 
 describe("mobile WHEP cancellation", () => {
+	test("negotiates when AbortSignal lacks the method missing in React Native", async () => {
+		const descriptor = Object.getOwnPropertyDescriptor(AbortSignal.prototype, "throwIfAborted");
+		Object.defineProperty(AbortSignal.prototype, "throwIfAborted", { value: undefined });
+		try {
+			const peer = createPeer();
+			const request = mock<typeof fetch>(async () => new Response("answer"));
+			const session = startWhepSession(peer, uri, request);
+			await session.ready;
+			expect(peer.setRemoteDescription).toHaveBeenCalledTimes(1);
+			session.dispose();
+		} finally {
+			if (descriptor) Object.defineProperty(AbortSignal.prototype, "throwIfAborted", descriptor);
+			else Reflect.deleteProperty(AbortSignal.prototype, "throwIfAborted");
+		}
+	});
+
 	test("never sets a local description after scroll-out during offer creation", async () => {
 		const peer = createPeer();
 		const pending = Promise.withResolvers<typeof offer>();
