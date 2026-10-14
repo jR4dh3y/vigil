@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { Archive, ChevronDown, Cloud, CloudOff, Link2, Unplug } from "lucide-svelte";
+	import { Archive, ChevronDown, Link2, Unplug } from "lucide-svelte";
 	import type { GDriveStatus } from "$lib/storage";
 	import GoogleDriveConfigurationForm from "./GoogleDriveConfigurationForm.svelte";
-	import { driveConnectionBadgeClass, driveConnectionLabel, formatConnectedAt } from "$lib/storage";
 
 	type Props = {
 		status: GDriveStatus;
@@ -35,81 +34,28 @@
 	}: Props = $props();
 
 	const busy = $derived(connecting || disconnecting || archiving || configuring);
-	const connectedAtLabel = $derived(formatConnectedAt(status.connectedAt));
 </script>
 
-<div class="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/35">
-	<div class="border-b border-zinc-800 p-5 sm:p-6">
-		<div class="flex flex-wrap items-start justify-between gap-3">
-			<span class="flex size-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-300">
-				{#if status.connected}
-					<Cloud class="size-5" />
-				{:else}
-					<CloudOff class="size-5" />
-				{/if}
-			</span>
-			<span
-				class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium {driveConnectionBadgeClass(
-					status,
-				)}"
-			>
-				<span class="size-1.5 rounded-full bg-current"></span>
-				{driveConnectionLabel(status)}
-			</span>
-		</div>
-		<div class="mt-4">
-			<h2 class="text-sm font-semibold text-zinc-100">Google Drive archive</h2>
-			<p class="mt-1 text-xs leading-5 text-zinc-500">
-				{#if status.connectionError}
-					The saved connection needs attention before archiving can continue.
-				{:else if !status.configured}
-					Add Google OAuth credentials, then connect an account for off-site storage.
-				{:else if status.connected}
-					New recordings are archived every five minutes.
-				{:else}
-					Connect an account to enable automatic off-site archives.
-				{/if}
-			</p>
-		</div>
+<section aria-label="Google Drive archive" class="min-w-0">
+	<div class="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+		<h2 class="text-sm font-semibold text-zinc-100">Google Drive archive</h2>
 	</div>
 
-	<div class="p-5 sm:p-6">
-		<dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-			<div class="min-w-0">
-				<dt class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">Account</dt>
-				<dd class="mt-1 truncate text-sm text-zinc-200" title={status.accountEmail ?? undefined}>
-					{#if status.connected && status.accountEmail}
-						{status.accountEmail}
-					{:else if status.connected}
-						<span class="text-zinc-400">Connected</span>
-					{:else}
-						<span class="text-zinc-500">—</span>
-					{/if}
-				</dd>
-			</div>
-
-			<div class="min-w-0">
-				<dt class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">Connected</dt>
-				<dd class="mt-1 text-sm text-zinc-200">
-					{#if connectedAtLabel}
-						{connectedAtLabel}
-					{:else}
-						<span class="text-zinc-500">—</span>
-					{/if}
-				</dd>
-			</div>
-
-			{#if status.folderId}
-				<div class="min-w-0 sm:col-span-2 xl:col-span-1 2xl:col-span-2">
-					<dt class="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">
-						Archive folder
-					</dt>
-					<dd class="mt-1 truncate font-mono text-xs text-zinc-400" title={status.folderId}>
-						{status.folderId}
-					</dd>
-				</div>
-			{/if}
-		</dl>
+	<div>
+		{#if status.connected}
+			<p class="break-all text-sm text-zinc-200">{status.accountEmail || "Account connected"}</p>
+			<p class="mt-1 text-xs text-zinc-400">Archives new recordings every five minutes.</p>
+		{:else if !status.configured}
+			<p class="text-sm text-zinc-400">Add OAuth credentials to connect an account.</p>
+		{:else if !status.connectionError}
+			<p class="text-sm text-zinc-400">Connect an account to archive recordings.</p>
+		{/if}
+		{#if status.folderId}
+			<details class="mt-4">
+				<summary class="cursor-pointer text-xs text-zinc-400 hover:text-zinc-200">Archive folder</summary>
+				<p class="mt-2 break-all font-mono text-xs text-zinc-400">{status.folderId}</p>
+			</details>
+		{/if}
 
 		{#if serverError}
 			<p
@@ -130,7 +76,7 @@
 
 		<div class="mt-5 flex flex-wrap items-center gap-2">
 			{#if readonly}
-				<p class="text-xs leading-5 text-zinc-500">
+				<p class="text-xs leading-5 text-zinc-400">
 					Only administrators can manage Drive archives.
 				</p>
 			{:else if status.connectionError}
@@ -155,7 +101,7 @@
 					{disconnecting ? "Clearing…" : "Clear saved connection"}
 				</button>
 			{:else if !status.configured}
-				<p class="text-xs leading-5 text-zinc-500">
+				<p class="text-xs leading-5 text-zinc-400">
 					NVR_SECRETS_KEY must be set on the server to encrypt these credentials.
 				</p>
 			{:else if status.connected}
@@ -198,7 +144,7 @@
 					Google OAuth configuration
 					<ChevronDown class="size-4 transition-transform group-open:rotate-180" />
 				</summary>
-				<p class="mt-3 text-xs leading-5 text-zinc-500">
+				<p class="mt-3 text-xs leading-5 text-zinc-400">
 					New credentials disconnect the current account and start a new connection flow.
 				</p>
 				<GoogleDriveConfigurationForm submitting={busy} onSubmit={onConfigure} />
@@ -209,4 +155,4 @@
 			</div>
 		{/if}
 	</div>
-</div>
+</section>
