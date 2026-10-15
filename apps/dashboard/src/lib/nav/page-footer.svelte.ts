@@ -6,6 +6,7 @@ const [requirePageFooter, setPageFooter] = createContext<{
 
 export { setPageFooter };
 
+/** Returns the shell footer context, or undefined when rendered without a shell. */
 export function getPageFooter() {
 	try {
 		return requirePageFooter();
