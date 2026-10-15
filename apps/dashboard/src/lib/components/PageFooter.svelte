@@ -7,6 +7,7 @@
 
 	// Register page content in the shell footer, outside the scrolling main area.
 	$effect(() => {
+		if (!footer) return;
 		const content = children;
 		footer.content = content;
 		return () => {
