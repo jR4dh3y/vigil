@@ -69,7 +69,6 @@
 						onEnded={onEnded}
 						loading={loading && !session}
 						class="h-full !aspect-auto rounded-none border-0"
-						videoClass="object-cover"
 					/>
 				</div>
 				<!-- Channel label: always visible -->

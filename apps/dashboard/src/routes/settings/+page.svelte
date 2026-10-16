@@ -6,6 +6,7 @@
 	import { onMount } from "svelte";
 	import { authKeys, loadStatus } from "$lib/auth";
 	import PageActions from "$lib/components/PageActions.svelte";
+	import PageFooter from "$lib/components/PageFooter.svelte";
 	import GoogleDriveCard from "$lib/components/settings/GoogleDriveCard.svelte";
 	import SettingsForm from "$lib/components/settings/SettingsForm.svelte";
 	import SystemStatusCard from "$lib/components/settings/SystemStatusCard.svelte";
@@ -269,44 +270,13 @@
 </PageActions>
 
 <section class="mx-auto flex w-full max-w-6xl flex-col gap-6 pb-8">
-	{#if systemQuery.isPending}
-		<div
-			class="flex min-h-[190px] items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/30"
-		>
-			<Spinner label="Loading system status" />
-		</div>
-	{:else if systemQuery.isError}
-		<div
-			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-6 py-10 text-center"
-		>
-			<p class="text-sm font-medium text-red-200">Could not load system status</p>
-			<p class="max-w-sm text-sm text-red-300/80">
-				{systemQuery.error instanceof Error
-					? systemQuery.error.message
-					: "Unknown error while loading status."}
-			</p>
-			<button
-				type="button"
-				class="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-700"
-				onclick={() => systemQuery.refetch()}
-			>
-				Retry
-			</button>
-		</div>
-	{:else if systemQuery.data}
-		<SystemStatusCard status={systemQuery.data} />
-	{/if}
-
-	<div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.8fr)]">
-		<div class="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/35">
-			<div class="border-b border-zinc-800 px-5 py-4 sm:px-6">
+	<div class="grid items-start gap-10 lg:grid-cols-2">
+		<div class="min-w-0">
+			<div class="mb-5">
 				<h2 class="text-sm font-semibold text-zinc-100">Recorder</h2>
-				<p class="mt-1 text-xs leading-5 text-zinc-500">
-					Identity, local recording, and retention policy.
-				</p>
 			</div>
 
-			<div class="p-5 sm:p-6">
+			<div class="min-w-0">
 				{#if settingsQuery.isPending}
 					<div class="flex min-h-[240px] items-center justify-center">
 						<Spinner label="Loading settings" />
@@ -393,4 +363,25 @@
 			{/if}
 		</div>
 	</div>
+	<PageFooter>
+		{#if systemQuery.isPending}
+			<Spinner label="Loading system status" />
+		{:else if systemQuery.isError}
+			<div class="flex flex-wrap items-center gap-3 text-xs text-red-300" role="alert">
+				<p>
+					Could not load system status.
+					{systemQuery.error instanceof Error ? systemQuery.error.message : ""}
+				</p>
+				<button
+					type="button"
+					class="rounded-md px-2 py-1 text-zinc-300 underline underline-offset-4 hover:text-zinc-100"
+					onclick={() => systemQuery.refetch()}
+				>
+					Retry
+				</button>
+			</div>
+		{:else if systemQuery.data}
+			<SystemStatusCard status={systemQuery.data} />
+		{/if}
+	</PageFooter>
 </section>

@@ -2,6 +2,7 @@
 	import type { Snippet } from "svelte";
 	import type { UserPublic } from "$lib/auth";
 	import { resolveMainSection } from "$lib/nav/subroutes";
+	import { setPageFooter } from "$lib/nav/page-footer.svelte";
 	import Sidebar from "./Sidebar.svelte";
 	import SubNav from "./SubNav.svelte";
 
@@ -14,6 +15,8 @@
 	};
 
 	let { user, pathname, loggingOut = false, onLogout, children }: Props = $props();
+	const footer = $state<{ content: Snippet | undefined }>({ content: undefined });
+	setPageFooter(footer);
 
 	const section = $derived(resolveMainSection(pathname));
 	const isAdmin = $derived(user.role === "admin");
@@ -40,5 +43,13 @@
 				</div>
 			{/if}
 		</main>
+		{#if footer.content}
+			<footer
+				aria-label="System status"
+				class="shrink-0 border-t border-zinc-800 bg-zinc-950 px-4 py-3 sm:px-6"
+			>
+				{@render footer.content()}
+			</footer>
+		{/if}
 	</div>
 </div>

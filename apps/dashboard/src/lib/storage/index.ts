@@ -14,9 +14,6 @@ export type {
 	GDriveStatus,
 } from "./types";
 export {
-	driveConnectionBadgeClass,
-	driveConnectionLabel,
-	formatConnectedAt,
 	formatGDriveArchiveResult,
 	readGDriveCallback,
 	stripGDriveCallback,

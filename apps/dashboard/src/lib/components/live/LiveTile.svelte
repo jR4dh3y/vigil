@@ -133,7 +133,6 @@
 					<HlsPlayer
 						hlsUrl={stream.hlsUrl}
 						token={stream.token}
-						class={focused ? "object-contain" : "object-cover"}
 						onError={handleHlsError}
 						onPlaying={handlePlaying}
 					/>
@@ -141,7 +140,6 @@
 					<WhepPlayer
 						whepUrl={stream.whepUrl}
 						token={stream.token}
-						class={focused ? "object-contain" : "object-cover"}
 						onError={handleWhepError}
 						onPlaying={handlePlaying}
 					/>
