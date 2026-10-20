@@ -94,9 +94,9 @@ describe("mobile WHEP cancellation", () => {
 		const result = session.ready.catch(() => "cancelled");
 		await flushNegotiation();
 		expect(request).toHaveBeenCalledTimes(1);
-		const signal = request.mock.calls[0]?.[1]?.signal;
+		const requestOptions = request.mock.calls[0]?.[1];
 		session.dispose();
-		expect(signal?.aborted).toBe(true);
+		expect(requestOptions?.signal).toBeUndefined();
 		pending.resolve(new Response("answer", { status: 201, headers: { Location: "/session/1" } }));
 		expect(await result).toBe("cancelled");
 		expect(peer.setRemoteDescription).not.toHaveBeenCalled();
@@ -104,6 +104,23 @@ describe("mobile WHEP cancellation", () => {
 			method: "DELETE",
 		});
 		expect(peer.close).toHaveBeenCalledTimes(1);
+	});
+
+	test("closes the peer when the request rejects after scroll-out", async () => {
+		const peer = createPeer();
+		const pending = Promise.withResolvers<Response>();
+		const request = mock<typeof fetch>(async (_url, options) =>
+			options?.method === "POST" ? pending.promise : new Response(null, { status: 204 }),
+		);
+		const session = startWhepSession(peer, uri, request);
+		const ready = session.ready;
+		await flushNegotiation();
+		expect(request).toHaveBeenCalledTimes(1);
+		session.dispose();
+		pending.reject(new Error("network unavailable"));
+		await expect(ready).rejects.toThrow("network unavailable");
+		expect(peer.close).toHaveBeenCalledTimes(1);
+		expect(peer.setRemoteDescription).not.toHaveBeenCalled();
 	});
 
 	test("releases a session on failure before a retry starts", async () => {

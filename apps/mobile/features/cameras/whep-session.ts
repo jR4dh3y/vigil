@@ -52,7 +52,6 @@ export function startWhepSession(peer: WhepPeer, uri: string, request: typeof fe
 				method: "POST",
 				headers: { Accept: "application/sdp", "Content-Type": "application/sdp" },
 				body: sdp,
-				signal,
 			});
 			const location = response.headers.get("Location");
 			if (location) {
