@@ -112,13 +112,23 @@ The URL storage key is `vigil_recorder_url`.
 
 ## Live view
 
-The live camera list polls the cameras every 30 seconds. A camera card requests a live stream only when at least 40 percent of it is visible, the tab is focused, and the camera is enabled and online.
+The live camera list polls the cameras every 30 seconds. A camera card requests a live stream only when at least 40 percent of it stays visible for 250 milliseconds, the tab is focused, and the camera is enabled and online. Cards release their connections when they leave view. Cancelled WHEP negotiations stop before the next native operation and delete any server session returned by a late response.
 
 The live session comes from `POST /cameras/{id}/live`. The app refreshes the session before the token expires.
 
 The player chooses WHEP first in a custom native build. The WHEP hook creates a WebRTC peer connection with no STUN servers. It negotiates over HTTP. On failure, the player falls back to HLS. Expo Go cannot load the WebRTC native module, so it skips WHEP and uses HLS directly.
 
 The HLS player uses `expo-video`. It replaces the video URI and starts playback. HTTP media URLs returned with loopback hostnames are rewritten to the configured recorder host. HTTPS responses with loopback media hosts fail visibly because rewriting them would invalidate TLS.
+
+The cancellation regression tests are in `tests/mobile-whep-session.test.ts`.
+
+| Scroll cancellation coverage | Applies | Verification |
+|---|---|---|
+| Live list and camera detail | Yes, both use the WHEP hook | Shared session tests and mobile type check |
+| WHEP negotiation and server session deletion | Yes, disposal interrupts negotiation | Offer, local description, ICE, late response, body loading, failure, and successful cleanup tests |
+| Android and iOS native playback | Yes, both use the shared hook | Requires device testing; unit tests substitute the native peer |
+| HLS fallback and Expo Go | Visibility delay applies to list previews; WHEP cancellation does not apply to HLS | Native HLS playback requires device testing |
+| Recording history, event playback, dashboard, and backend APIs | No WHEP lifecycle change | No contract or playback changes required |
 
 ## Recording history
 

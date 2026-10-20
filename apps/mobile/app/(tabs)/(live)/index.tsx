@@ -22,7 +22,10 @@ export default function LiveScreen() {
 	// them on scroll-out is what keeps multi-camera playback within device codec
 	// limits. Accumulating streams instead guarantees black tiles past ~4 feeds.
 	const [visibleCameraIds, setVisibleCameraIds] = useState<ReadonlySet<string>>(() => new Set());
-	const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40 }).current;
+	const viewabilityConfig = useRef({
+		itemVisiblePercentThreshold: 40,
+		minimumViewTime: 250,
+	}).current;
 	const onViewableItemsChanged = useRef(
 		({ viewableItems }: { viewableItems: ViewToken<Camera>[] }) => {
 			const next = new Set(
